@@ -24,6 +24,9 @@ const createFormState = ref({
   简介: ''
 });
 
+// 拖拽状态
+const isDragging = ref(false);
+
 // 获取知识库数据
 const fetchWikiList = async () => {
   try {
@@ -51,8 +54,16 @@ const navigateToWikiDetail = (item: 知识库VM) => {
 };
 
 // 打开创建知识库弹窗
-const openCreateModal = () => {
+const openCreateModal = (folderPath?: string) => {
   showCreateModal.value = true;
+
+  // 如果提供了文件夹路径，自动填充到表单
+  if (folderPath) {
+    createFormState.value.URL = folderPath;
+    // 从路径中提取文件夹名称作为知识库名称
+    const folderName = folderPath.split('/').pop() || '';
+    createFormState.value.名称 = folderName;
+  }
 };
 
 // 关闭创建知识库弹窗
@@ -84,17 +95,83 @@ const handleCreateSubmit = async () => {
   }
 };
 
+// 处理拖拽事件
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault();
+  isDragging.value = true;
+};
+
+const handleDragLeave = (e: DragEvent) => {
+  e.preventDefault();
+  isDragging.value = false;
+};
+
+const handleDrop = (e: DragEvent) => {
+  e.preventDefault();
+  isDragging.value = false;
+
+  // 获取拖拽的文件夹路径
+  if (e.dataTransfer?.items) {
+    for (let i = 0; i < e.dataTransfer.items.length; i++) {
+      const item = e.dataTransfer.items[i];
+
+      // 尝试获取文件系统条目
+      try {
+        // WebKit/Chrome 使用 webkitGetAsEntry
+        const entry = item?.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+
+        if (entry?.isDirectory) { // TODO: path是拿不到的
+          // 获取文件夹路径（在某些浏览器环境下可能受限）
+          // @ts-ignore
+          const path = item?.getAsFile()?.path || '';
+          if (path) {
+            openCreateModal(path);
+            return;
+          } else {
+            // 如果无法获取本地路径，至少获取文件夹名称
+            const fileName = entry.name || '';
+            if (fileName) {
+              openCreateModal(`/${fileName}`);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('处理拖拽项目失败:', error);
+      }
+
+      // 直接尝试从File对象获取路径
+      const file = item?.getAsFile();
+      if (file) {
+        // 在某些环境下，file.path 可能包含本地路径
+        const path = (file as any).path || file.name;
+        openCreateModal(path);
+        return;
+      }
+    }
+  }
+
+  message.info('请拖拽一个文件夹到此处');
+};
+
 onMounted(() => {
   fetchWikiList();
 });
 </script>
 
 <template>
-  <div class="wiki-home">
+  <div
+    class="wiki-home"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
+    :class="{'dragging': isDragging}"
+  >
     <!-- 页面标题 -->
     <div class="page-header">
       <h1>知识库首页</h1>
       <p class="description">浏览由AIGC生成的开源、企业项目wiki页面</p>
+      <p class="drag-hint" v-if="isDragging">释放鼠标创建知识库</p>
     </div>
 
     <!-- 搜索和过滤区域 -->
@@ -120,12 +197,13 @@ onMounted(() => {
     <!-- 知识库卡片列表 -->
     <div class="wiki-cards">
       <!-- 创建知识库卡片 -->
-      <Card class="wiki-card create-card" hoverable @click="openCreateModal">
+      <Card class="wiki-card create-card" hoverable @click="openCreateModal()">
         <div class="create-content">
           <div class="create-icon">
             <VbenIcon icon="carbon:add" class="add-icon" />
           </div>
           <div class="create-text">创建知识库</div>
+          <div class="create-hint">或拖拽文件夹到此处</div>
         </div>
       </Card>
 
@@ -232,10 +310,35 @@ onMounted(() => {
 <style scoped>
 .wiki-home {
   padding: 20px;
+  position: relative;
+  min-height: 80vh;
+  transition: all 0.3s;
+}
+
+.dragging {
+  background-color: rgba(24, 144, 255, 0.1);
+  border: 2px dashed #1890ff;
 }
 
 .page-header {
   margin-bottom: 24px;
+  position: relative;
+}
+
+.drag-hint {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  color: #1890ff;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 
 .description {
@@ -299,6 +402,12 @@ onMounted(() => {
 .create-text {
   font-size: 16px;
   color: rgba(0, 0, 0, 0.65);
+}
+
+.create-hint {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-top: 8px;
 }
 
 .card-header {
