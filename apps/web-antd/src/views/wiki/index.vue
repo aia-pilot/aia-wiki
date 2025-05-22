@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Card, Input, Select, Button, Pagination } from 'ant-design-vue';
+import { Card, Input, Select, Button, Pagination, Modal, Form, message } from 'ant-design-vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
-import { getWikiList, type 知识库VM } from '#/api/wiki/wiki';
+import { getWikiList, createWiki, type 知识库VM } from '#/api/wiki/wiki';
 
 const router = useRouter();
 const searchText = ref('');
@@ -12,6 +12,17 @@ const currentPage = ref(1);
 const pageSize = ref(12);
 const totalWikis = ref(0);
 const wikiList = ref<知识库VM[]>([]);
+
+// 创建知识库相关状态
+const showCreateModal = ref(false);
+const createFormRef = ref();
+const createLoading = ref(false);
+const createFormState = ref({
+  名称: '',
+  URL: '',
+  类型: '开源',
+  简介: ''
+});
 
 // 获取知识库数据
 const fetchWikiList = async () => {
@@ -37,6 +48,40 @@ const navigateToWikiDetail = (item: 知识库VM) => {
     query: { name: item.名称 },
     params: { id: item.id }
   });
+};
+
+// 打开创建知识库弹窗
+const openCreateModal = () => {
+  showCreateModal.value = true;
+};
+
+// 关闭创建知识库弹窗
+const closeCreateModal = () => {
+  showCreateModal.value = false;
+  createFormRef.value?.resetFields();
+};
+
+// 提交创建知识库表单
+const handleCreateSubmit = async () => {
+  try {
+    await createFormRef.value.validate();
+    createLoading.value = true;
+
+    // 调用创建知识库接口
+    // @ts-ignore
+    const newWiki = await createWiki(createFormState.value);
+
+    message.success('知识库创建成功，正在生成文档...');
+    closeCreateModal();
+
+    // 导航到详情页
+    navigateToWikiDetail(newWiki);
+
+  } catch (error) {
+    console.error('创建知识库失败:', error);
+    message.error('创建知识库失败，请重试');
+    createLoading.value = false;
+  }
 };
 
 onMounted(() => {
@@ -74,6 +119,16 @@ onMounted(() => {
 
     <!-- 知识库卡片列表 -->
     <div class="wiki-cards">
+      <!-- 创建知识库卡片 -->
+      <Card class="wiki-card create-card" hoverable @click="openCreateModal">
+        <div class="create-content">
+          <div class="create-icon">
+            <VbenIcon icon="carbon:add" class="add-icon" />
+          </div>
+          <div class="create-text">创建知识库</div>
+        </div>
+      </Card>
+
       <Card
         v-for="item in wikiList"
         :key="item.id"
@@ -108,6 +163,69 @@ onMounted(() => {
         @change="fetchWikiList"
       />
     </div>
+
+    <!-- 创建知识库弹窗 -->
+    <Modal
+      v-model:visible="showCreateModal"
+      title="创建新知识库"
+      @cancel="closeCreateModal"
+      :footer="null"
+      :maskClosable="false"
+    >
+      <Form
+        ref="createFormRef"
+        :model="createFormState"
+        layout="vertical"
+      >
+        <Form.Item
+          name="名称"
+          label="知识库名称"
+          :rules="[{ required: true, message: '请输入知识库名称' }]"
+        >
+          <Input v-model:value="createFormState.名称" placeholder="请输入知识库名称" />
+        </Form.Item>
+
+        <Form.Item
+          name="URL"
+          label="项目地址"
+          :rules="[{ required: true, message: '请输入项目地址' }]"
+        >
+          <Input v-model:value="createFormState.URL" placeholder="如：https://github.com/username/repo" />
+        </Form.Item>
+
+        <Form.Item
+          name="类型"
+          label="知识库类型"
+          :rules="[{ required: true, message: '请选择知识库类型' }]"
+        >
+          <Select v-model:value="createFormState.类型">
+            <Select.Option value="开源">开源</Select.Option>
+            <Select.Option value="企业">企业</Select.Option>
+            <Select.Option value="个人">个人</Select.Option>
+            <Select.Option value="其他">其他</Select.Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          name="简介"
+          label="知识库简介"
+          :rules="[{ required: true, message: '请输入知识库简介' }]"
+        >
+          <Input.TextArea
+            v-model:value="createFormState.简介"
+            placeholder="请简要描述该知识库"
+            :rows="4"
+            :maxlength="200"
+            show-count
+          />
+        </Form.Item>
+
+        <Form.Item class="form-buttons">
+          <Button @click="closeCreateModal">取消</Button>
+          <Button type="primary" @click="handleCreateSubmit" :loading="createLoading">创建</Button>
+        </Form.Item>
+      </Form>
+    </Modal>
   </div>
 </template>
 
@@ -149,6 +267,40 @@ onMounted(() => {
   height: 100%;
 }
 
+.create-card {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px dashed #d9d9d9;
+  background-color: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.create-card:hover {
+  border-color: #1890ff;
+}
+
+.create-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px 0;
+}
+
+.create-icon {
+  font-size: 32px;
+  color: #1890ff;
+  margin-bottom: 8px;
+}
+
+.create-text {
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -182,5 +334,12 @@ onMounted(() => {
 .pagination {
   display: flex;
   justify-content: flex-end;
+}
+
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }
 </style>

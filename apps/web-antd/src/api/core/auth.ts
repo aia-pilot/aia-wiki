@@ -45,7 +45,7 @@ export async function refreshTokenApi() {
  * 退出登录
  */
 export async function logoutApi() {
-  return baseRequestClient.post('http://localhost/wiki/auth/logout', null, {
+  return baseRequestClient.post('http://localhost/wiki/auth/logout', {}, {
     withCredentials: true,
   });
 

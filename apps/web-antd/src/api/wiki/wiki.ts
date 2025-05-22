@@ -1,64 +1,46 @@
-import { z } from 'zod';
+// 直接使用TypeScript接口定义文档类型
+import {requestClient} from "#/api/request";
 
+export interface 文档 {
+  id: string;       // 文档uuid
+  title: string;    // 文档标题
+  path: string;     // 在知识库内，相对于根目录的路径
+}
 
-// 定义文档schema
-export const 文档Schema = z.object({
-  id: z.string().nonempty().describe('文档uuid'),
-  title: z.string().nonempty().describe('文档标题'),
-  path: z.string().nonempty().describe('在知识库内，相对于根目录的路径')
-});
+// 定义作者类型
+export interface 作者 {
+  uid: string;      // 用户id
+  username: string; // 用户名
+}
 
-// 定义知识库schema
-export const 知识库Schema = z.object({
-  // crypto random uuid
-  id: z.string().uuid().describe('知识库id'),
-  名称: z.string().nonempty().describe('项目、工作等名称'),
-  URL: z.string().describe('项目地址, 网上或者本地'),
-  类型: z.enum(['开源', '企业', '个人', '其他']).describe('类型'),
-  简介: z.string().describe('简介'),
-  作者: z.object({
-    uid: z.string().nonempty().describe('用户id'),
-    username: z.string().nonempty().describe('用户名')
-  }),
-  生成时间: z.number().int().nonnegative().refine( (timestamp) => !isNaN(new Date(timestamp).getTime()), { message: "必须是有效的Unix时间戳" } ).describe('Unix timestamp'),
-  更新时间: z.number().int().nonnegative().refine( (timestamp) => !isNaN(new Date(timestamp).getTime()), { message: "必须是有效的Unix时间戳" } ).describe('Unix timestamp'),
-  收藏数: z.number().default(0).describe('收藏数'),
-  // 文档目录: z.string().optional().describe('在服务器上Wiki文件的根目录'),
-  文档列表: z.array(文档Schema).describe('文档列表'),
-  status: z.enum(['creating', 'ready']).describe('创建状态')
-});
-
-// 从schema中导出类型
-export type 文档 = z.infer<typeof 文档Schema>;
-export type 知识库 = z.infer<typeof 知识库Schema>;
-//
-//
-//
-// export interface 文档 {
-//   id: string; // 文档uuid
-//   title: string; // 文档标题
-//   path: string; // 在知识库内，相对于根目录的路径
-// }
-//
-// export interface 知识库 {
-//   id: string;
-//   名称: string; // 项目、工作等名称
-//   URL: string; // 项目地址, 网上或者本地
-//   类型: '开源' | '企业' | '个人' | '其他'; // 类型
-//   简介: string; // 简介
-//   作者: {
-//     uid: string; // 用户id
-//     username: string; // 用户名
-//   };
-//   生成时间: number; // Unix timestamp
-//   更新时间: number; // Unix timestamp
-//   收藏数: number; // 收藏数
-//   // 文档目录: string; // 在服务器上Wiki文件的根目录
-//   文档列表: 文档[]; // 文档列表
-//   status: 'creating' | 'ready'; // 创建状态
-// }
+// 定义知识库类型
+export interface 知识库 {
+  id: string;                             // 知识库id
+  名称: string;                           // 项目、工作等名称
+  URL: string;                            // 项目地址, 网上或者本地
+  类型: '开源' | '企业' | '个人' | '其他';  // 类型
+  简介: string;                           // 简介
+  作者: 作者;                             // 作者信息
+  生成时间: number;                        // Unix timestamp
+  更新时间: number;                        // Unix timestamp
+  收藏数: number;                          // 收藏数
+  文档列表: 文档[];                        // 文档列表
+  status: 'creating' | 'ready';           // 创建状态
+}
 
 export class 知识库VM implements 知识库 {
+  id!: string;
+  名称!: string;
+  URL!: string;
+  类型!: '开源' | '企业' | '个人' | '其他';
+  简介!: string;
+  作者!: 作者;
+  生成时间!: number;
+  更新时间!: number;
+  收藏数!: number;
+  文档列表!: 文档[];
+  status!: 'creating' | 'ready';
+
   constructor(data: 知识库) {
     Object.assign(this, data);
   }
@@ -88,7 +70,7 @@ export interface Pagination {
   // total: number; // 总条数
 }
 
-const fakeData: 知识库[] = [
+const fakeData: 知识库VM[] = [
   {
     id: '1',
     名称: '项目1',
@@ -128,6 +110,7 @@ const fakeData: 知识库[] = [
     ],
     status: 'ready',
   }
+  // @ts-ignore
 ].map(item => new 知识库VM(item));
 
 /**
@@ -135,13 +118,51 @@ const fakeData: 知识库[] = [
  */
 export async function getWikiList(params: Pagination) {
   // return requestClient.get<{ data: 知识库[]; total: number; }>('http://localhost/wiki/', {params});
-  return {data: fakeData, total: fakeData.length};
+  const url = `http://localhost/wiki?${`page=${params.page}&perpage=${params.pageSize}`}`;
+  const res = await requestClient.get<{ data: 知识库[]; total: number; }>(url, {
+    withCredentials: true,
+  });
+  return {data: [...res.data.map(d => new 知识库VM(d)), ...fakeData], total: res.total + fakeData.length};
 }
 
 /**
  * 获取Wiki详情
  */
 export async function getWikiDetail(id: string) {
-  // return requestClient.get<知识库>(`http://localhost/wiki/${id}`);
-  return fakeData.find(item => item.id === id);
+  // const res = requestClient.get<知识库>(`http://localhost/wiki/${id}`);
+  let res = fakeData.find(item => item.id === id);
+  return res ? res : new 知识库VM(await requestClient.get<知识库>(`http://localhost/wiki/${id}`, {
+    withCredentials: true,
+  }));
+}
+
+/**
+ * 创建Wiki
+ */
+export async function createWiki(data: Pick<知识库, '名称' | 'URL' | '类型' | '简介'>) {
+  const res = await requestClient.post<知识库>('http://localhost/wiki/', data, {
+    withCredentials: true,
+  });
+  // 模拟后端创建
+  // const _data: 知识库 = {
+  //   ...data,
+  //   id: crypto.randomUUID(),
+  //   生成时间: Date.now(),
+  //   更新时间: Date.now(),
+  //   收藏数: 0,
+  //   文档列表: [],
+  //   status: 'creating',
+  //   作者: {
+  //     uid: '123',
+  //     username: '作者1',
+  //   }
+  // }
+  // const newWiki = new 知识库VM(_data);
+
+  // fakeData.push(newWiki);
+  // 模拟后端创建延迟
+
+  const newWiki = new 知识库VM(res);
+  setTimeout(() => newWiki.status = 'ready', 10000);
+  return newWiki;
 }
