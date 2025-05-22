@@ -68,10 +68,10 @@ async function loadAndConvertEnv(
   confFiles = getConfFiles(),
 ): Promise<
   Partial<ApplicationPluginOptions> & {
-    appTitle: string;
-    base: string;
-    port: number;
-  }
+  appTitle: string;
+  base: string;
+  port: number;
+}
 > {
   const envConfig = await loadEnv(match, confFiles);
 
@@ -86,6 +86,8 @@ async function loadAndConvertEnv(
     VITE_PORT,
     VITE_PWA,
     VITE_VISUALIZER,
+    VITE_DEV_USERNAME,
+    VITE_DEV_PASSWORD,
   } = envConfig;
 
   const compressTypes = (VITE_COMPRESS ?? '')
@@ -104,6 +106,8 @@ async function loadAndConvertEnv(
     port: getNumber(VITE_PORT, 5173),
     pwa: getBoolean(VITE_PWA),
     visualizer: getBoolean(VITE_VISUALIZER),
+    devUsername: getString(VITE_DEV_USERNAME, 'admin'),
+    devPassword: getString(VITE_DEV_PASSWORD, 'admin'),
   };
 }
 

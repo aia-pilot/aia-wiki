@@ -8,6 +8,10 @@ import { AuthenticationLogin, SliderCaptcha, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { useAuthStore } from '#/store';
+// import {loadAndConvertEnv} from "@vben/vite-config";
+// const {devUsername, devPassword} = loadAndConvertEnv();
+const devUsername = import.meta.env.VITE_DEV_USERNAME
+const devPassword = import.meta.env.VITE_DEV_USER_PWD
 
 defineOptions({ name: 'Login' });
 
@@ -57,8 +61,8 @@ const formSchema = computed((): VbenFormSchema[] => {
             );
             if (findUser) {
               form.setValues({
-                password: '123456',
-                username: findUser.value,
+                password: devPassword || '123456',
+                username: devUsername || findUser.value,
               });
             }
           }
