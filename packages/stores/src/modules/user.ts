@@ -22,6 +22,11 @@ interface BasicUserInfo {
    * 用户名
    */
   username: string;
+
+  /**
+   * AiA Client程序连接时，用于验证的token，确保Client是对应用户打开的
+   */
+  aiaClientBindToken?: string;
 }
 
 interface AccessState {
@@ -50,10 +55,17 @@ export const useUserStore = defineStore('core-user', {
     setUserRoles(roles: string[]) {
       this.userRoles = roles;
     },
+    setAiaClientConnected(isConnected: boolean) {
+      // 设置AiA Client连接状态
+      if (this.userInfo) {
+        this.isAiaClientConnected = isConnected;
+      }
+    }
   },
   state: (): AccessState => ({
     userInfo: null,
     userRoles: [],
+    isAiaClientConnected: false,
   }),
 });
 
