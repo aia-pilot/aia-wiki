@@ -26,6 +26,7 @@ const createFormState = ref({
 
 // 拖拽状态
 const isDragging = ref(false);
+const dropAreaRef = ref<HTMLElement | null>(null);
 
 // 获取知识库数据
 const fetchWikiList = async () => {
@@ -96,75 +97,75 @@ const handleCreateSubmit = async () => {
 };
 
 // 处理拖拽事件
-const handleDragOver = (e: DragEvent) => {
-  e.preventDefault();
-  isDragging.value = true;
-};
-
-const handleDragLeave = (e: DragEvent) => {
-  e.preventDefault();
+const handleDrop = (dirPath: string) => {
   isDragging.value = false;
-};
+  if (dirPath) {
+    // 如果有拖拽的文件夹路径，直接打开创建弹窗
+    openCreateModal(dirPath);
+    return;
+  }
 
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault();
-  isDragging.value = false;
 
   // 获取拖拽的文件夹路径
-  if (e.dataTransfer?.items) {
-    for (let i = 0; i < e.dataTransfer.items.length; i++) {
-      const item = e.dataTransfer.items[i];
-
-      // 尝试获取文件系统条目
-      try {
-        // WebKit/Chrome 使用 webkitGetAsEntry
-        const entry = item?.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-
-        if (entry?.isDirectory) { // TODO: path是拿不到的
-          // 获取文件夹路径（在某些浏览器环境下可能受限）
-          // @ts-ignore
-          const path = item?.getAsFile()?.path || '';
-          if (path) {
-            openCreateModal(path);
-            return;
-          } else {
-            // 如果无法获取本地路径，至少获取文件夹名称
-            const fileName = entry.name || '';
-            if (fileName) {
-              openCreateModal(`/${fileName}`);
-              return;
-            }
-          }
-        }
-      } catch (error) {
-        console.error('处理拖拽项目失败:', error);
-      }
-
-      // 直接尝试从File对象获取路径
-      const file = item?.getAsFile();
-      if (file) {
-        // 在某些环境下，file.path 可能包含本地路径
-        const path = (file as any).path || file.name;
-        openCreateModal(path);
-        return;
-      }
-    }
-  }
+  // if (e.dataTransfer?.items) {
+  //   for (let i = 0; i < e.dataTransfer.items.length; i++) {
+  //     const item = e.dataTransfer.items[i];
+  //
+  //     // 尝试获取文件系统条目
+  //     try {
+  //       // WebKit/Chrome 使用 webkitGetAsEntry
+  //       const entry = item?.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+  //
+  //       if (entry?.isDirectory) { // TODO: path是拿不到的
+  //         // 获取文件夹路径（在某些浏览器环境下可能受限）
+  //         // @ts-ignore
+  //         const path = item?.getAsFile()?.path || '';
+  //         if (path) {
+  //           openCreateModal(path);
+  //           return;
+  //         } else {
+  //           // 如果无法获取本地路径，至少获取文件夹名称
+  //           const fileName = entry.name || '';
+  //           if (fileName) {
+  //             openCreateModal(`/${fileName}`);
+  //             return;
+  //           }
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error('处理拖拽项目失败:', error);
+  //     }
+  //
+  //     // 直接尝试从File对象获取路径
+  //     const file = item?.getAsFile();
+  //     if (file) {
+  //       // 在某些环境下，file.path 可能包含本地路径
+  //       const path = (file as any).path || file.name;
+  //       openCreateModal(path);
+  //       return;
+  //     }
+  //   }
+  // }
 
   message.info('请拖拽一个文件夹到此处');
 };
 
 onMounted(() => {
   fetchWikiList();
+
+  // 绑定拖拽事件，由Electorn处理，获得文件夹路径
+  if (window.electronAPI?.bindDirectoryDrop && dropAreaRef.value) {
+    window.electronAPI.bindDirectoryDrop(dropAreaRef.value, handleDrop);
+  }
 });
 </script>
 
 <template>
   <div
     class="wiki-home"
-    @dragover="handleDragOver"
-    @dragleave="handleDragLeave"
-    @drop="handleDrop"
+    ref="dropAreaRef"
+    @dragover.prevent="isDragging = true"
+    @dragleave="isDragging = false"
     :class="{'dragging': isDragging}"
   >
     <!-- 页面标题 -->
