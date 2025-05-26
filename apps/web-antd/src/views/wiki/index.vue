@@ -104,49 +104,7 @@ const handleDrop = (dirPath: string) => {
     openCreateModal(dirPath);
     return;
   }
-
-
-  // 获取拖拽的文件夹路径
-  // if (e.dataTransfer?.items) {
-  //   for (let i = 0; i < e.dataTransfer.items.length; i++) {
-  //     const item = e.dataTransfer.items[i];
-  //
-  //     // 尝试获取文件系统条目
-  //     try {
-  //       // WebKit/Chrome 使用 webkitGetAsEntry
-  //       const entry = item?.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
-  //
-  //       if (entry?.isDirectory) { // TODO: path是拿不到的
-  //         // 获取文件夹路径（在某些浏览器环境下可能受限）
-  //         // @ts-ignore
-  //         const path = item?.getAsFile()?.path || '';
-  //         if (path) {
-  //           openCreateModal(path);
-  //           return;
-  //         } else {
-  //           // 如果无法获取本地路径，至少获取文件夹名称
-  //           const fileName = entry.name || '';
-  //           if (fileName) {
-  //             openCreateModal(`/${fileName}`);
-  //             return;
-  //           }
-  //         }
-  //       }
-  //     } catch (error) {
-  //       console.error('处理拖拽项目失败:', error);
-  //     }
-  //
-  //     // 直接尝试从File对象获取路径
-  //     const file = item?.getAsFile();
-  //     if (file) {
-  //       // 在某些环境下，file.path 可能包含本地路径
-  //       const path = (file as any).path || file.name;
-  //       openCreateModal(path);
-  //       return;
-  //     }
-  //   }
-  // }
-
+  // 如果没有拖拽的路径，提示用户
   message.info('请拖拽一个文件夹到此处');
 };
 

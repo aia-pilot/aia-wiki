@@ -143,26 +143,8 @@ export async function createWiki(data: Pick<知识库, '名称' | 'URL' | '类�
   const res = await requestClient.post<知识库>('http://localhost/wiki/', data, {
     withCredentials: true,
   });
-  // 模拟后端创建
-  // const _data: 知识库 = {
-  //   ...data,
-  //   id: crypto.randomUUID(),
-  //   生成时间: Date.now(),
-  //   更新时间: Date.now(),
-  //   收藏数: 0,
-  //   文档列表: [],
-  //   status: 'creating',
-  //   作者: {
-  //     uid: '123',
-  //     username: '作者1',
-  //   }
-  // }
-  // const newWiki = new 知识库VM(_data);
-
-  // fakeData.push(newWiki);
-  // 模拟后端创建延迟
 
   const newWiki = new 知识库VM(res);
-  setTimeout(() => newWiki.status = 'ready', 10000);
+  // setTimeout(() => newWiki.status = 'ready', 10000); // @DEV 测试转场loading效果
   return newWiki;
 }
