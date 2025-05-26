@@ -7,6 +7,8 @@ const routes: RouteRecordRaw[] = [
     name: 'Wiki',
     // component: () => import('#/views/wiki/WikiLayout.vue'), // 自定义布局组件
     meta: {
+      icon: 'lucide:book',
+      order: 20,
       title: $t('wiki.title'),
     },
     children: [
@@ -15,6 +17,7 @@ const routes: RouteRecordRaw[] = [
         name: 'WikiHome',
         component: () => import('#/views/wiki/index.vue'),
         meta: {
+          icon: 'lucide:home',
           title: $t('wiki.home'),
         },
       },
@@ -23,6 +26,7 @@ const routes: RouteRecordRaw[] = [
         name: 'WikiDetail',
         component: () => import('#/views/wiki/detail.vue'),
         meta: {
+          icon: 'lucide:file-text-2',
           title: $t('wiki.detail'),
         }
       }

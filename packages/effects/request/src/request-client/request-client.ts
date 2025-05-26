@@ -126,6 +126,17 @@ class RequestClient {
   }
 
   /**
+   * PATCH请求
+   */
+  public async patch<T>(
+    url: string,
+    data?: unknown,
+    config?: Omit<RequestClientConfig, 'data'>,
+  ): Promise<T> {
+    return this.request<T>(url, { ...config, data, method: 'PATCH' });
+  }
+
+  /**
    * 通用的请求方法
    */
   public async request<T>(

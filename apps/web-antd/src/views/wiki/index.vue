@@ -97,11 +97,11 @@ const handleCreateSubmit = async () => {
 };
 
 // 处理拖拽事件
-const handleDrop = (dirPath: string) => {
+const handleDrop = ({ isDirectory, filePath }: {isDirectory: boolean, filePath: string}) => {
   isDragging.value = false;
-  if (dirPath) {
+  if (isDirectory && filePath) {
     // 如果有拖拽的文件夹路径，直接打开创建弹窗
-    openCreateModal(dirPath);
+    openCreateModal(filePath);
     return;
   }
   // 如果没有拖拽的路径，提示用户
@@ -111,9 +111,11 @@ const handleDrop = (dirPath: string) => {
 onMounted(() => {
   fetchWikiList();
 
-  // 绑定拖拽事件，由Electorn处理，获得文件夹路径
-  if (window.electronAPI?.bindDirectoryDrop && dropAreaRef.value) {
-    window.electronAPI.bindDirectoryDrop(dropAreaRef.value, handleDrop);
+  // 绑定拖拽事件，由Electorn处理，获得CP文件路径
+  // @ts-ignore
+  if (window.electronAPI?.bindFileFolderDrop && dropAreaRef.value) {
+    // @ts-ignore
+    window.electronAPI.bindFileFolderDrop(dropAreaRef.value, handleDrop);
   }
 });
 </script>

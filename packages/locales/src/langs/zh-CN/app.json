@@ -1,0 +1,52 @@
+{
+  "title": "应用",
+  "home": "智能应用",
+  "detail": "应用详情",
+  "create": "创建应用",
+  "filter": {
+    "all": "全部应用",
+    "popular": "热门应用",
+    "recent": "最近使用"
+  },
+  "label": {
+    "name": "应用名称",
+    "description": "应用简介",
+    "tags": "标签",
+    "cpPath": "CP文件路径",
+    "status": "状态",
+    "author": "作者",
+    "createTime": "创建时间",
+    "updateTime": "更新时间",
+    "favorites": "收藏数",
+    "useCount": "使用次数",
+    "sharedResults": "共享成果"
+  },
+  "status": {
+    "creating": "创建中",
+    "ready": "已就绪",
+    "deprecated": "已弃用"
+  },
+  "action": {
+    "create": "创建应用",
+    "edit": "编辑",
+    "delete": "删除",
+    "run": "运行应用",
+    "share": "分享",
+    "favorite": "收藏",
+    "cancel": "取消",
+    "confirm": "确认",
+    "browse": "浏览文件"
+  },
+  "message": {
+    "createSuccess": "应用创建成功",
+    "createFail": "应用创建失败",
+    "updateSuccess": "应用更新成功",
+    "updateFail": "应用更新失败",
+    "deleteSuccess": "应用删除成功",
+    "deleteFail": "应用删除失败",
+    "deleteConfirm": "确定要删除此应用吗？",
+    "required": "此项为必填项",
+    "loading": "加载中..."
+  }
+}
+

@@ -1,0 +1,52 @@
+{
+  "title": "Applications",
+  "home": "Intelligent Apps",
+  "detail": "App Details",
+  "create": "Create App",
+  "filter": {
+    "all": "All Apps",
+    "popular": "Popular Apps",
+    "recent": "Recently Used"
+  },
+  "label": {
+    "name": "App Name",
+    "description": "Description",
+    "tags": "Tags",
+    "cpPath": "CP File Path",
+    "status": "Status",
+    "author": "Author",
+    "createTime": "Created At",
+    "updateTime": "Updated At",
+    "favorites": "Favorites",
+    "useCount": "Usage Count",
+    "sharedResults": "Shared Results"
+  },
+  "status": {
+    "creating": "Creating",
+    "ready": "Ready",
+    "deprecated": "Deprecated"
+  },
+  "action": {
+    "create": "Create App",
+    "edit": "Edit",
+    "delete": "Delete",
+    "run": "Run App",
+    "share": "Share",
+    "favorite": "Favorite",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "browse": "Browse Files"
+  },
+  "message": {
+    "createSuccess": "App created successfully",
+    "createFail": "Failed to create app",
+    "updateSuccess": "App updated successfully",
+    "updateFail": "Failed to update app",
+    "deleteSuccess": "App deleted successfully",
+    "deleteFail": "Failed to delete app",
+    "deleteConfirm": "Are you sure you want to delete this app?",
+    "required": "This field is required",
+    "loading": "Loading..."
+  }
+}
+
