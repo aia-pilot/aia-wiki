@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { Card, Input, Select, Button, Pagination, Modal, Form, message } from 'ant-design-vue';
-import { VbenIcon } from '@vben-core/shadcn-ui';
-import { getWikiList, createWiki, type 知识库VM } from '#/api/wiki/wiki';
+import {ref, onMounted} from 'vue';
+import {useRouter} from 'vue-router';
+import {Card, Input, Select, Button, Pagination, Modal, Form, message} from 'ant-design-vue';
+import {VbenIcon} from '@vben-core/shadcn-ui';
+import {getWikiList, createWiki, type 知识库VM} from '#/api/wiki/wiki';
+import {useUserStore} from "@vben/stores";
+
+const userStore = useUserStore();
 
 const router = useRouter();
 const searchText = ref('');
@@ -37,7 +40,7 @@ const fetchWikiList = async () => {
     };
 
     // 调用API获取真实数据
-    const { data, total } = await getWikiList(params);
+    const {data, total} = await getWikiList(params);
     wikiList.value = data;
     totalWikis.value = total;
   } catch (error) {
@@ -49,8 +52,8 @@ const fetchWikiList = async () => {
 const navigateToWikiDetail = (item: 知识库VM) => {
   router.push({
     name: 'WikiDetail',
-    query: { name: item.名称 },
-    params: { id: item.id }
+    query: {name: item.名称},
+    params: {id: item.id}
   });
 };
 
@@ -97,7 +100,7 @@ const handleCreateSubmit = async () => {
 };
 
 // 处理拖拽事件
-const handleDrop = ({ isDirectory, filePath }: {isDirectory: boolean, filePath: string}) => {
+const handleDrop = ({isDirectory, filePath}: { isDirectory: boolean, filePath: string }) => {
   isDragging.value = false;
   if (isDirectory && filePath) {
     // 如果有拖拽的文件夹路径，直接打开创建弹窗
@@ -158,10 +161,15 @@ onMounted(() => {
     <!-- 知识库卡片列表 -->
     <div class="wiki-cards">
       <!-- 创建知识库卡片 -->
-      <Card class="wiki-card create-card" hoverable @click="openCreateModal()">
+      <Card
+        class="wiki-card create-card"
+        hoverable
+        @click="userStore.isAiaClientConnected ? openCreateModal() : message.warning('AiA客户端未连接')"
+        :class="{ 'disabled-card': !userStore.isAiaClientConnected }"
+      >
         <div class="create-content">
           <div class="create-icon">
-            <VbenIcon icon="carbon:add" class="add-icon" />
+            <VbenIcon icon="carbon:add" class="add-icon"/>
           </div>
           <div class="create-text">创建知识库</div>
           <div class="create-hint">或拖拽文件夹到此处</div>
@@ -221,7 +229,7 @@ onMounted(() => {
           label="知识库名称"
           :rules="[{ required: true, message: '请输入知识库名称' }]"
         >
-          <Input v-model:value="createFormState.名称" placeholder="请输入知识库名称" />
+          <Input v-model:value="createFormState.名称" placeholder="请输入知识库名称"/>
         </Form.Item>
 
         <Form.Item
@@ -229,7 +237,8 @@ onMounted(() => {
           label="项目地址"
           :rules="[{ required: true, message: '请输入项目地址' }]"
         >
-          <Input v-model:value="createFormState.URL" placeholder="如：https://github.com/username/repo" />
+          <Input v-model:value="createFormState.URL"
+                 placeholder="如：https://github.com/username/repo"/>
         </Form.Item>
 
         <Form.Item
@@ -261,7 +270,9 @@ onMounted(() => {
 
         <Form.Item class="form-buttons">
           <Button @click="closeCreateModal">取消</Button>
-          <Button type="primary" @click="handleCreateSubmit" :loading="createLoading">创建</Button>
+          <Button type="primary" @click="handleCreateSubmit" :loading="createLoading"
+                  :disabled="!userStore.isAiaClientConnected">创建
+          </Button>
         </Form.Item>
       </Form>
     </Modal>
@@ -411,5 +422,10 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+.disabled-card {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 </style>

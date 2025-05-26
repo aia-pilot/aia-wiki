@@ -105,12 +105,15 @@ const fakeData: 智能应用VM[] = [
   // @ts-ignore
 ].map(item => new 智能应用VM(item));
 
+
+const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
+
 /**
  * 获取智能应用列表
  */
 export async function getAppList(params: Pagination) {
   try {
-    const url = `http://localhost/app?${`page=${params.page}&perpage=${params.pageSize}`}`;
+    const url = `${aiaSvcBaseUrl}/app?${`page=${params.page}&perpage=${params.pageSize}`}`;
     const res = await requestClient.get<{ data: 智能应用[]; total: number; }>(url, {
       withCredentials: true,
     });
@@ -130,7 +133,7 @@ export async function getAppList(params: Pagination) {
  */
 export async function getAppDetail(id: string) {
   try {
-    const res = await requestClient.get<智能应用>(`http://localhost/app/${id}`, {
+    const res = await requestClient.get<智能应用>(`${aiaSvcBaseUrl}/app/${id}`, {
       withCredentials: true,
     });
 
@@ -147,7 +150,7 @@ export async function getAppDetail(id: string) {
  */
 export async function createApp(data: Pick<智能应用, '名称' | '简介' | 'tags' | 'CP文件路径'>) {
   try {
-    const res = await requestClient.post<智能应用>('http://localhost/app/', data, {
+    const res = await requestClient.post<智能应用>('${aiaSvcBaseUrl}/app/', data, {
       withCredentials: true,
     });
 
@@ -178,7 +181,7 @@ export async function createApp(data: Pick<智能应用, '名称' | '简介' | '
  */
 export async function updateApp(id: string, data: Partial<智能应用>) {
   try {
-    await requestClient.patch<any>(`http://localhost/app/${id}`, data, {
+    await requestClient.patch<any>(`${aiaSvcBaseUrl}/app/${id}`, data, {
       withCredentials: true,
     });
 
@@ -194,7 +197,7 @@ export async function updateApp(id: string, data: Partial<智能应用>) {
  */
 export async function deleteApp(id: string) {
   try {
-    await requestClient.delete<any>(`http://localhost/app/${id}`, {
+    await requestClient.delete<any>(`${aiaSvcBaseUrl}/app/${id}`, {
       withCredentials: true,
     });
 

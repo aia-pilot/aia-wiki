@@ -82,7 +82,7 @@ const loadDocument = (doc?: 文档) => {
   // 构建Vitepress文档URL
   // 实际项目中需要替换为真实的Vitepress URL
   // currentDocUrl.value = `http://localhost:5173/${wikiId}/${doc.path}`;
-  currentDocUrl.value = 'http://localhost:5173/';
+  currentDocUrl.value = import.meta.env.VITE_AIA_WIKI_VITEPRESS_URL;
 };
 
 // 返回到知识库首页

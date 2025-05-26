@@ -2,6 +2,7 @@ import { initPreferences } from '@vben/preferences';
 import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
+import {watchUserChangeConnectAiaClient} from "#/store/aia-client";
 
 /**
  * 应用初始化完成之后再进行页面加载渲染
@@ -23,6 +24,9 @@ async function initApplication() {
   // vue应用主要逻辑及视图
   const { bootstrap } = await import('./bootstrap');
   await bootstrap(namespace);
+
+  // 创建AiA Client，并watch用户账号，自动连接
+  watchUserChangeConnectAiaClient();
 
   // 移除并销毁loading
   unmountGlobalLoading();

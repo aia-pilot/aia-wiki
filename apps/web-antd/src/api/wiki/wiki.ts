@@ -117,21 +117,22 @@ const fakeData: 知识库VM[] = [
  * 根据分页参数，获取Wiki列表
  */
 export async function getWikiList(params: Pagination) {
-  // return requestClient.get<{ data: 知识库[]; total: number; }>('http://localhost/wiki/', {params});
-  const url = `http://localhost/wiki?${`page=${params.page}&perpage=${params.pageSize}`}`;
+  const url = `${aiaSvcBaseUrl}/wiki?${`page=${params.page}&perpage=${params.pageSize}`}`;
   const res = await requestClient.get<{ data: 知识库[]; total: number; }>(url, {
     withCredentials: true,
   });
   return {data: [...res.data.map(d => new 知识库VM(d)), ...fakeData], total: res.total + fakeData.length};
 }
 
+
+const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
+
 /**
  * 获取Wiki详情
  */
 export async function getWikiDetail(id: string) {
-  // const res = requestClient.get<知识库>(`http://localhost/wiki/${id}`);
   let res = fakeData.find(item => item.id === id);
-  return res ? res : new 知识库VM(await requestClient.get<知识库>(`http://localhost/wiki/${id}`, {
+  return res ? res : new 知识库VM(await requestClient.get<知识库>(`${aiaSvcBaseUrl}/wiki/${id}`, {
     withCredentials: true,
   }));
 }
@@ -140,7 +141,7 @@ export async function getWikiDetail(id: string) {
  * 创建Wiki
  */
 export async function createWiki(data: Pick<知识库, '名称' | 'URL' | '类型' | '简介'>) {
-  const res = await requestClient.post<知识库>('http://localhost/wiki/', data, {
+  const res = await requestClient.post<知识库>('${aiaSvcBaseUrl}/wiki/', data, {
     withCredentials: true,
   });
 

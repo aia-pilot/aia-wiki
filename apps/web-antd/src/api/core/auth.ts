@@ -18,21 +18,23 @@ export namespace AuthApi {
   }
 }
 
+
+const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
+
 /**
  * 登录
  */
 export async function loginApi(data: AuthApi.LoginParams) {
-  return requestClient.post<AuthApi.LoginResult>('http://localhost/wiki/auth/login', data, {
+  return requestClient.post<AuthApi.LoginResult>(`${aiaSvcBaseUrl}/wiki/auth/login`, data, {
     withCredentials: true,
   })
-  // return requestClient.post<AuthApi.LoginResult>('http://localhost/wiki/auth/login', data);
 }
 
 /**
  * 刷新accessToken
  */
 export async function refreshTokenApi() {
-  return baseRequestClient.post<AuthApi.RefreshTokenResult>('http://localhost/wiki/auth/refresh', {
+  return baseRequestClient.post<AuthApi.RefreshTokenResult>(`${aiaSvcBaseUrl}/wiki/auth/refresh`, {
     withCredentials: true,
   });
 
@@ -45,7 +47,7 @@ export async function refreshTokenApi() {
  * 退出登录
  */
 export async function logoutApi() {
-  return baseRequestClient.post('http://localhost/wiki/auth/logout', {}, {
+  return baseRequestClient.post(`${aiaSvcBaseUrl}/wiki/auth/logout`, {}, {
     withCredentials: true,
   });
 
@@ -58,7 +60,7 @@ export async function logoutApi() {
  * 获取用户权限码
  */
 export async function getAccessCodesApi() {
-  return requestClient.get<string[]>('http://localhost/wiki/auth/codes', {
+  return requestClient.get<string[]>(`${aiaSvcBaseUrl}/wiki/auth/codes`, {
     withCredentials: true,
   });
   // return requestClient.get<string[]>('/auth/codes');
