@@ -26,6 +26,7 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@vben-core/shadcn-ui": "workspace:*",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
     "@vben/constants": "workspace:*",
@@ -41,9 +42,9 @@
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
     "@vueuse/core": "catalog:",
-    "@vben-core/shadcn-ui": "workspace:*",
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
+    "debug": "^4.4.1",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:",

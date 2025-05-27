@@ -5,6 +5,7 @@ import {Card, Input, Select, Button, Pagination, Modal, Form, message} from 'ant
 import {VbenIcon} from '@vben-core/shadcn-ui';
 import {getWikiList, createWiki, type 知识库VM} from '#/api/wiki/wiki';
 import {useUserStore} from "@vben/stores";
+import FileDirSelector from '#/components/FileDirSelector.vue';
 
 const userStore = useUserStore();
 
@@ -109,6 +110,18 @@ const handleDrop = ({isDirectory, filePath}: { isDirectory: boolean, filePath: s
   }
   // 如果没有拖拽的路径，提示用户
   message.info('请拖拽一个文件夹到此处');
+};
+
+
+// 处理文件夹选择
+const handleFileDirSelected = (selectedPath: string) => {
+  if (selectedPath) {
+    // 从路径中提取文件夹名称作为知识库名称建议
+    const folderName = selectedPath.split('/').pop() || '';
+    if (!createFormState.value.名称) {
+      createFormState.value.名称 = folderName;
+    }
+  }
 };
 
 onMounted(() => {
@@ -237,8 +250,13 @@ onMounted(() => {
           label="项目地址"
           :rules="[{ required: true, message: '请输入项目地址' }]"
         >
-          <Input v-model:value="createFormState.URL"
-                 placeholder="如：https://github.com/username/repo"/>
+          <FileDirSelector
+            v-model:value="createFormState.URL"
+            placeholder="如：https://github.com/username/repo或本地文件夹路径"
+            buttonText="浏览..."
+            dialogTitle="选择项目文件夹"
+            @select="handleFileDirSelected"
+          />
         </Form.Item>
 
         <Form.Item
@@ -270,7 +288,7 @@ onMounted(() => {
 
         <Form.Item class="form-buttons">
           <Button @click="closeCreateModal">取消</Button>
-          <Button type="primary" @click="handleCreateSubmit" :loading="createLoading"
+          <Button type="primary" @click="handleCreateSubmit" :loading="createLoading" class="ml-2"
                   :disabled="!userStore.isAiaClientConnected">创建
           </Button>
         </Form.Item>
@@ -427,5 +445,14 @@ onMounted(() => {
 .disabled-card {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.url-input-container {
+  display: flex;
+  align-items: center;
+}
+
+.browse-button {
+  margin-left: 8px;
 }
 </style>

@@ -150,7 +150,7 @@ export async function getAppDetail(id: string) {
  */
 export async function createApp(data: Pick<智能应用, '名称' | '简介' | 'tags' | 'CP文件路径'>) {
   try {
-    const res = await requestClient.post<智能应用>('${aiaSvcBaseUrl}/app/', data, {
+    const res = await requestClient.post<智能应用>(`${aiaSvcBaseUrl}/app/`, data, {
       withCredentials: true,
     });
 

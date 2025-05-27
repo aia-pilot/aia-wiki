@@ -141,7 +141,7 @@ export async function getWikiDetail(id: string) {
  * 创建Wiki
  */
 export async function createWiki(data: Pick<知识库, '名称' | 'URL' | '类型' | '简介'>) {
-  const res = await requestClient.post<知识库>('${aiaSvcBaseUrl}/wiki/', data, {
+  const res = await requestClient.post<知识库>(`${aiaSvcBaseUrl}/wiki/`, data, {
     withCredentials: true,
   });
 

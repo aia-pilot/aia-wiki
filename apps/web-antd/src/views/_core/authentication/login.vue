@@ -12,6 +12,7 @@ import { useAuthStore } from '#/store';
 // const {devUsername, devPassword} = loadAndConvertEnv();
 const devUsername = import.meta.env.VITE_DEV_USERNAME
 const devPassword = import.meta.env.VITE_DEV_USER_PWD
+const isDev = devUsername && devPassword;
 
 defineOptions({ name: 'Login' });
 
@@ -85,7 +86,7 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: markRaw(SliderCaptcha),
       fieldName: 'captcha',
-      rules: z.boolean().refine((value) => value, {
+      rules: z.boolean().refine((value) => value || isDev /* 开发时，不用captcha验证，提高效率*/, {
         message: $t('authentication.verifyRequiredTip'),
       }),
     },

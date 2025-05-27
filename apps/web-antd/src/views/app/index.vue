@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { Card, Input, Select, Button, Pagination, Modal, Form, message, Tag } from 'ant-design-vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { getAppList, createApp, type 智能应用VM } from '#/api/app/app';
+import FileDirSelector from '#/components/FileDirSelector.vue';
 
 const router = useRouter();
 const searchText = ref('');
@@ -123,6 +124,22 @@ const handleDrop = ({ isDirectory, filePath }: {isDirectory: boolean, filePath: 
   }
   // 如果没有拖拽的路径，提示用户
   message.info('请拖拽一个CP文件到此处');
+};
+
+// 处理CP文件选择
+const handleFileDirSelected = (selectedPath: string) => {
+  if (selectedPath && selectedPath.endsWith('.cp')) {
+    createFormState.value.CP文件路径 = selectedPath;
+
+    // 从路径中提取文件名作为应用名称建议
+    const fileName = selectedPath.split('/').pop() || '';
+    const appName = fileName.replace('.cp', '');
+    if (!createFormState.value.名称) {
+      createFormState.value.名称 = appName;
+    }
+  } else {
+    message.warning('请选择一个有效的CP文件');
+  }
 };
 
 onMounted(() => {
@@ -256,8 +273,19 @@ onMounted(() => {
           label="CP文件路径"
           :rules="[{ required: true, message: '请输入CP文件路径' }]"
         >
-          <Input v-model:value="createFormState.CP文件路径" placeholder="请选择或输入CP文件路径" />
-          <Button class="browse-button" type="link">浏览...</Button>
+          <FileDirSelector
+            v-model:value="createFormState.CP文件路径"
+            @select="handleFileDirSelected"
+            placeholder="选择或输入CP文件路径"
+            buttonText="浏览..."
+            dialogTitle="选择CP文件"
+            :dialogOptions="{
+              properties: ['openFile'],
+              filters: [
+                { name: '认知程序文件', extensions: ['cp'] }
+              ]
+            }"
+          />
         </Form.Item>
 
         <Form.Item
