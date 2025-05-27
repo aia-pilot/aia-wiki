@@ -4,10 +4,10 @@ import { useRoute, useRouter } from 'vue-router';
 import { Menu, Spin } from 'ant-design-vue';
 import { VbenScrollbar, VbenIcon } from '@vben-core/shadcn-ui';
 import {知识库VM, type 文档, getWikiDetail} from '#/api/wiki/wiki';
+import { type MenuInfo} from "ant-design-vue/es/menu/src/interface";
 
 const route = useRoute();
 const router = useRouter();
-const wikiId = route.params.id as string;
 const loading = ref(true);
 const wiki = ref<知识库VM | null>(null);
 const selectedDocId = ref<string[]>([]);
@@ -17,42 +17,7 @@ const currentDocUrl = ref('');
 const fetchWikiDetail = async () => {
   try {
     loading.value = true;
-
-    // 从路由的state中获取知识库信息
-    if (route.params?.id) {
-      wiki.value = await getWikiDetail(route.params.id as string);
-    } else {
-      // 如果没有从路由获取到，则需要通过API重新获取
-      // 这里是模拟数据，实际项目中需要替换为真实API调用
-      wiki.value = new 知识库VM({
-        id: wikiId,
-        名称: route.query.name as string || 'Wiki项目',
-        简介: '这是一个Wiki项目的详细描述',
-        URL: 'https://example.com',
-        类型: '开源',
-        作者: {
-          uid: '123',
-          username: '未知作者'
-        },
-        生成时间: Date.now(),
-        更新时间: Date.now(),
-        收藏数: 0,
-        文档列表: [
-          {
-            id: 'd1',
-            title: '介绍',
-            path: 'introduction'
-          },
-          {
-            id: 'd2',
-            title: '快速开始',
-            path: 'quick-start'
-          }
-        ],
-        status: 'ready'
-      });
-    }
-
+    wiki.value = await getWikiDetail(route.params.id as string);
     // 如果有文档，默认选中第一个
     if (wiki.value?.文档列表?.length > 0) {
       selectedDocId.value = [wiki.value.文档列表[0]?.id || ''];
@@ -66,13 +31,15 @@ const fetchWikiDetail = async () => {
   }
 };
 
-// 处理文档选择
-const handleDocSelect = (info: { key: string }) => {
+// // 处理文档选择
+const handleDocSelect = (info: MenuInfo) => {
   const doc = wiki.value?.文档列表.find(d => d.id === info.key);
   if (doc) {
     loadDocument(doc);
   }
 };
+
+
 
 // 加载文档内容
 const loadDocument = (doc?: 文档) => {
@@ -136,16 +103,48 @@ onMounted(() => {
           </VbenScrollbar>
         </div>
 
-        <!-- 右侧内容区：iframe加载Vitepress内容 -->
+        <!-- 右侧内容区：根据状态显示不同内容 -->
         <div class="wiki-content">
-          <iframe
-            v-if="currentDocUrl"
-            :src="currentDocUrl"
-            frameborder="0"
-            class="wiki-iframe"
-          ></iframe>
-          <div v-else class="wiki-empty">
-            请选择左侧文档进行查看
+          <!-- 创建中状态 -->
+          <div v-if="wiki?.isCreating" class="wiki-status-container creating">
+            <Spin tip="知识库创建中，请稍候..." :spinning="true">
+              <div class="status-message">
+                <VbenIcon icon="carbon:time" class="status-icon" />
+                <p>正在处理知识库数据，这可能需要一些时间。</p>
+                <p class="sub-message">您无需刷新页面，状态会自动更新。</p>
+              </div>
+            </Spin>
+          </div>
+
+          <!-- 创建失败状态 -->
+          <div v-else-if="wiki?.isFailed" class="wiki-status-container failed">
+            <div class="status-message">
+              <VbenIcon icon="carbon:warning" class="status-icon" />
+              <p>知识库创建失败</p>
+              <p class="sub-message">请尝试重新创建或联系管理员。</p>
+            </div>
+          </div>
+
+          <!-- 准备就绪状态 - 显示文档内容 -->
+          <template v-else-if="wiki?.isReady">
+            <iframe
+              v-if="currentDocUrl"
+              :src="currentDocUrl"
+              frameborder="0"
+              class="wiki-iframe"
+            ></iframe>
+            <div v-else class="wiki-empty">
+              请选择左侧文档进行查看
+            </div>
+          </template>
+
+          <!-- 未知状态或加载中 -->
+          <div v-else class="wiki-status-container">
+            <Spin :spinning="true">
+              <div class="status-message">
+                <p>加载中...</p>
+              </div>
+            </Spin>
           </div>
         </div>
       </div>
@@ -261,5 +260,47 @@ onMounted(() => {
   padding: 20px;
   background-color: #f0f2f5;
   border-radius: 4px;
+}
+
+/* 状态容器样式 */
+.wiki-status-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+}
+
+.status-message {
+  margin-top: 20px;
+  max-width: 500px;
+}
+
+.status-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.wiki-status-container p {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.sub-message {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* 创建中状态特有样式 */
+.wiki-status-container.creating .status-icon {
+  color: #1677ff;
+}
+
+/* 创建失败状态特有样式 */
+.wiki-status-container.failed .status-icon {
+  color: #ff4d4f;
 }
 </style>

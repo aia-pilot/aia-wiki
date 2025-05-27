@@ -38,6 +38,10 @@ interface AccessState {
    * 用户角色
    */
   userRoles: string[];
+  /**
+   * AiA Client连接状态
+   */
+  isAiaClientConnected: boolean;
 }
 
 /**
