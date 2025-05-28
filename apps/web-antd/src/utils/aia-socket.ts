@@ -32,7 +32,7 @@ class AiaSocketClient {
     }
 
     // 初始连接
-    await this.connect(userStore.userInfo.userId);
+    await this.connect(userStore.userInfo.id);
   }
 
   /**
@@ -54,6 +54,7 @@ class AiaSocketClient {
           } else if (!newUserId && this.connected) {
             this.disconnect();
           }
+          this.userId = newUserId;
         },
         {immediate: true}
       );
@@ -66,17 +67,10 @@ class AiaSocketClient {
    * @returns {Promise<void>}
    */
   private async connect(userId: string): Promise<void> {
-    if (this.connected && this.userId === userId) {
-      debug('已经连接到相同用户的Socket，无需重连');
-      return;
-    }
-
     // 如果已有连接，先断开
     if (this.socket) {
       this.disconnect();
     }
-
-    this.userId = userId;
 
     try {
       const socketUrl = import.meta.env.VITE_AIA_SVC_URL || '';

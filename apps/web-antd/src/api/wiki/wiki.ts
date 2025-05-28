@@ -1,9 +1,10 @@
 // 直接使用TypeScript接口定义文档类型
 import {requestClient} from "#/api/request";
-import { aiaSocket } from '#/utils/aia-socket';
-import { message } from 'ant-design-vue';
+import {aiaSocket} from '#/utils/aia-socket';
+import {message} from 'ant-design-vue';
 import Debug from 'debug';
-import { reactive } from 'vue';
+import {reactive} from 'vue';
+// import {router} from '#/router';
 
 const debug = Debug('aia:wiki');
 
@@ -85,52 +86,35 @@ export class 知识库VM implements 知识库 {
 }
 
 // 缓存所有处于创建中状态的知识库
-const creatingWikisCache = new Map<string, 知识库VM>();
-
-// 使用Vue的reactive缓存单个wiki，用于detail页面
 const wikiCache = new Map<string, 知识库VM>();
 
 // 初始化Socket监听
 function initSocketListeners() {
   // 监听知识库创建成功事件
-  aiaSocket.on('wiki-created', (data: { id: string; status: string; message: string }) => {
-    debug('收到知识库创建成功消息:', data);
+  aiaSocket.on('wiki-created', async(data: { id: string; status: string; message: string }) => {
+    message.success(data.message || '知识库创建成功');
+    debug(`知识库 ${data.id} 创建成功，状态：${data.status}`);
     const wiki = wikiCache.get(data.id);
-
     if (wiki) {
-      // 更新知识库状态 - reactive对象会自动触发UI更新
-      wiki.status = 'ready';
-      debug(`知识库 ${data.id} 已更新为就绪状态`);
-      message.success(data.message || '知识库创建成功');
-    }
-
-    // 同时更新旧缓存（为了保持其他功能正常）
-    const oldWiki = creatingWikisCache.get(data.id);
-    if (oldWiki) {
-      oldWiki.status = 'ready';
-      creatingWikisCache.delete(data.id);
+      const newWiki = await getWikiDetail(data.id);
+      // 逐个赋值以保持响应式
+      for (const key in newWiki) {
+        // @ts-ignore
+        wiki[key] = newWiki[key];
+      }
+      wikiCache.delete(data.id); // 从创建缓存中删除
     }
   });
 
   // 监听知识库创建失败事件
-  aiaSocket.on('wiki-creation-failed', (data: { id: string; status: string; message: string }) => {
-    debug('收到知识库创建失败消息:', data);
+  aiaSocket.on('wiki-creation-failed', async (data: { id: string; status: string; message: string }) => {
+    message.error(data.message || '知识库创建失败');
+    debug(`知识库 ${data.id} 创建失败，状态：${data.status}`);
     const wiki = wikiCache.get(data.id);
-
-    if (wiki) {
-      // 更新知识库状态 - reactive对象会自动触发UI更新
-      wiki.status = 'failed';
-      debug(`知识库 ${data.id} 已更新为失败状态`);
-      message.error(data.message || '知识库创建失败');
-    }
-
-    // 同时更新旧缓存（为了保持其他功能正常）
-    const oldWiki = creatingWikisCache.get(data.id);
-    if (oldWiki) {
-      oldWiki.status = 'failed';
-      creatingWikisCache.delete(data.id);
-    }
-  });
+    // @ts-ignore
+    wiki.status = 'failed'; // 更新状态为失败
+    wikiCache.delete(data.id); // 从创建缓存中删除
+  })
 }
 
 // 在模块初始化时设置Socket监听
@@ -179,6 +163,8 @@ const fakeData: 知识库VM[] = [
   // @ts-ignore
 ].map(item => new 知识库VM(item));
 
+const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
+
 /**
  * 根据分页参数，获取Wiki列表
  */
@@ -188,81 +174,36 @@ export async function getWikiList(params: Pagination) {
     withCredentials: true,
   });
 
-  const wikis = [...res.data.map(d => new 知识库VM(d)), ...fakeData];
-
-  // 更新缓存中的Wiki状态
-  wikis.forEach(wiki => {
-    if (wiki.status === 'creating') {
-      creatingWikisCache.set(wiki.id, wiki);
-    }
-  });
-
+  const wikis = [...res.data.map(d => new 知识库VM(d)), ...fakeData]; // List页面的数据，不变化，不需要响应式
   return {data: wikis, total: res.total + fakeData.length};
 }
-
-
-const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 
 /**
  * 获取Wiki详情
  * 返回一个响应式对象，该对象会根据socket事件自动更新
  */
 export async function getWikiDetail(id: string) {
-  // 首先检查响应式缓存中是否有知识库
-  const cachedWiki = wikiCache.get(id);
-  if (cachedWiki) {
-    debug(`从响应式缓存获取知识库 ${id}, 状态: ${cachedWiki.status}`);
-    return cachedWiki;
-  }
-
   // 从模拟数据中查找
   let res = fakeData.find(item => item.id === id);
   if (res) {
-    // 将结果转换为响应式对象并缓存
-    const reactiveWiki = reactive(new 知识库VM(res));
-    wikiCache.set(id, reactiveWiki);
-    return reactiveWiki;
+    return new 知识库VM(res);
   }
 
-  // 从服务器获取
-  try {
-    const wikiData = await requestClient.get<知识库>(`${aiaSvcBaseUrl}/wiki/${id}`, {
-      withCredentials: true,
-    });
-
-    // 创建响应式对象并缓存
-    const wiki = reactive(new 知识库VM(wikiData));
-    wikiCache.set(id, wiki);
-
-    // 如果是创建中状态，也添加到旧缓存（保持其他功能正常）
-    if (wiki.status === 'creating') {
-      creatingWikisCache.set(wiki.id, wiki);
-    }
-
-    return wiki;
-  } catch (error) {
-    debug(`获取知识库详情失败: ${error}`);
-    throw error;
-  }
+  const wikiData = await requestClient.get<知识库>(`${aiaSvcBaseUrl}/wiki/${id}`, {
+    withCredentials: true,
+  });
+  return createAndCacheWiki(wikiData);
 }
+
 
 /**
  * 创建Wiki
  */
 export async function createWiki(data: Pick<知识库, '名称' | 'URL' | '类型' | '简介'>) {
-  const res = await requestClient.post<知识库>(`${aiaSvcBaseUrl}/wiki/`, data, {
+  const wikiData = await requestClient.post<知识库>(`${aiaSvcBaseUrl}/wiki/`, data, {
     withCredentials: true,
   });
-
-  const newWiki = new 知识库VM(res);
-
-  // 如果是创建中状态，添加到缓存
-  if (newWiki.status === 'creating') {
-    debug(`添加知识库 ${newWiki.id} 到创建缓存`);
-    creatingWikisCache.set(newWiki.id, newWiki);
-  }
-
-  return newWiki;
+  return createAndCacheWiki(wikiData);
 }
 
 // ['page', 'perpage', 'sortby', 'order', 'sort', 'offset', 'limit']
@@ -270,5 +211,15 @@ export interface Pagination {
   page: number; // 当前页码
   pageSize: number; // 每页条数
   // total: number; // 总条数
+}
+
+function createAndCacheWiki(wikiData: 知识库) {
+  const newWiki = reactive(new 知识库VM(wikiData));
+  // 如果是创建中状态，添加到缓存。非creating，状态不会变化了，没必要缓存。
+  if (newWiki.status === 'creating') {
+    debug(`添加知识库 ${newWiki.id} 到创建缓存`);
+    wikiCache.set(newWiki.id, newWiki);
+  }
+  return newWiki;
 }
 

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Menu, Spin } from 'ant-design-vue';
+import { Menu, Spin, Button } from 'ant-design-vue';
 import { VbenScrollbar, VbenIcon } from '@vben-core/shadcn-ui';
+import { useTabs } from '@vben/hooks';
 import {知识库VM, type 文档, getWikiDetail} from '#/api/wiki/wiki';
 import { type MenuInfo} from "ant-design-vue/es/menu/src/interface";
 
+
+const { closeCurrentTab } = useTabs();
 const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
@@ -20,7 +23,7 @@ const fetchWikiDetail = async () => {
     wiki.value = await getWikiDetail(route.params.id as string);
     // 如果有文档，默认选中第一个
     if (wiki.value?.文档列表?.length > 0) {
-      selectedDocId.value = [wiki.value.文档列表[0]?.id || ''];
+      selectedDocId.value = [wiki.value.文档列表[0]?.id || wiki.value.文档列表[0]?.title || ''];
       loadDocument(wiki.value.文档列表[0]);
     }
 
@@ -32,8 +35,8 @@ const fetchWikiDetail = async () => {
 };
 
 // // 处理文档选择
-const handleDocSelect = (info: MenuInfo) => {
-  const doc = wiki.value?.文档列表.find(d => d.id === info.key);
+const handleDocSelect = (idOrTitle: string) => {
+  const doc = wiki.value?.文档列表.find(d => d.id === idOrTitle || d.title === idOrTitle);
   if (doc) {
     loadDocument(doc);
   }
@@ -42,14 +45,18 @@ const handleDocSelect = (info: MenuInfo) => {
 
 
 // 加载文档内容
+const WIKI_ROOT = import.meta.env.VITE_AIA_WIKI_VITEPRESS_URL;
 const loadDocument = (doc?: 文档) => {
   // 如果doc为null或undefined，不执行任何操作
   if (!doc) return;
 
-  // 构建Vitepress文档URL
-  // 实际项目中需要替换为真实的Vitepress URL
+  // 构建Vitepress文档URL，拼接wiki.根目录、文档路径和Vitepress根URL
+  console.log('加载文档:', doc, wiki.value);
+  // @ts-ignore
+  currentDocUrl.value = `${WIKI_ROOT}/${wiki.value?.根目录}/${doc.path.replace(/.md$/, '')}`;
+  console.log('当前文档URL:', currentDocUrl.value);
   // currentDocUrl.value = `http://localhost:5173/${wikiId}/${doc.path}`;
-  currentDocUrl.value = import.meta.env.VITE_AIA_WIKI_VITEPRESS_URL;
+  // currentDocUrl.value = import.meta.env.VITE_AIA_WIKI_VITEPRESS_URL;
 };
 
 // 返回到知识库首页
@@ -94,9 +101,8 @@ onMounted(() => {
             <Menu
               v-model:selectedKeys="selectedDocId"
               mode="inline"
-              @click="handleDocSelect"
             >
-              <Menu.Item v-for="doc in wiki.文档列表" :key="doc.id">
+              <Menu.Item v-for="doc in wiki.文档列表" :key="doc.id || doc.title" @click="handleDocSelect(doc.id || doc.title)">
                 {{ doc.title }}
               </Menu.Item>
             </Menu>
@@ -122,6 +128,7 @@ onMounted(() => {
               <VbenIcon icon="carbon:warning" class="status-icon" />
               <p>知识库创建失败</p>
               <p class="sub-message">请尝试重新创建或联系管理员。</p>
+              <Button type="primary" @click="closeCurrentTab()">关闭</Button>
             </div>
           </div>
 
