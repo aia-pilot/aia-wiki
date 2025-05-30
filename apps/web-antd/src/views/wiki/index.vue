@@ -102,14 +102,16 @@ const handleCreateSubmit = async () => {
 
 // 处理拖拽事件
 const handleDrop = ({isDirectory, filePath}: { isDirectory: boolean, filePath: string }) => {
-  isDragging.value = false;
-  if (isDirectory && filePath) {
-    // 如果有拖拽的文件夹路径，直接打开创建弹窗
-    openCreateModal(filePath);
-    return;
+  if (userStore.isAiaClientConnected) {
+    isDragging.value = false;
+    if (isDirectory && filePath) {
+      // 如果有拖拽的文件夹路径，直接打开创建弹窗
+      openCreateModal(filePath);
+      return;
+    }
+    // 如果没有拖拽的路径，提示用户
+    message.info('请拖拽一个文件夹到此处');
   }
-  // 如果没有拖拽的路径，提示用户
-  message.info('请拖拽一个文件夹到此处');
 };
 
 
@@ -140,8 +142,8 @@ onMounted(() => {
   <div
     class="wiki-home"
     ref="dropAreaRef"
-    @dragover.prevent="isDragging = true"
-    @dragleave="isDragging = false"
+    @dragover.prevent="userStore.isAiaClientConnected && (isDragging = true)"
+    @dragleave.prevent="isDragging = false"
     :class="{'dragging': isDragging}"
   >
     <!-- 页面标题 -->

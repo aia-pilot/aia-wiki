@@ -5,7 +5,6 @@ import { Menu, Spin, Button } from 'ant-design-vue';
 import { VbenScrollbar, VbenIcon } from '@vben-core/shadcn-ui';
 import { useTabs } from '@vben/hooks';
 import {知识库VM, type 文档, getWikiDetail} from '#/api/wiki/wiki';
-import { type MenuInfo} from "ant-design-vue/es/menu/src/interface";
 
 
 const { closeCurrentTab } = useTabs();
