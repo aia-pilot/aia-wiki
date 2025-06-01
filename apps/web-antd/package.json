@@ -26,6 +26,7 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
     "@vben-core/shadcn-ui": "workspace:*",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
@@ -49,7 +50,8 @@
     "socket.io-client": "^4.8.1",
     "vue": "catalog:",
     "vue-router": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12"

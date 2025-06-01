@@ -5,7 +5,7 @@ import { Menu, Spin, Button } from 'ant-design-vue';
 import { VbenScrollbar, VbenIcon } from '@vben-core/shadcn-ui';
 import { useTabs } from '@vben/hooks';
 import {知识库VM, type 文档, getWikiDetail} from '#/api/wiki/wiki';
-
+import WikiCreatingStatus from './wiki-creating-status.vue';
 
 const { closeCurrentTab } = useTabs();
 const route = useRoute();
@@ -94,7 +94,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- 文档列表 -->
+          <!-- 文��列表 -->
           <div class="docs-title">文档列表</div>
           <VbenScrollbar>
             <Menu
@@ -111,15 +111,11 @@ onMounted(() => {
         <!-- 右侧内容区：根据状态显示不同内容 -->
         <div class="wiki-content">
           <!-- 创建中状态 -->
-          <div v-if="wiki?.isCreating" class="wiki-status-container creating">
-            <Spin tip="知识库创建中，请稍候..." :spinning="true">
-              <div class="status-message">
-                <VbenIcon icon="carbon:time" class="status-icon" />
-                <p>正在处理知识库数据，这可能需要一些时间。</p>
-                <p class="sub-message">您无需刷新页面，状态会自动更新。</p>
-              </div>
-            </Spin>
-          </div>
+          <WikiCreatingStatus
+            v-if="wiki?.isCreating"
+            :wikiId="route.params.id as string"
+            :useFakeData="true"
+          />
 
           <!-- 创建失败状态 -->
           <div v-else-if="wiki?.isFailed" class="wiki-status-container failed">

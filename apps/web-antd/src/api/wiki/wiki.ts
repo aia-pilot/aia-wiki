@@ -158,7 +158,7 @@ const fakeData: 知识库VM[] = [
       {id: '4', title: '文档4', path: 'docs/doc4.md'},
       {id: '5', title: '文档5', path: 'docs/doc5.md'},
     ],
-    status: 'ready',
+    status: 'creating', // 模拟创建中状态
   }
   // @ts-ignore
 ].map(item => new 知识库VM(item));
