@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import {ref, onMounted} from 'vue';
+import {ref, onMounted, onUnmounted} from 'vue';
 import {useRouter} from 'vue-router';
 import {Card, Input, Select, Button, Pagination, Modal, Form, message} from 'ant-design-vue';
 import {VbenIcon} from '@vben-core/shadcn-ui';
 import {getWikiList, createWiki, type 知识库VM} from '#/api/wiki/wiki';
 import {useUserStore} from "@vben/stores";
 import FileDirSelector from '#/components/FileDirSelector.vue';
+import {start, stop} from './wiki-progress-mcp';
 
 const userStore = useUserStore();
 
@@ -134,8 +135,25 @@ onMounted(() => {
   if (window.electronAPI?.bindFileFolderDrop && dropAreaRef.value) {
     // @ts-ignore
     window.electronAPI.bindFileFolderDrop(dropAreaRef.value, handleDrop);
-  }
+  };
+
+  // 启动wiki-progress-mcp TODO：考虑是不是移到aia-client中去，在initialAiaClient中启动
+  start();
 });
+
+onUnmounted(() => {
+  // 解绑拖拽事件
+  // @ts-ignore
+  if (window.electronAPI?.unbindFileFolderDrop && dropAreaRef.value) {
+    // @ts-ignore
+    window.electronAPI.unbindFileFolderDrop(dropAreaRef.value);
+  };
+
+  // 停止wiki-progress-mcp
+  // stop(); // 不能停，否则到了下一个页面 detail 、wiki-creating-status都会没有用
+});
+
+
 </script>
 
 <template>

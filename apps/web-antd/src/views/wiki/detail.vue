@@ -114,7 +114,7 @@ onMounted(() => {
           <WikiCreatingStatus
             v-if="wiki?.isCreating"
             :wikiId="route.params.id as string"
-            :useFakeData="true"
+            :useFakeData="false"
           />
 
           <!-- 创建失败状态 -->

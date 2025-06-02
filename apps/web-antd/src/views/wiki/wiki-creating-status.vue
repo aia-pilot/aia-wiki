@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import {onMounted, onUnmounted, defineProps, computed, reactive} from 'vue';
+import {onMounted, defineProps, computed, reactive, watch} from 'vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { Spin } from 'ant-design-vue';
 import {
-  start,
-  stop,
   isConnected,
   progressMessages as globalProgressMessages,
   type BaseMessage,
-  MessageType
+  MessageType,
+  type ConfirmMessage
 } from './wiki-progress-mcp';
 
+import Debug from 'debug';
+const debug = Debug('aia:wiki-creating-status');
+
 const connecting = computed(() => !isConnected.value);
-const progressMessages = computed(() => props.useFakeData ? fakeProgressMessages : globalProgressMessages.filter((msg: BaseMessage) => msg.data.id === props.wikiId));
+const progressMessages = computed(() => props.useFakeData ? fakeProgressMessages : globalProgressMessages.filter((msg: BaseMessage) => {
+  return msg.data.id === props.wikiId
+}));
 
 // 定义组件属性
 const props = defineProps({
@@ -38,7 +42,10 @@ const props = defineProps({
     { type: MessageType.ERROR, message: '文档处理错误', data: { id: 'fake-wiki-id', file: 'document4.md', error: 'Parsing error at line 120' } },
     { type: MessageType.PROGRESS, message: '正在构建知识图谱连接', data: { id: 'fake-wiki-id', total: 5, current: 4 } },
     { type: MessageType.SUCCESS, message: '知识库数据处理完成', data: { id: 'fake-wiki-id', total: 5, current: 5, success: 4, failed: 1 } },
+    // 添加一条确认类型的消息用于测试
+    { type: MessageType.CONFIRM, message: '确认继续处理剩余文档?', data: { id: 'fake-wiki-id' } },
   ];
+
 // 添加模拟数据
 const fakeProgressMessages = reactive<BaseMessage[]>([]);
 const addFakeMessage = (index: number) => {
@@ -46,6 +53,30 @@ const addFakeMessage = (index: number) => {
     const message = fakeMessages[index];
     fakeProgressMessages.push(message as BaseMessage);
     setTimeout(() => addFakeMessage(index + 1), 1500);
+  }
+};
+
+// 模拟数据处理函数
+watch(() => fakeProgressMessages.length, (newLength) => {
+  // 如果是模拟数据，直接添加到全局消息列表
+  debug(`模拟数据更新: ${newLength}`, fakeProgressMessages);
+});
+
+// 处理确认消息的按钮点击
+const handleConfirm = (message: ConfirmMessage, result: boolean) => {
+  // 更新消息的结果
+  if (message.data) {
+    message.data.result = result;
+  }
+
+  // 如果是模拟数据，可以添加响应后的反馈消息
+  if (props.useFakeData) {
+    const responseMessage = {
+      type: result ? MessageType.SUCCESS : MessageType.INFO,
+      message: result ? '已确认继续操作' : '已取消操作',
+      data: { id: 'fake-wiki-id' }
+    };
+    fakeProgressMessages.push(responseMessage);
   }
 };
 
@@ -57,6 +88,7 @@ const getMessageIcon = (type: MessageType) => {
     warning: 'carbon:warning',
     error: 'carbon:error-filled',
     progress: 'carbon:in-progress',
+    confirm: 'carbon:help-filled', // 新增确认类型图标
   };
   return iconMap[type] || 'carbon:time';
 };
@@ -67,21 +99,16 @@ const getMessageClass = (type: MessageType) => {
 };
 
 onMounted(() => {
-  props.useFakeData
-    ? addFakeMessage(0) // 使用模拟数据
-    : start(); // 启动实际处理
+  props.useFakeData && addFakeMessage(0) // 使用模拟数据
 });
 
-onUnmounted(() => {
-  props.useFakeData || stop(); // 停止实际处理
-});
 </script>
 
 <template>
   <div class="wiki-creating-status">
     <div class="status-header">
       <VbenIcon icon="carbon:time" class="status-icon" />
-      <p class="status-title">正在处理知识库数据，这可能需要一些时间。</p>
+      <p class="status-title">正在处理知识库数据，这可能需要一些时间...</p>
       <p class="sub-message">您无需刷新页面，状态会自动更新。</p>
     </div>
 
@@ -98,7 +125,24 @@ onUnmounted(() => {
           <VbenIcon :icon="getMessageIcon(message.type as MessageType)" class="message-icon" />
           <div class="message-content">
             <span class="message-text">{{ message.message }}</span>
-            <div v-if="message.data" class="message-data">
+
+            <!-- 确认消息类型显示按钮 -->
+            <div v-if="message.type === MessageType.CONFIRM" class="confirm-actions">
+              <button
+                class="confirm-button confirm"
+                @click="handleConfirm(message, true)"
+              >
+                继续
+              </button>
+              <button
+                class="confirm-button cancel"
+                @click="handleConfirm(message, false)"
+              >
+                取消
+              </button>
+            </div>
+
+            <div v-if="message.data && message.type !== MessageType.CONFIRM" class="message-data">
               {{ typeof message.data === 'object' ? JSON.stringify(message.data) : message.data }}
             </div>
           </div>
@@ -260,5 +304,50 @@ onUnmounted(() => {
 
 .message-progress .message-icon {
   color: #2f54eb;
+}
+
+/* 确认消息样式 */
+.message-confirm {
+  background-color: #f9f0ff;
+  border-left: 3px solid #722ed1;
+}
+
+.message-confirm .message-icon {
+  color: #722ed1;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.confirm-button {
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+
+.confirm-button.confirm {
+  background-color: #1677ff;
+  color: white;
+}
+
+.confirm-button.confirm:hover {
+  background-color: #4096ff;
+}
+
+.confirm-button.cancel {
+  background-color: #f0f0f0;
+  border-color: #d9d9d9;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.confirm-button.cancel:hover {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
 }
 </style>
