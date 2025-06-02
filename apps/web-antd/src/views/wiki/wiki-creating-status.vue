@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import {onMounted, defineProps, computed, reactive, watch} from 'vue';
+import {onMounted, defineProps, computed, reactive, watch, ref, onUnmounted} from 'vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { Spin } from 'ant-design-vue';
 import {
-  isConnected,
   progressMessages as globalProgressMessages,
-  type BaseMessage,
   MessageType,
-  type ConfirmMessage
+  type BaseMessage,
+  type ConfirmMessage,
+  type ConfirmData
 } from './wiki-progress-mcp';
 
 import Debug from 'debug';
 const debug = Debug('aia:wiki-creating-status');
 
-const connecting = computed(() => !isConnected.value);
+// 确认消息倒计时状态
+const countdowns = ref<Record<string, number>>({});
+// 倒计时定时器
+let countdownTimer: number | null = null;
+
 const progressMessages = computed(() => props.useFakeData ? fakeProgressMessages : globalProgressMessages.filter((msg: BaseMessage) => {
   return msg.data.id === props.wikiId
 }));
+
+// 所有confirm消息都有result时，serverWorking为true
+const serverWorking = computed(() => {
+  return !progressMessages.value.some((msg: BaseMessage) => {
+    return msg.type === MessageType.CONFIRM && msg.data && msg.data.result === undefined;
+  });
+});
 
 // 定义组件属性
 const props = defineProps({
@@ -27,6 +38,11 @@ const props = defineProps({
   },
   // 是否使用模拟数据（用于测试）
   useFakeData: {
+    type: Boolean,
+    default: false,
+  },
+  // 是否只显示消息，不显示其他内容
+  messageOnly: {
     type: Boolean,
     default: false,
   },
@@ -41,9 +57,8 @@ const props = defineProps({
     { type: MessageType.PROGRESS, message: '正在生成文档向量嵌入', data: { id: 'fake-wiki-id', total: 5, current: 3 } },
     { type: MessageType.ERROR, message: '文档处理错误', data: { id: 'fake-wiki-id', file: 'document4.md', error: 'Parsing error at line 120' } },
     { type: MessageType.PROGRESS, message: '正在构建知识图谱连接', data: { id: 'fake-wiki-id', total: 5, current: 4 } },
+    { type: MessageType.CONFIRM, message: '确认继续处理剩余文档?', data: { id: 'fake-wiki-id'} },
     { type: MessageType.SUCCESS, message: '知识库数据处理完成', data: { id: 'fake-wiki-id', total: 5, current: 5, success: 4, failed: 1 } },
-    // 添加一条确认类型的消息用于测试
-    { type: MessageType.CONFIRM, message: '确认继续处理剩余文档?', data: { id: 'fake-wiki-id' } },
   ];
 
 // 添加模拟数据
@@ -98,22 +113,98 @@ const getMessageClass = (type: MessageType) => {
   return `message-${type || 'info'}`;
 };
 
+// 格式化倒计时时间
+const formatCountdown = (seconds: number): string => {
+  if (seconds <= 0) return '已超时';
+
+  const minutes = Math.floor(seconds / 60);
+  const remainSeconds = seconds % 60;
+
+  return `${minutes.toString().padStart(2, '0')}:${remainSeconds.toString().padStart(2, '0')}`;
+};
+
+// 更新所有确认消息的倒计时
+const updateCountdowns = () => {
+  const now = Date.now();
+
+  // 处理每个确认类型消息的倒计时
+  progressMessages.value.forEach((message: BaseMessage) => {
+    if (message.type === MessageType.CONFIRM && message.data) {
+      const confirmData = message.data as ConfirmData;
+
+      // 如果消息已有结果或没有设置截止时间，则跳过
+      if (confirmData.result !== undefined || !confirmData.endTime) return;
+
+      // 计算剩余秒数
+      const remainingMs = Math.max(0, confirmData.endTime - now);
+      const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+      // 更新倒计时状态
+      if (confirmData.id) {
+        countdowns.value[confirmData.id] = remainingSeconds;
+      }
+    }
+  });
+};
+
+// 添加模拟倒计时数据（仅用于测试）
+const addFakeCountdown = (message: BaseMessage) => {
+  if (message.type === MessageType.CONFIRM && props.useFakeData) {
+    // 为模拟数据添加倒计时信息
+    const confirmId = message.data?.id || `confirm_${Date.now()}`;
+    const timeout = 300000; // 5分钟
+    const endTime = Date.now() + timeout;
+
+    message.data = {
+      ...(message.data || {}),
+      id: confirmId,
+      timeout,
+      endTime
+    };
+  }
+};
+
 onMounted(() => {
-  props.useFakeData && addFakeMessage(0) // 使用模拟数据
+  if (props.useFakeData) {
+    addFakeMessage(0); // 使用模拟数据
+  }
+
+  // 启动倒计时定时器，每秒更新一次
+  countdownTimer = window.setInterval(() => {
+    updateCountdowns();
+  }, 1000);
 });
+
+onUnmounted(() => {
+  // 清除倒计时定时器
+  if (countdownTimer !== null) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+});
+
+// 监听模拟消息添加，为确认类型消息添加倒计时信息
+watch(() => fakeProgressMessages, (messages) => {
+  if (props.useFakeData) {
+    messages.forEach(msg => {
+      if (msg.type === MessageType.CONFIRM) {
+        addFakeCountdown(msg);
+      }
+    });
+  }
+}, { deep: true });
 
 </script>
 
 <template>
   <div class="wiki-creating-status">
-    <div class="status-header">
+    <div v-if="!props.messageOnly" class="status-header">
       <VbenIcon icon="carbon:time" class="status-icon" />
       <p class="status-title">正在处理知识库数据，这可能需要一些时间...</p>
       <p class="sub-message">您无需刷新页面，状态会自动更新。</p>
     </div>
 
     <div class="progress-container">
-      <Spin v-if="connecting" />
 
       <div class="progress-messages" v-if="progressMessages.length > 0">
         <div
@@ -128,18 +219,42 @@ onMounted(() => {
 
             <!-- 确认消息类型显示按钮 -->
             <div v-if="message.type === MessageType.CONFIRM" class="confirm-actions">
-              <button
-                class="confirm-button confirm"
-                @click="handleConfirm(message, true)"
-              >
-                继续
-              </button>
-              <button
-                class="confirm-button cancel"
-                @click="handleConfirm(message, false)"
-              >
-                取消
-              </button>
+              <div class="confirm-buttons">
+                <button
+                  class="confirm-button confirm"
+                  @click="handleConfirm(message, true)"
+                  :disabled="message.data?.result !== undefined"
+                >
+                  继续
+                </button>
+                <button
+                  class="confirm-button cancel"
+                  @click="handleConfirm(message, false)"
+                  :disabled="message.data?.result !== undefined"
+                >
+                  取消
+                </button>
+
+                <!-- 倒计时只在未响应时显示 -->
+                <span
+                  v-if="message.data?.result === undefined"
+                  class="countdown"
+                  :class="{
+                    'countdown-warning': countdowns[message.data?.id] && countdowns[message.data?.id] <= 60,
+                    'countdown-danger': countdowns[message.data?.id] && countdowns[message.data?.id] <= 30
+                  }"
+                >
+                  <VbenIcon icon="carbon:time" class="countdown-icon" />
+                  {{ formatCountdown(countdowns[message.data?.id] || 0) }}
+                </span>
+
+                <!-- 显示最终结果 -->
+                <span v-else class="result-message" :class="message.data?.result ? 'result-confirmed' : 'result-cancelled'">
+                  <VbenIcon :icon="message.data?.result ? 'carbon:checkmark-filled' : 'carbon:close-filled'" class="result-icon" />
+                  {{ message.data?.result ? '已确认' : '已取消' }}
+                  <span class="result-reason" v-if="countdowns[message.data?.id] === 0">（超时自动取消）</span>
+                </span>
+              </div>
             </div>
 
             <div v-if="message.data && message.type !== MessageType.CONFIRM" class="message-data">
@@ -152,6 +267,9 @@ onMounted(() => {
       <div v-else class="no-messages">
         <p>等待进度消息...</p>
       </div>
+
+      <Spin v-if="!messageOnly && serverWorking" class="mt-2" />
+
     </div>
   </div>
 </template>
@@ -322,13 +440,21 @@ onMounted(() => {
   margin-top: 12px;
 }
 
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+}
+
 .confirm-button {
   padding: 4px 12px;
   border-radius: 4px;
-  cursor: pointer;
   font-size: 14px;
   border: 1px solid transparent;
   transition: all 0.3s;
+}
+
+.confirm-button:not(:disabled) {
+  cursor: pointer;
 }
 
 .confirm-button.confirm {
@@ -336,7 +462,7 @@ onMounted(() => {
   color: white;
 }
 
-.confirm-button.confirm:hover {
+.confirm-button.confirm:hover:not(:disabled) {
   background-color: #4096ff;
 }
 
@@ -346,8 +472,53 @@ onMounted(() => {
   color: rgba(0, 0, 0, 0.85);
 }
 
-.confirm-button.cancel:hover {
+.confirm-button.cancel:hover:not(:disabled) {
   background-color: #f5f5f5;
   border-color: #d9d9d9;
+}
+
+.countdown {
+  margin-left: 10px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+}
+
+.countdown-icon {
+  margin-right: 4px;
+}
+
+.countdown-warning {
+  color: #faad14;
+}
+
+.countdown-danger {
+  color: #ff4d4f;
+}
+
+.result-message {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  margin-left: 10px;
+}
+
+.result-icon {
+  margin-right: 4px;
+}
+
+.result-confirmed {
+  color: #52c41a;
+}
+
+.result-cancelled {
+  color: #ff4d4f;
+}
+
+.result-reason {
+  margin-left: 4px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
 }
 </style>

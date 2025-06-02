@@ -8,7 +8,7 @@ import {CallToolRequestSchema, ListToolsRequestSchema} from "@modelcontextprotoc
 import {z} from "zod";
 import {zodToJsonSchema} from "zod-to-json-schema";
 import Debug from "debug";
-import {reactive, ref} from "vue";
+import {reactive, ref, watch} from "vue"; // 导入watch函数
 // @ts-ignore
 import {AiaClient} from "../../../../../../aia-se-comp/src/aia-server-client/aia-client.js";
 import {useUserStore} from "@vben/stores";
@@ -40,6 +40,8 @@ export interface ProgressData {
 export interface ConfirmData {
   id?: string;
   result?: boolean; // 用于存储确认结果
+  timeout?: number;  // 超时时间(毫秒)
+  endTime?: number;  // 超时截止时间戳
 }
 
 export interface ProgressMessage extends BaseMessage {
@@ -127,7 +129,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: zodToJsonSchema(ConfirmMessageSchema),
         outputSchema: zodToJsonSchema(z.object({
           success: z.boolean().describe('操作是否成功'),
-          result: z.boolean().optional().describe('用户确认结果')
+          choice: z.enum(['继续', '取消']).describe('用户选择的结果'),
         })),
       },
       {
@@ -164,62 +166,54 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         }
       case "confirm":
         // 为确认消息生成唯一ID（如果没有提供）
-        // 为确认消息生成唯一ID（如果没有提供）
         const confirmData = args?.data as ConfirmData | undefined;
         const confirmId = confirmData?.id || `confirm_${Date.now()}`;
-        const confirmMessage: ConfirmMessage = {
-          message: args?.message as MessageType || "请确认操作",
+
+        // 设置超时时间，默认1分钟(60000毫秒) 和 MCP协议默认值相同，@see @modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+        const DEFAULT_REQUEST_TIMEOUT_MSEC = 60000;
+
+        const timeoutDuration = confirmData?.timeout || DEFAULT_REQUEST_TIMEOUT_MSEC;
+        const endTime = Date.now() + timeoutDuration;
+
+        const confirmMessage: ConfirmMessage = reactive({
+          message: (args?.message || "请确认操作") as string,
           type: MessageType.CONFIRM,
           data: {
             id: confirmId,
-            result: undefined // 初始设置为undefined
+            result: undefined, // 初始设置为undefined
+            timeout: timeoutDuration, // 超时时间(毫秒)
+            endTime: endTime // 超时截止时间戳
           }
-        };
+        });
         progressMessages.push(confirmMessage);
 
-        debug(`等待用户确认消息: ${confirmId}`);
+        debug(`等待用户确认消息: ${confirmId}, 超时时间: ${timeoutDuration}ms`);
 
         // 等待用户响应
         return new Promise((resolve) => {
-          // 创建一个观察者函数检查结果
-          const checkResult = () => {
-            const message = progressMessages.find(msg =>
-              msg.type === MessageType.CONFIRM &&
-              msg.data?.id === confirmId
-            );
-
-            // 如果用户已响应（result不再是undefined）
-            if (message && message.data && message.data.result !== undefined) {
-              const result = message.data.result;
-              debug(`用户确认结果: ${result ? '继续' : '取消'}`);
-              resolve({
-                success: true,
-                result: result
-              });
-              return true;
+          // 使用Vue的watch函数监听result变化
+          const stopWatch = watch(() => confirmMessage.data?.result, (newValue) => {
+            // 只有当result从undefined变为有值时触发
+            if (newValue !== undefined) {
+              debug(`用户确认结果: ${newValue ? '继续' : '取消'}`);
+              // 停止监听避免内存泄漏
+              stopWatch();
+              clearTimeout(timeoutId); // 清除超时定时器
+              const choice = newValue ? '继续' : '取消';
+              resolve({content: [{type: "text", text: choice}], structuredContent: {success: true, choice}});
             }
-            return false;
-          };
+          });
 
-          // 立即检查一次（以防响应已经设置）
-          if (!checkResult()) {
-            // 如果还没有响应，设置轮询检查
-            const intervalId = setInterval(() => {
-              if (checkResult()) {
-                clearInterval(intervalId);
-              }
-            }, 500); // 每500毫秒检查一次
-
-            // 设置超时（可选），如果长时间无响应
-            setTimeout(() => {
-              clearInterval(intervalId);
-              debug(`确认消息超时: ${confirmId}`);
-              resolve({
-                success: false,
-                error: "确认操作超时"
-              });
-            }, 300000); // 5分钟超时
-          }
+          // 设置超时
+          const timeoutId = setTimeout(() => {
+            stopWatch(); // 停止监听
+            debug(`确认消息超时: ${confirmId}`);
+            // 设置超时结果
+            if (confirmMessage.data) {
+              confirmMessage.data.result = false;
+            }
+            resolve({content: [{type: "text", text: '超时未确认'}], structuredContent: {success: false, choice: '取消'}});
+          }, timeoutDuration);
         });
       case "clearMessages":
         progressMessages.splice(0, progressMessages.length); // 清除所有消息

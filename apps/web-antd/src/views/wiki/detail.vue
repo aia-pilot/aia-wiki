@@ -94,7 +94,7 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- 文��列表 -->
+          <!-- 文档列表 -->
           <div class="docs-title">文档列表</div>
           <VbenScrollbar>
             <Menu
@@ -122,8 +122,16 @@ onMounted(() => {
             <div class="status-message">
               <VbenIcon icon="carbon:warning" class="status-icon" />
               <p>知识库创建失败</p>
-              <p class="sub-message">请尝试重新创建或联系管理员。</p>
-              <Button type="primary" @click="closeCurrentTab()">关闭</Button>
+              <p class="sub-message">请查看下方创建过程中的错误信息，并尝试重新创建或联系管理员。</p>
+              <Button type="primary" @click="closeCurrentTab()" class="close-btn">关闭</Button>
+            </div>
+            <!-- 在失败状态下也显示WikiCreatingStatus组件 -->
+            <div class="failed-details">
+              <WikiCreatingStatus
+                :wikiId="route.params.id as string"
+                :useFakeData="false"
+                :messageOnly="true"
+              />
             </div>
           </div>
 
@@ -269,15 +277,17 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   height: 100%;
-  padding: 40px;
+  padding: 40px 20px;
   text-align: center;
+  overflow-y: auto;
 }
 
 .status-message {
   margin-top: 20px;
   max-width: 500px;
+  margin-bottom: 30px;
 }
 
 .status-icon {
@@ -304,5 +314,18 @@ onMounted(() => {
 /* 创建失败状态特有样式 */
 .wiki-status-container.failed .status-icon {
   color: #ff4d4f;
+}
+
+/* 失败状态下的详细信息区域 */
+.failed-details {
+  width: 100%;
+  max-width: 700px;
+  border-top: 1px solid #f0f0f0;
+  padding-top: 20px;
+  margin-top: 10px;
+}
+
+.close-btn {
+  margin-top: 16px;
 }
 </style>
