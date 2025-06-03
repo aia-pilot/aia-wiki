@@ -223,21 +223,21 @@ watch(() => fakeProgressMessages, (messages) => {
                 <button
                   class="confirm-button confirm"
                   @click="handleConfirm(message, true)"
-                  :disabled="message.data?.result !== undefined"
+                  v-if="message.data?.result == null"
                 >
                   继续
                 </button>
                 <button
                   class="confirm-button cancel"
                   @click="handleConfirm(message, false)"
-                  :disabled="message.data?.result !== undefined"
+                  v-if="message.data?.result == null"
                 >
                   取消
                 </button>
 
                 <!-- 倒计时只在未响应时显示 -->
                 <span
-                  v-if="message.data?.result === undefined"
+                  v-if="message.data?.result == null"
                   class="countdown"
                   :class="{
                     'countdown-warning': countdowns[message.data?.id] && countdowns[message.data?.id] <= 60,
@@ -450,11 +450,8 @@ watch(() => fakeProgressMessages, (messages) => {
   border-radius: 4px;
   font-size: 14px;
   border: 1px solid transparent;
-  transition: all 0.3s;
-}
-
-.confirm-button:not(:disabled) {
   cursor: pointer;
+  transition: all 0.3s;
 }
 
 .confirm-button.confirm {
@@ -462,7 +459,7 @@ watch(() => fakeProgressMessages, (messages) => {
   color: white;
 }
 
-.confirm-button.confirm:hover:not(:disabled) {
+.confirm-button.confirm:hover {
   background-color: #4096ff;
 }
 
@@ -472,7 +469,7 @@ watch(() => fakeProgressMessages, (messages) => {
   color: rgba(0, 0, 0, 0.85);
 }
 
-.confirm-button.cancel:hover:not(:disabled) {
+.confirm-button.cancel:hover {
   background-color: #f5f5f5;
   border-color: #d9d9d9;
 }
