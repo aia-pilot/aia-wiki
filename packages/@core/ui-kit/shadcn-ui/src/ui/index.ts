@@ -6,6 +6,7 @@ export * from './breadcrumb';
 export * from './button';
 export * from './card';
 export * from './checkbox';
+export * from './context-menu';
 export * from './dialog';
 export * from './dropdown-menu';
 export * from './form';

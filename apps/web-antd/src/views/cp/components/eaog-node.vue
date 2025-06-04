@@ -1,17 +1,34 @@
 <script setup lang="ts">
 /**
- * EAOG节点组件
+ * CP（EAOG）节点组件
  * 递归组件，用于渲染EAOG树形结构中的节点
+ *
+ * ## CP(eaog)
+ * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构，说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
+ * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
+ *
+ * ### 可视化策略
+ * **时间隐喻**：垂直方向，由上到下，隐喻了时间的先后顺序。因此，顺序节点的孩子垂直排列，并行、条件节点的孩子水平排列。
+ * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
+ * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
+ * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
-import { defineProps } from 'vue';
+
+import { defineProps, defineEmits, ref } from 'vue';
 import { Badge, Tooltip } from 'ant-design-vue';
 import {type EaogNode, getChildrenDirection, nodeTypeUIConfig} from "#/views/cp/components/eaog-node";
 import Debug from 'debug';
 const debug = Debug('aia:eaog-node');
 
+const isSelected = ref(false); // 选中状态，默认为false
+
 const props = defineProps<{
   node: EaogNode;
   level?: number; // 节点层级，默认为0，便于视觉调试
+}>();
+
+const emit = defineEmits<{
+  'node-click': [node: EaogNode];
 }>();
 
 // 默认层级为0
@@ -30,6 +47,18 @@ const getNodeTypeConfig = (type: string) => {
 const childrenDirection = getChildrenDirection(props.node.type);
 // debug(`Node ${props.node.name}, Type: ${props.node.type}, Children Direction: ${childrenDirection}`, props.node);
 
+// 处理节点点击
+const handleNodeClick = (event: Event) => {
+  debug(`Node clicked: ${props.node.name}`);
+  isSelected.value = !isSelected.value; // 切换选中状态
+  emit('node-click', props.node);
+};
+
+// 处理系统右键菜单事件，附加当前node
+const handleContextMenu = (event: MouseEvent) => {
+  debug(`Context menu for node: ${props.node.name}`);
+  event.eaogNode = props.node; // 将当前节点附加到事件对象上，以便在右键菜单中使用
+};
 
 </script>
 
@@ -41,8 +70,11 @@ const childrenDirection = getChildrenDirection(props.node.type);
       :class="{
         'cursor-pointer hover:bg-gray-50': true,
         [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
-        'bg-gray-50': nodeLevel === 0
+        'bg-gray-50': nodeLevel === 0,
+        'bg-blue-100 border-2': isSelected // 选中状态高亮
       }"
+      @click.prevent="handleNodeClick"
+      @contextmenu="handleContextMenu"
     >
       <Tooltip :title="getNodeTypeConfig(node.type).description">
         <Badge
@@ -65,7 +97,12 @@ const childrenDirection = getChildrenDirection(props.node.type);
     <!-- 子节点 -->
     <div v-if="node.children && node.children.length > 0" class="eaog-node-children ml-6 pl-4">
       <div v-for="(child, index) in node.children" :key="`${node.name}-${nodeLevel}-${index}`">
-        <EaogNode :node="child" :level="nodeLevel + 1" />
+        <EaogNode
+          :node="child"
+          :level="nodeLevel + 1"
+          :is-selected="false"
+          @node-click="emit('node-click', $event)"
+        />
       </div>
     </div>
   </div>

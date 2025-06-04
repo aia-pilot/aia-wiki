@@ -1,3 +1,4 @@
+
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 
@@ -18,6 +19,14 @@ export const getChildrenDirection = (nodeType: string): 'vertical' | 'horizontal
     : Eaog.isConcurrentType(nodeType) || Eaog.isConditionalType(nodeType) ? 'horizontal'  // 并行和条件节点的子节点水平排列
       : 'vertical'; // 其余节点的子节点垂直排列
 };
+
+export const isLeafNode = (node: any): boolean => {
+  return Eaog.isLeafType(node?.type);
+}
+
+export const isContainerNode = (node: any): boolean => {
+  return !isLeafNode(node);
+}
 
 /**
  * EAOG示例用例集

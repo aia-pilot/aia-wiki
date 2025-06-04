@@ -19,6 +19,15 @@ const routes: RouteRecordRaw[] = [
           icon: 'lucide:network',
           title: $t('cp.home'),
         },
+      },
+      {
+        path: 'editor',
+        name: 'CPEditor',
+        component: () => import('#/views/cp/editor.vue'),
+        meta: {
+          icon: 'lucide:edit',
+          title: $t('cp.editor'),
+        },
       }
     ]
   }
