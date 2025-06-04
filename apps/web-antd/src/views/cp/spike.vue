@@ -1,5 +1,7 @@
 <script setup lang="ts">
 /**
+ * @DEV 本页面用于测试、验证 CP(eaog) 的可视化展示方法。
+ * ----
  * ## CP(eaog) Detail Page
  * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构，说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
  * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
@@ -15,7 +17,7 @@ import {ref} from 'vue';
 import {advancedFlow, complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {Badge, Card, Select, Tooltip} from 'ant-design-vue';
 import EaogNodeComponent from './components/eaog-node.vue';
-import {type EaogNode, nodeTypeConfig} from "#/views/cp/components/eaog-node";
+import {type EaogNode, nodeTypeUIConfig} from "#/views/cp/components/eaog-node";
 
 // 当前选中的流程
 const selectedFlow = ref<EaogNode>(complexFlow);
@@ -68,7 +70,7 @@ const handleFlowChange = (value: string) => {
           <div class="text-lg font-medium mb-2">图例说明:</div>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
             <div
-              v-for="(config, type) in nodeTypeConfig"
+              v-for="(config, type) in nodeTypeUIConfig"
               :key="type"
               class="flex items-center"
             >

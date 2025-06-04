@@ -14,7 +14,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'CPHome',
-        component: () => import('#/views/cp/detail.vue'),
+        component: () => import('#/views/cp/spike.vue'),
         meta: {
           icon: 'lucide:network',
           title: $t('cp.home'),
