@@ -14,7 +14,8 @@
 
 // 导入EaogNode组件和相关类型
 import EaogNodeComponent from './components/eaog-node.vue';
-import EaogContextMenu from './components/eaog-context-menu.vue';
+import EaogContextMenu from './components/editor-context-menu.vue';
+import EditorToolbar from './components/editor-toolbar.vue';
 import {
   cloneDeepEaogNode,
   type EaogNode,
@@ -22,7 +23,7 @@ import {
   insertNodeAsSibling, removeNode
 } from './components/eaog-node';
 import { complexFlow } from './eaog-samples';
-import {onMounted, ref} from 'vue';
+import {onMounted, reactive, ref} from 'vue';
 
 import Debug from 'debug';
 const debug = Debug('aia:cp-editor');
@@ -69,6 +70,35 @@ const handleContextMenu = (e: MouseEvent) => {
 //   }
 // };
 
+const historyEaogData = reactive<EaogNode[]>([]); // 历史记录，保存EAOG的状态，用于撤销和重做操作
+const currentEaogIndex = ref(-1); // 当前历史记录索引
+const addToHistory = () => {
+  // 清除当前索引之后的历史记录
+  historyEaogData.splice(currentEaogIndex.value + 1);
+  // 添加当前状态到历史记录
+  const node = eaogData.value;
+  if (historyEaogData.slice(-1)[0] && JSON.stringify(historyEaogData.slice(-1)[0]) === JSON.stringify(node)) {
+    // 如果最后一个历史记录与当前节点相同，则不添加
+    return;
+  }
+  historyEaogData.push(cloneDeepEaogNode(node));
+  currentEaogIndex.value = historyEaogData.length - 1; // 更新当前索引
+};
+
+const undoFromHistory = () => {
+  // 从历史记录中弹出最后一个状态
+  if (currentEaogIndex.value < 0) return;
+  currentEaogIndex.value--;
+  eaogData.value = cloneDeepEaogNode(historyEaogData[currentEaogIndex.value]);
+};
+
+const redoFromHistory = () => {
+  // 从历史记录中弹出下一个状态
+  if (currentEaogIndex.value >= historyEaogData.length - 1) return; // 如果已经是最后一个历史记录，则不操作
+  currentEaogIndex.value++;
+  eaogData.value = cloneDeepEaogNode(historyEaogData[currentEaogIndex.value]);
+};
+
 // 处理节点操作函数
 const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现新建节点的逻辑
@@ -106,6 +136,7 @@ const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   } else { // 'child' 或 'parent'
     insertNodeAsParentOrChild(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
   }
+  addToHistory(); // 添加当前状态到历史记录
 };
 
 const handleDeleteNode = (deleteSubtree: boolean) => {
@@ -113,23 +144,65 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
   debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
   if (!contextMenuNode.value) return;
   removeNode(eaogData.value, contextMenuNode.value, deleteSubtree);
+  addToHistory(); // 添加当前状态到历史记录
+};
+
+// 工具栏操作处理函数
+
+const handleRefresh = () => {
+  debug('刷新当前视图');
+  // 这里可以重新加载或刷新数据
+  // eaogData.value = cloneDeepEaogNode(complexFlow);
+};
+
+const handleExport = () => {
+  debug('导出当前EAOG');
+  // 导出EAOG数据，例如下载JSON文件
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eaogData.value, null, 2));
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", "eaog-export.json");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+};
+
+const handleReport = () => {
+  debug('生成报告');
+  // TODO: 实现报告生成功能
+};
+
+const handleControl = () => {
+  debug('打开控制面板');
+  // TODO: 实现控制面板功能
 };
 
 onMounted(() => {
   // 初始化时设置eaogData
   eaogData.value = complexFlow;
-  window.eaogData = eaogData; // 方便调试时在浏览器控制台查看
-  window.cloneDeepEaogNode = cloneDeepEaogNode
+  addToHistory(); // 添加初始状态到历史记录
+  // window.eaogData = eaogData; // 方便调试时在浏览器控制台查看
+  // window.cloneDeepEaogNode = cloneDeepEaogNode
   debug('CP编辑器已加载，初始EAOG数据:', eaogData.value);
 });
 
 </script>
 
 <template>
-  <div class="cp-editor p-4">
-    <h1 class="text-xl font-bold mb-4">CP编辑器</h1>
+  <div class="cp-editor">
+    <!-- 工具栏 -->
+    <EditorToolbar
+      :is-undo-available="currentEaogIndex > 0"
+      :is-redo-available="currentEaogIndex < historyEaogData.length - 1"
+      @undo="undoFromHistory"
+      @redo="redoFromHistory"
+      @refresh="handleRefresh"
+      @export="handleExport"
+      @report="handleReport"
+      @control="handleControl"
+    />
 
-    <div class="flex">
+    <div class="flex p-4">
       <!-- 上下文菜单组件 -->
       <EaogContextMenu
         :context-menu-node="contextMenuNode"
