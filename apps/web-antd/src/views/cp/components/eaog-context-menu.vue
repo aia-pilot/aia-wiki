@@ -1,87 +1,3 @@
-<template>
-  <ContextMenu>
-    <ContextMenuTrigger as-child>
-      <slot/>
-    </ContextMenuTrigger>
-    <ContextMenuContent>
-      <!-- 新建节点 -->
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>新建节点</ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          <ContextMenuItem @click.prevent="() => handleNewNode('before')">在前面</ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handleNewNode('after')">在后面</ContextMenuItem>
-          <ContextMenuItem
-            @click.prevent="() => handleNewNode('child')"
-            :disabled="!isContainerNode"
-          >作为子节点
-          </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handleNewNode('parent')">作为父节点
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-
-      <!-- 编辑节点 -->
-      <ContextMenuItem @click.prevent="handleEditNode">编辑</ContextMenuItem>
-
-      <!-- 复制节点 -->
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>复制</ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          <ContextMenuItem @click.prevent="() => handleCopyNode(false)">仅节点</ContextMenuItem>
-          <ContextMenuItem
-            @click.prevent="() => handleCopyNode(true)"
-            :disabled="!hasChildren"
-          >包含子树
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-
-      <!-- 粘贴节点 -->
-      <ContextMenuSub>
-        <ContextMenuSubTrigger :disabled="!clipboardNode">粘贴</ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          <ContextMenuItem
-            @click.prevent="() => handlePasteNode('before')"
-            :disabled="!clipboardNode"
-          >粘贴到前面
-          </ContextMenuItem>
-          <ContextMenuItem
-            @click.prevent="() => handlePasteNode('after')"
-            :disabled="!clipboardNode"
-          >粘贴到后面
-          </ContextMenuItem>
-          <ContextMenuItem
-            @click.prevent="() => handlePasteNode('child')"
-            :disabled="!clipboardNode || !isContainerNode"
-          >粘贴为子节点
-          </ContextMenuItem>
-          <ContextMenuItem
-            @click.prevent="() => handlePasteNode('parent')"
-            :disabled="!clipboardNode"
-          >粘贴为父节点
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-
-      <ContextMenuSeparator/>
-
-      <!-- 删除节点 -->
-      <ContextMenuSub>
-        <ContextMenuSubTrigger>删除</ContextMenuSubTrigger>
-        <ContextMenuSubContent>
-          <ContextMenuItem
-            @click.prevent="() => handleDeleteNode(false)"
-            :disabled="!hasChildren"
-          >仅删除节点（保留子节点）
-          </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handleDeleteNode(true)">删除节点及子树
-          </ContextMenuItem>
-        </ContextMenuSubContent>
-      </ContextMenuSub>
-    </ContextMenuContent>
-  </ContextMenu>
-</template>
-
 <script setup lang="ts">
 import {
   ContextMenu,
@@ -91,16 +7,27 @@ import {
   ContextMenuSub,
   ContextMenuSubTrigger,
   ContextMenuSubContent,
-  ContextMenuSeparator,
-  VbenContextMenu
+  ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
 import {type EaogNode, isLeafNode} from './eaog-node';
-import {computed} from 'vue';
-
+// 导入lucide.ts中可用的图标
+import {
+  Circle,
+  Check,
+  Copy,
+  ArrowLeft,
+  ChevronRight,
+  ArrowDown,
+  ArrowUp,
+  CircleX,
+  Info,
+  Expand
+} from '@vben/icons';
 // 组件属性
-const props = defineProps<{
+defineProps<{
   contextMenuNode: EaogNode | null;
   clipboardNode: EaogNode | null;
+  // contextMenuKey?: number; // 用于强制更新菜单。 @toFix [在contextmenu出现后，再次右键，菜单位置不会跟随右键位置变化](https://deepwiki.com/search/contextmenu_0b63c8b3-fba8-4d39-afa1-3a8083c457d6)
 }>();
 
 // 组件事件
@@ -112,32 +39,145 @@ const emit = defineEmits<{
   'delete-node': [deleteSubtree: boolean];
 }>();
 
-// 计算当前节点是否为容器节点（可以拥有子节点）
-const isContainerNode = computed(() => {
-  return props.contextMenuNode ? !isLeafNode(props.contextMenuNode) : false;
-});
-
-// 计算当前节点是否有子节点
-const hasChildren = computed(() => isLeafNode(props.contextMenuNode));
-
-// 处理节点操作函数
-const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
-  emit('new-node', position);
-};
-
-const handleEditNode = () => {
-  emit('edit-node');
-};
-
-const handleCopyNode = (withChildren: boolean) => {
-  emit('copy-node', withChildren);
-};
-
-const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
-  emit('paste-node', position);
-};
-
-const handleDeleteNode = (deleteSubtree: boolean) => {
-  emit('delete-node', deleteSubtree);
-};
 </script>
+
+<template>
+  <ContextMenu>
+    <ContextMenuTrigger as-child>
+      <!-- 触发区域 -->
+      <slot/>
+    </ContextMenuTrigger>
+    <ContextMenuContent :class="$attrs.class">
+      <!-- 新建节点 -->
+      <ContextMenuSub>
+        <ContextMenuSubTrigger>
+          <Circle class="mr-2 h-4 w-4 icon"/>
+          新建节点
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          <ContextMenuItem @click.prevent="() => emit('new-node', 'before')">
+            <ArrowLeft class="mr-2 h-4 w-4 icon"/>
+            在前面
+          </ContextMenuItem>
+          <ContextMenuItem @click.prevent="() => emit('new-node','after')">
+            <ChevronRight class="mr-2 h-4 w-4 icon"/>
+            在后面
+          </ContextMenuItem>
+          <ContextMenuItem
+            @click.prevent="() => emit('new-node','child')"
+            :disabled="isLeafNode(contextMenuNode)"
+          >
+            <ArrowDown class="mr-2 h-4 w-4 icon"/>
+            作为子节点
+          </ContextMenuItem>
+          <ContextMenuItem @click.prevent="() => emit('new-node','parent')">
+            <ArrowUp class="mr-2 h-4 w-4 icon"/>
+            作为父节点
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+
+      <!-- 编辑节点 -->
+      <ContextMenuItem @click.prevent="emit('edit-node')">
+        <Info class="mr-2 h-4 w-4 icon"/>
+        编辑
+      </ContextMenuItem>
+
+      <!-- 复制节点 -->
+      <ContextMenuSub>
+        <ContextMenuSubTrigger>
+          <Copy class="mr-2 h-4 w-4 icon"/>
+          复制
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          <ContextMenuItem @click.prevent="() => emit('copy-node', false)">
+            <Copy class="mr-2 h-4 w-4 icon"/>
+            仅节点
+          </ContextMenuItem>
+          <ContextMenuItem
+            @click.prevent="() => emit('copy-node', true)"
+            :disabled="isLeafNode(contextMenuNode)"
+          >
+            <Expand class="mr-2 h-4 w-4 icon"/>
+            包含子树
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+
+      <!-- 粘贴节点 -->
+      <ContextMenuSub>
+        <ContextMenuSubTrigger :disabled="!clipboardNode">
+          <Check class="mr-2 h-4 w-4 icon"/>
+          粘贴
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          <ContextMenuItem
+            @click.prevent="() => emit('paste-node','before')"
+            :disabled="!clipboardNode"
+          >
+            <ArrowLeft class="mr-2 h-4 w-4 icon"/>
+            粘贴到前面
+          </ContextMenuItem>
+          <ContextMenuItem
+            @click.prevent="() => emit('paste-node','after')"
+            :disabled="!clipboardNode"
+          >
+            <ChevronRight class="mr-2 h-4 w-4 icon"/>
+            粘贴到后面
+          </ContextMenuItem>
+          <ContextMenuItem
+            @click.prevent="() => emit('paste-node','child')"
+            :disabled="!clipboardNode ||isLeafNode(contextMenuNode)"
+          >
+            <ArrowDown class="mr-2 h-4 w-4 icon"/>
+            粘贴为子节点
+          </ContextMenuItem>
+          <ContextMenuItem
+            @click.prevent="() => emit('paste-node','parent')"
+            :disabled="!clipboardNode"
+          >
+            <ArrowUp class="mr-2 h-4 w-4 icon"/>
+            粘贴为父节点
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+
+      <ContextMenuSeparator/>
+
+      <!-- 删除节点 -->
+      <ContextMenuSub>
+        <ContextMenuSubTrigger>
+          <CircleX class="mr-2 h-4 w-4 icon"/>
+          删除
+        </ContextMenuSubTrigger>
+        <ContextMenuSubContent>
+          <ContextMenuItem
+            @click.prevent="() => emit('delete-node', false)"
+            :disabled="isLeafNode(contextMenuNode)"
+          >
+            <Copy class="mr-2 h-4 w-4 icon"/>
+            仅删除节点（保留子节点）
+          </ContextMenuItem>
+          <ContextMenuItem @click.prevent="() => emit('delete-node', true)">
+            <CircleX class="mr-2 h-4 w-4 icon"/>
+            删除节点及子树
+          </ContextMenuItem>
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+    </ContextMenuContent>
+  </ContextMenu>
+</template>
+
+<style scoped>
+/* 全局菜单图标样式 - 更暗的颜色 */
+:deep(.icon) {
+  color: #666; /* 暗灰色 */
+  opacity: 0.85; /* 略微降低不透明度 */
+}
+
+/* 针对禁用菜单项的图标样式 */
+:deep([disabled] .icon) {
+  opacity: 0.5;
+}
+
+</style>

@@ -710,6 +710,9 @@ importers:
       pinia:
         specifier: ^3.0.2
         version: 3.0.2(typescript@5.8.3)(vue@3.5.13(typescript@5.8.3))
+      radix-vue:
+        specifier: 'catalog:'
+        version: 1.9.17(vue@3.5.13(typescript@5.8.3))
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.1

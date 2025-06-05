@@ -17,7 +17,10 @@ import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/eaog-context-menu.vue';
 import { type EaogNode } from './components/eaog-node';
 import { complexFlow } from './eaog-samples';
-import { ref } from 'vue';
+import {ref} from 'vue';
+
+import Debug from 'debug';
+const debug = Debug('aia:cp-editor');
 
 // 当前选中的EAOG节点
 const selectedNode = ref<EaogNode | null>(null);
@@ -39,8 +42,27 @@ const handleNodeClick = (node: EaogNode) => {
 
 // 处理节点右键点击事件，获取右键发生的节点
 const handleContextMenu = (e: MouseEvent) => {
-  contextMenuNode.value = e.eaogNode || null; // 从事件对象中获取当前节点
+  // debug(`Context event event.defaultPrevented: ${e.defaultPrevented}`);
+  // moveContextMenuToMousePosition(e);
+  contextMenuNode.value = (e as any).eaogNode || null; // 从事件对象中获取当前节点
 };
+
+//  注意！HACK_FIX! 这里我们发现在右键菜单打开后，如果再次右键点击，菜单位置不会更新。
+//  我们先试图用下面moveContextMenuToMousePosition函数来更新菜单位置，但发现这样会出现，菜单先出现在原有位置，然后再移动到鼠标位置的情况。体验不佳。
+//  经过对源码的深入分析：我们发现问题出在vue-radix ContextMenu 通过创建虚拟元素（virtual element）来实现跟随鼠标位置显示菜单。@see https://deepwiki.com/search/contextmenu_474c04dd-1f1d-4751-8a84-28a4a010550d
+//  奇怪的是，在其源码 ContextMenuTrigger.vue # virtualEl = computed(() => ...)中，加上一句 virtualEl.getBoundingClientRect() ，先计算一下，就可以解决问题。
+//  @see .pnpm/radix-vue@1.9.17_vue@3.5.13_typescript@5.8.3_/node_modules/radix-vue/dist/index.js#L6070
+//
+// const moveContextMenuToMousePosition = async (e: MouseEvent) => {
+//   // 获取菜单元素
+//   const menu = document.querySelector('.eaog-context-menu') as HTMLElement | null;
+//   const menuWrapper = menu?.parentElement as HTMLElement | null;
+//   if (menuWrapper) {
+//     // 设置菜单位置为鼠标位置
+//     // await new Promise(resolve => setTimeout(resolve, 1000)); // 确保DOM更新
+//     // menuWrapper.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+//   }
+// };
 
 // 处理节点操作函数
 const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
