@@ -42,6 +42,8 @@ export const isContainerNode = (node: any): boolean => {
 import { z } from 'zod';
 // @ts-ignore
 import {instructionSchema, nodeSchema, pandSchema, sandSchema} from "../../../../../../../aia-eaog/src/eaog.zod.js";
+import {isReactive, reactive, toRaw} from "vue";
+import {cloneDeep} from "lodash-es";
 
 export type EaogNode = z.infer<typeof nodeSchema>;
 
@@ -50,12 +52,85 @@ export type PandNode = z.infer<typeof pandSchema>;
 export type InstructionNode = z.infer<typeof instructionSchema>;
 // TODO：other node types as needed
 
-//
-// export interface EaogNode {
-//   type: string;
-//   name: string;
-//   description?: string;
-//   children?: EaogNode[];
-//
-//   [key: string]: any; // 允许其他属性
-// }
+
+export const cloneDeepEaogNode = (node: EaogNode): EaogNode => {
+  // const watReactive = isReactive(node);
+  const raw = toRaw(node);
+  const clone = cloneDeep(raw);
+  return clone as EaogNode; // 确保返回类型正确
+  // return watReactive ? reactive(clone) : clone;
+}
+
+
+export const insertNodeAsSibling = (rootNode: EaogNode, currentNode: EaogNode, newNode: EaogNode, position: 'before' | 'after'): EaogNode => {
+  const parentNode = getParentNode(rootNode, currentNode);
+  if (!parentNode) {
+    throw new Error('Parent node not found');
+  }
+
+  if (parentNode.children.includes(newNode)) {
+    throw new Error('New node is already a child of the current node');
+  }
+
+  const index = parentNode.children.indexOf(currentNode);
+  if (position === 'before') {
+    parentNode.children.splice(index, 0, newNode); // 在当前节点前插入新节点
+  } else if (position === 'after') {
+    parentNode.children.splice(index + 1, 0, newNode); // 在当前节点后插入新节点
+  } else {
+    throw new Error('Invalid position specified');
+  }
+}
+
+export const insertNodeAsParentOrChild = (rootNode: EaogNode, currentNode: EaogNode, newNode: EaogNode, position: 'child' | 'parent'): EaogNode => {
+  if (position === 'child') { // 将新节点作为当前节点的子节点
+    currentNode.children.push(newNode);
+  } else if (position === 'parent') { // 将当前节点作为新节点的子节点，然后替换到当前节点的位置
+    const parentNode = getParentNode(rootNode, currentNode);
+    if (!parentNode) {
+      throw new Error('Parent node not found');
+    }
+
+    // 将当前节点从父节点中移除
+    const index = parentNode.children.indexOf(currentNode);
+    parentNode.children.splice(index, 1);
+
+    // 将新节点作为当前节点的父节点，并替换到当前节点的位置
+    newNode.children.push(currentNode);
+    parentNode.children.splice(index, 0, newNode);
+  } else {
+    throw new Error('Invalid position specified');
+  }
+}
+
+export const removeNode = (rootNode: EaogNode, currentNode: EaogNode, deleteSubtree: boolean ): EaogNode | null => {
+  const parentNode = getParentNode(rootNode, currentNode);
+  if (!parentNode) {
+    throw new Error('Parent node not found');
+  }
+
+  const index = parentNode.children.indexOf(currentNode);
+  parentNode.children.splice(index, 1); // 从父节点的子节点中移除
+  if (!deleteSubtree && currentNode.children.length > 0) {
+    // 需要提升子节点，将子节点提升到父节点
+    parentNode.children.splice(index, 0, ...currentNode.children);
+  }
+  return currentNode; // 返回被移除的节点
+}
+
+const getParentNode = (root: EaogNode, node: EaogNode): EaogNode | null => {
+  if (root === node) {
+    return null; // 根节点没有父节点
+  } else if (root.children && root.children.includes(node)) {
+    return root; // 找到父节点
+  } else if (root.children) {
+    for (const child of root.children) {
+      const parent = getParentNode(child, node);
+      if (parent) {
+        return parent; // 递归查找子节点
+      }
+    }
+  } else {
+    return null; // 没有子节点，返回 null
+  }
+}

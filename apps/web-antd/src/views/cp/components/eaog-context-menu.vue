@@ -63,7 +63,7 @@ const emit = defineEmits<{
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             在后面
           </ContextMenuItem>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('new-node','child')"
             :disabled="isLeafNode(contextMenuNode)"
           >
@@ -94,7 +94,7 @@ const emit = defineEmits<{
             <Copy class="mr-2 h-4 w-4 icon"/>
             仅节点
           </ContextMenuItem>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('copy-node', true)"
             :disabled="isLeafNode(contextMenuNode)"
           >
@@ -111,30 +111,30 @@ const emit = defineEmits<{
           粘贴
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('paste-node','before')"
             :disabled="!clipboardNode"
           >
             <ArrowLeft class="mr-2 h-4 w-4 icon"/>
             粘贴到前面
           </ContextMenuItem>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('paste-node','after')"
             :disabled="!clipboardNode"
           >
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             粘贴到后面
           </ContextMenuItem>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('paste-node','child')"
             :disabled="!clipboardNode ||isLeafNode(contextMenuNode)"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             粘贴为子节点
           </ContextMenuItem>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('paste-node','parent')"
-            :disabled="!clipboardNode"
+            :disabled="!clipboardNode || isLeafNode(clipboardNode)"
           >
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
             粘贴为父节点
@@ -151,7 +151,7 @@ const emit = defineEmits<{
           删除
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem
+          <ContextMenuItem class="menu-item"
             @click.prevent="() => emit('delete-node', false)"
             :disabled="isLeafNode(contextMenuNode)"
           >
@@ -169,15 +169,28 @@ const emit = defineEmits<{
 </template>
 
 <style scoped>
-/* 全局菜单图标样式 - 更暗的颜色 */
-:deep(.icon) {
+/* 菜单项样式 */
+div[role="menuitem"] {
+  cursor: pointer;
+}
+
+/* 菜单图标样式 */
+div[role="menuitem"] .icon {
   color: #666; /* 暗灰色 */
   opacity: 0.85; /* 略微降低不透明度 */
 }
 
-/* 针对禁用菜单项的图标样式 */
-:deep([disabled] .icon) {
-  opacity: 0.5;
+
+
+/* 禁用菜单项 */
+div[role="menuitem"][aria-disabled="true"] {
+  color: #ccc; /* 浅灰色 */
+  cursor: not-allowed; /* 禁用状态光标 */
+}
+
+/* 禁用菜单项图标 */
+div[role="menuitem"][aria-disabled="true"] .icon {
+  opacity: 0.3; /* 更低的不透明度 */
 }
 
 </style>

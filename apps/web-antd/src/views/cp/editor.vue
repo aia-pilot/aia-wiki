@@ -15,9 +15,14 @@
 // 导入EaogNode组件和相关类型
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/eaog-context-menu.vue';
-import { type EaogNode } from './components/eaog-node';
+import {
+  cloneDeepEaogNode,
+  type EaogNode,
+  insertNodeAsParentOrChild,
+  insertNodeAsSibling, removeNode
+} from './components/eaog-node';
 import { complexFlow } from './eaog-samples';
-import {ref} from 'vue';
+import {onMounted, ref} from 'vue';
 
 import Debug from 'debug';
 const debug = Debug('aia:cp-editor');
@@ -33,7 +38,7 @@ const clipboardNode = ref<EaogNode | null>(null);
 const clipboardWithChildren = ref(false);
 
 // 示例EAOG流程
-const eaogData = ref<EaogNode>(complexFlow);
+const eaogData = ref<EaogNode | null>(null);
 
 // 处理节点点击事件
 const handleNodeClick = (node: EaogNode) => {
@@ -67,13 +72,13 @@ const handleContextMenu = (e: MouseEvent) => {
 // 处理节点操作函数
 const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现新建节点的逻辑
-  console.log('新建节点', position, contextMenuNode.value);
+  debug('新建节点', position, contextMenuNode.value);
   // TODO: 打开属性编辑器弹窗，创建新节点
 };
 
 const handleEditNode = () => {
   // 在这里实现编辑节点的逻辑
-  console.log('编辑节点', contextMenuNode.value);
+  debug('编辑节点', contextMenuNode.value);
   // TODO: 打开属性编辑器弹窗，编辑当前节点
 };
 
@@ -81,32 +86,42 @@ const handleCopyNode = (withChildren: boolean) => {
   // 在这里实现复制节点的逻辑
   if (contextMenuNode.value) {
     // 深拷贝节点，如果不复制子树，则清除children属性
-    const nodeCopy = JSON.parse(JSON.stringify(contextMenuNode.value));
+    const nodeCopy = cloneDeepEaogNode(contextMenuNode.value);
     if (!withChildren && nodeCopy.children) {
-      delete nodeCopy.children;
+      nodeCopy.children = []; // 清除子节点
     }
     clipboardNode.value = nodeCopy;
     clipboardWithChildren.value = withChildren;
-    console.log('复制节点', withChildren ? '包含子树' : '仅节点', nodeCopy);
+    debug('复制节点', withChildren ? '包含子树' : '仅节点', nodeCopy);
   }
 };
 
 const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现粘贴节点的逻辑
-  console.log('粘贴节点', position, clipboardNode.value);
+  debug('粘贴节点', position, clipboardNode.value);
   if (!clipboardNode.value || !contextMenuNode.value) return;
 
-  // TODO: 实现粘贴节点的具体逻辑
-  // 需要找到父节点，然后根据position插入到合适的位置
+  if (position === 'before' || position === 'after') {
+    insertNodeAsSibling(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
+  } else { // 'child' 或 'parent'
+    insertNodeAsParentOrChild(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
+  }
 };
 
 const handleDeleteNode = (deleteSubtree: boolean) => {
   // 在这里实现删除节点的逻辑
-  console.log('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
-
-  // TODO: 实现删除节点的具体逻辑
-  // 如果deleteSubtree为false，需要将子节点提升为当前节点的兄弟节点
+  debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
+  if (!contextMenuNode.value) return;
+  removeNode(eaogData.value, contextMenuNode.value, deleteSubtree);
 };
+
+onMounted(() => {
+  // 初始化时设置eaogData
+  eaogData.value = complexFlow;
+  window.eaogData = eaogData; // 方便调试时在浏览器控制台查看
+  window.cloneDeepEaogNode = cloneDeepEaogNode
+  debug('CP编辑器已加载，初始EAOG数据:', eaogData.value);
+});
 
 </script>
 
@@ -128,7 +143,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
-          <div class="eaog-container">
+          <div v-if="eaogData" class="eaog-container">
             <EaogNodeComponent
               :node="eaogData"
               :is-selected="selectedNode === eaogData"

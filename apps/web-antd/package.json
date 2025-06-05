@@ -46,6 +46,7 @@
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
     "debug": "^4.4.1",
+    "lodash-es": "^4.17.21",
     "pinia": "catalog:",
     "socket.io-client": "^4.8.1",
     "vue": "catalog:",
