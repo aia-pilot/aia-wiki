@@ -42,7 +42,7 @@ export const isContainerNode = (node: any): boolean => {
 import { z } from 'zod';
 // @ts-ignore
 import {instructionSchema, nodeSchema, pandSchema, sandSchema} from "../../../../../../../aia-eaog/src/eaog.zod.js";
-import {isReactive, reactive, toRaw} from "vue";
+import {toRaw} from "vue";
 import {cloneDeep} from "lodash-es";
 
 export type EaogNode = z.infer<typeof nodeSchema>;
@@ -59,6 +59,14 @@ export const cloneDeepEaogNode = (node: EaogNode): EaogNode => {
   const clone = cloneDeep(raw);
   return clone as EaogNode; // 确保返回类型正确
   // return watReactive ? reactive(clone) : clone;
+}
+
+export const insertNode = (rootNode: EaogNode, currentNode: EaogNode, newNode: EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EaogNode => {
+  if (position === 'before' || position === 'after') {
+    insertNodeAsSibling(rootNode, currentNode, newNode, position);
+  } else { // 'child' 或 'parent'
+    insertNodeAsParentOrChild(rootNode, currentNode, newNode, position);
+  }
 }
 
 

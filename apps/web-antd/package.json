@@ -55,6 +55,7 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.12"
+    "@types/debug": "^4.1.12",
+    "@types/lodash-es": "^4.17.12"
   }
 }

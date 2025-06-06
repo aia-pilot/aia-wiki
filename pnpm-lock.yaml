@@ -732,6 +732,9 @@ importers:
       '@types/debug':
         specifier: ^4.1.12
         version: 4.1.12
+      '@types/lodash-es':
+        specifier: ^4.17.12
+        version: 4.17.12
 
   apps/web-ele:
     dependencies:

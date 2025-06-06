@@ -18,12 +18,13 @@ import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
 import {
   cloneDeepEaogNode,
-  type EaogNode,
-  insertNodeAsParentOrChild,
-  insertNodeAsSibling, removeNode
+  type EaogNode, insertNode, removeNode
 } from './components/eaog-node';
-import { complexFlow } from './eaog-samples';
+import {complexFlow} from './eaog-samples';
 import {onMounted, reactive, ref} from 'vue';
+
+import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
+const eaogNodeForm =ref<InstanceType<typeof EaogNodeForm>>();
 
 import Debug from 'debug';
 const debug = Debug('aia:cp-editor');
@@ -103,13 +104,28 @@ const redoFromHistory = () => {
 const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现新建节点的逻辑
   debug('新建节点', position, contextMenuNode.value);
-  // TODO: 打开属性编辑器弹窗，创建新节点
+  eaogNodeForm.value?.open({
+    node: contextMenuNode.value,
+    onSuccess: (newNode: EaogNode) => {
+      // 插入新节点到eaogData中
+      insertNode(eaogData.value, contextMenuNode.value, newNode, position);
+      addToHistory(); // 添加当前状态到历史记录
+    }
+  });
 };
 
 const handleEditNode = () => {
-  // 在这里实现编辑节点的逻辑
   debug('编辑节点', contextMenuNode.value);
-  // TODO: 打开属性编辑器弹窗，编辑当前节点
+  eaogNodeForm.value?.open({
+    node: contextMenuNode.value,
+    onSuccess: (updatedNode: EaogNode) => {
+      // 更新eaogData中的节点
+      if (contextMenuNode.value) {
+        Object.assign(contextMenuNode.value, updatedNode);
+        addToHistory(); // 添加当前状态到历史记录
+      }
+    }
+  });
 };
 
 const handleCopyNode = (withChildren: boolean) => {
@@ -130,12 +146,7 @@ const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现粘贴节点的逻辑
   debug('粘贴节点', position, clipboardNode.value);
   if (!clipboardNode.value || !contextMenuNode.value) return;
-
-  if (position === 'before' || position === 'after') {
-    insertNodeAsSibling(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
-  } else { // 'child' 或 'parent'
-    insertNodeAsParentOrChild(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
-  }
+  insertNode(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
   addToHistory(); // 添加当前状态到历史记录
 };
 
@@ -250,8 +261,8 @@ onMounted(() => {
         </div>
       </div>
     </div>
-
-
+    <!-- 节点属性编辑器弹窗 -->
+    <EaogNodeForm ref="eaogNodeForm"/>
   </div>
 </template>
 
