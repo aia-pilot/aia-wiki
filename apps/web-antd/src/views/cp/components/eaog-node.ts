@@ -41,16 +41,17 @@ export const isContainerNode = (node: any): boolean => {
 // eaog.types.ts
 import { z } from 'zod';
 // @ts-ignore
-import {instructionSchema, nodeSchema, pandSchema, sandSchema} from "../../../../../../../aia-eaog/src/eaog.zod.js";
+import {cpNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 import {toRaw} from "vue";
 import {cloneDeep} from "lodash-es";
 
-export type EaogNode = z.infer<typeof nodeSchema>;
-
-export type SandNode = z.infer<typeof sandSchema>;
-export type PandNode = z.infer<typeof pandSchema>;
-export type InstructionNode = z.infer<typeof instructionSchema>;
-// TODO：other node types as needed
+// const uiNodeSchema = nodeSchema.extend({
+//   // EaogNode在UI上的交互属性
+//   isSelected: z.boolean().default(false).describe('节点是否被选中'),
+// });
+//
+// export type EaogNode = z.infer<typeof uiNodeSchema>;
+export type EaogNode = z.infer<typeof cpNodeSchema>;
 
 
 export const cloneDeepEaogNode = (node: EaogNode): EaogNode => {

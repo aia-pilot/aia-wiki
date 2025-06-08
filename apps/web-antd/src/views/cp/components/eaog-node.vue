@@ -28,7 +28,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'node-click': [node: EaogNode];
+  'node-click': [ node: EaogNode, event: Event, isSelected: Ref<boolean> ];
 }>();
 
 // 默认层级为0
@@ -50,8 +50,8 @@ const childrenDirection = getChildrenDirection(props.node.type);
 // 处理节点点击
 const handleNodeClick = (event: Event) => {
   debug(`Node clicked: ${props.node.name}`);
-  isSelected.value = !isSelected.value; // 切换选中状态
-  emit('node-click', props.node);
+  // isSelected.value = !isSelected.value; // 让editor组件控制是否选中
+  emit('node-click', props.node, event, isSelected);
 };
 
 // 处理系统右键菜单事件，附加当前node
@@ -97,11 +97,10 @@ const handleContextMenu = (event: MouseEvent) => {
     <!-- 子节点 -->
     <div v-if="node.children && node.children.length > 0" class="eaog-node-children ml-6 pl-4">
       <div v-for="(child, index) in node.children" :key="`${node.name}-${nodeLevel}-${index}`">
-        <EaogNode
+        <eaog-node
           :node="child"
           :level="nodeLevel + 1"
-          :is-selected="false"
-          @node-click="emit('node-click', $event)"
+          @node-click="(node, event, isSelectedRef) => emit('node-click', node, event, isSelectedRef)"
         />
       </div>
     </div>

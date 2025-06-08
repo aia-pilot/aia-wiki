@@ -5,9 +5,7 @@ import {useVbenModal} from '@vben/common-ui';
 
 // 导入您的Schema定义
 // @ts-ignore
-import {instructionSchema, nodeSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, allNodeTypes} from "../../../../../../../aia-eaog/src/eaog.zod.js";
-// @ts-ignore
-import {cpNodeSchema, cpInstructionSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {cpNodeSchema, cpInstructionSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 
 // const emit = defineEmits<{
 //   success: [data: any];

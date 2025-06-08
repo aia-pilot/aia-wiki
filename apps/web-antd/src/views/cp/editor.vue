@@ -23,14 +23,23 @@ import {
 import {complexFlow} from './eaog-samples';
 import {onMounted, reactive, ref} from 'vue';
 
+import {cpEaogSchema} from "../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {convertBriefEaog} from "../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
-const eaogNodeForm =ref<InstanceType<typeof EaogNodeForm>>();
+import { JsonViewer } from '@vben/common-ui';
+
+const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 
 import Debug from 'debug';
+import {IS_DEV} from "#/utils/aia-constants";
+
 const debug = Debug('aia:cp-editor');
 
-// 当前选中的EAOG节点
-const selectedNode = ref<EaogNode | null>(null);
+// 当前点击的EAOG节点
+const clickedNode = ref<EaogNode | null>(null);
+
+// 当前选中的EAOG节点集
+const selectedNodes : {node: EaogNode, isSelectedRef: Ref<boolean>}[] = [];
 
 // 保存当前右键点击的节点，可能与selectedNode不同
 const contextMenuNode = ref<EaogNode | null>(null);
@@ -43,8 +52,26 @@ const clipboardWithChildren = ref(false);
 const eaogData = ref<EaogNode | null>(null);
 
 // 处理节点点击事件
-const handleNodeClick = (node: EaogNode) => {
-  selectedNode.value = node;
+const handleNodeClick = (node: EaogNode, event: Event, isSelectedRef) => {
+  clickedNode.value = node;
+
+  // 处理选中逻辑，Shift键支持多选
+  if (selectedNodes.some(item => item.node === node)) { // 如果已经选中，则取消选中
+    selectedNodes.splice(selectedNodes.findIndex(item => item.node === node), 1);
+    isSelectedRef.value = false;
+  } else { // 否则，添加到选中列表
+    selectedNodes.push({node, isSelectedRef});
+    isSelectedRef.value = true;
+  }
+  // 没有按下Shift键时，清除其他选中
+  if (!event.shiftKey) {
+    selectedNodes.forEach(item => {
+      if (item.node !== node) {
+        item.isSelectedRef.value = false;
+      }
+    });
+    selectedNodes.splice(0, selectedNodes.length, {node, isSelectedRef});
+  }
 };
 
 // 处理节点右键点击事件，获取右键发生的节点
@@ -55,8 +82,8 @@ const handleContextMenu = (e: MouseEvent) => {
 };
 
 //  注意！HACK_FIX! 这里我们发现在右键菜单打开后，如果再次右键点击，菜单位置不会更新。
-//  我们先试图用下面moveContextMenuToMousePosition函数来更新菜单位置，但发现这样会出现，菜单先出现在原有位置，然后再移动到鼠标位置的情况。体验不佳。
-//  经过对源码的深入分析：我们发现问题出在vue-radix ContextMenu 通过创建虚拟元素（virtual element）来实现跟随鼠标位置显示菜单。@see https://deepwiki.com/search/contextmenu_474c04dd-1f1d-4751-8a84-28a4a010550d
+//  我们先试图用下面moveContextMenuToMousePosition函数来更新菜单位��，但发现这样会出现，菜单先出现在原有位置，然后再移动到鼠标位置的情况。体验不佳。
+//  经过对源码的深入分析：我们发现问题出在vue-radix ContextMenu 通过创建虚拟元素（virtual element）���实现跟随鼠标位置显示菜单。@see https://deepwiki.com/search/contextmenu_474c04dd-1f1d-4751-8a84-28a4a010550d
 //  奇怪的是，在其源码 ContextMenuTrigger.vue # virtualEl = computed(() => ...)中，加上一句 virtualEl.getBoundingClientRect() ，先计算一下，就可以解决问题。
 //  @see .pnpm/radix-vue@1.9.17_vue@3.5.13_typescript@5.8.3_/node_modules/radix-vue/dist/index.js#L6070
 //
@@ -166,16 +193,54 @@ const handleRefresh = () => {
   // eaogData.value = cloneDeepEaogNode(complexFlow);
 };
 
-const handleExport = () => {
+const parseTextToEaog = (eaogTxt: any): EaogNode | undefined => {
+  let json;
+  // 解析JSON文本
+  try {
+    json = JSON.parse(eaogTxt);
+  } catch (err) {
+    console.error('导入失败，文件格式错误:', err);
+    // 或者，evaluate as JavaScript object
+    try {
+      // eslint-disable-next-line no-eval
+      json = Function('"use strict"; return (' + eaogTxt + ')')();
+    } catch (err) {
+      console.error('导入失败，文件格式错误:', err);
+      return;
+    }
+  }
+  json = convertBriefEaog(json) // 有时候，用户导入的json是简写格式，我们需要转换为完整格式
+  const parsed = cpEaogSchema.safeParse(json); // 验证导入的数据格式
+  if (!parsed.success) {
+    console.error('导入的EAOG数据格式不正确:', parsed.error);
+  }
+  return parsed.data;
+
+}
+
+/**
+ * 导入EAOG数据，优先从剪切板导入，其次从文件导入
+ */
+const handleImport = async () => {
+  debug('导入EAOG数据');
+  const eaog = (IS_DEV && await importEaogFromClipboard()) || await importEaogFromFile();
+  if (eaog) {
+    eaogData.value = eaog;
+    debug('导入成功:', eaog);
+    addToHistory(); // 添加当前状态到历史记录
+  }
+};
+
+/**
+ * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
+ */
+const handleExport = async (event) => {
   debug('导出当前EAOG');
-  // 导出EAOG数据，例如下载JSON文件
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(eaogData.value, null, 2));
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", "eaog-export.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
+  const data = JSON.stringify(eaogData.value, null, 2);
+  await copyToClipboard(data);
+  if (event.shiftKey) {
+    downloadToFile(data);
+  }
 };
 
 const handleReport = () => {
@@ -187,6 +252,66 @@ const handleControl = () => {
   debug('打开控制面板');
   // TODO: 实现控制面板功能
 };
+
+const importEaogFromClipboard = async (): Promise<EaogNode | undefined> => {
+  try {
+    const text = await navigator.clipboard.readText();
+    debug('从剪切板读取内容成功');
+    return parseTextToEaog(text);
+  } catch (err) {
+    console.error('无法读取剪切板内容:', err);
+    return null;
+  }
+};
+
+const importEaogFromFile = (): Promise<EaogNode | undefined> => {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) {
+        resolve(null);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        debug('从文件读取内容成功');
+        resolve(parseTextToEaog(content));
+      };
+      reader.onerror = () => {
+        console.error('读取文件失败');
+        resolve();
+      };
+      reader.readAsText(file);
+    };
+
+    input.click(); // 触发文件选择对话框
+  });
+};
+
+const copyToClipboard = async (data: any) => {
+  try {
+    await navigator.clipboard.writeText(data);
+    debug('已复制到剪切板');
+  } catch (err) {
+    console.error('无法复制到剪切板:', err);
+  }
+};
+
+const downloadToFile = (data: any) => {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", dataStr);
+  downloadAnchorNode.setAttribute("download", "eaog-export.json");
+  document.body.appendChild(downloadAnchorNode);
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+}
+
 
 onMounted(() => {
   // 初始化时设置eaogData
@@ -211,8 +336,10 @@ onMounted(() => {
       @export="handleExport"
       @report="handleReport"
       @control="handleControl"
+      @import="handleImport"
     />
 
+    <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
     <div class="flex p-4">
       <!-- 上下文菜单组件 -->
       <EaogContextMenu
@@ -230,7 +357,6 @@ onMounted(() => {
           <div v-if="eaogData" class="eaog-container">
             <EaogNodeComponent
               :node="eaogData"
-              :is-selected="selectedNode === eaogData"
               @node-click="handleNodeClick"
               @contextmenu="handleContextMenu"
             />
@@ -238,22 +364,30 @@ onMounted(() => {
         </div>
       </EaogContextMenu>
 
-
       <!-- 节点详情区域 -->
       <div class="w-1/3 ml-4 p-4 border rounded-md">
         <h2 class="text-lg font-semibold mb-2">节点详情</h2>
-        <div v-if="selectedNode" class="node-details">
-          <div class="mb-2">
-            <span class="font-medium">名称：</span>
-            <span>{{ selectedNode.name }}</span>
+        <div v-if="clickedNode" class="node-details">
+          <div class="mb-4">
+            <div class="mb-2">
+              <span class="font-medium">名称：</span>
+              <span>{{ clickedNode.name }}</span>
+            </div>
+            <div class="mb-2">
+              <span class="font-medium">类型：</span>
+              <span>{{ clickedNode.type }}</span>
+            </div>
           </div>
-          <div class="mb-2">
-            <span class="font-medium">类型：</span>
-            <span>{{ selectedNode.type }}</span>
-          </div>
-          <div class="mb-2" v-if="selectedNode.description">
-            <span class="font-medium">描述：</span>
-            <span>{{ selectedNode.description }}</span>
+
+          <!-- 使用JsonViewer展示完整节点信息 -->
+          <div>
+            <div class="font-medium mb-2">完整JSON数据：</div>
+            <JsonViewer
+              :value="clickedNode"
+              :expand-depth="2"
+              copyable
+              boxed
+            />
           </div>
         </div>
         <div v-else class="text-gray-500">
@@ -261,6 +395,7 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>
   </div>
