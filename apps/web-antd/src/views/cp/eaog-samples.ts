@@ -62,7 +62,9 @@ export const complexFlow: EaogNode = {
                 {
                   type: "instruction",
                   name: "读取README",
-                  description: "调用read_file，读取README内容"
+                  description: "调用read_file，读取README内容",
+                  params: {path: "README文件路径"},
+                  results: {content: "README内容"}
                 }
               ]
             },

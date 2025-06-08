@@ -25,7 +25,7 @@ export const initAiaClient = async () => {
   // 监听 AiaClient 连接成功事件
   // @ts-ignore
   window.electronAPI.onAiaConnected(() => {
-    debug('AiaClient connected event received');
+    debug('------ AiaClient connected event received');
     userStore.setAiaClientConnected(true);
   });
 

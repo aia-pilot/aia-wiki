@@ -16,7 +16,7 @@ import {
   ref,
 } from 'vue';
 
-import { ApiComponent, globalShareState, IconPicker } from '@vben/common-ui';
+import { ApiComponent, globalShareState, IconPicker, JsonViewer } from '@vben/common-ui';
 import { $t } from '@vben/locales';
 
 import { notification } from 'ant-design-vue';
@@ -129,6 +129,7 @@ export type ComponentType =
   | 'TimePicker'
   | 'TreeSelect'
   | 'Upload'
+  | 'JsonViewer'
   | BaseFormComponentType;
 
 async function initComponentAdapter() {
@@ -136,6 +137,7 @@ async function initComponentAdapter() {
     // 如果你的组件体积比较大，可以使用异步加载
     // Button: () =>
     // import('xxx').then((res) => res.Button),
+    JsonViewer,  // 添加这一行
     ApiSelect: withDefaultPlaceholder(
       {
         ...ApiComponent,

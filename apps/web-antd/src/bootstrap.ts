@@ -14,6 +14,7 @@ import { $t, setupI18n } from '#/locales';
 import { initComponentAdapter } from './adapter/component';
 import App from './app.vue';
 import { router } from './router';
+import { registerDirectives } from './directives';
 
 async function bootstrap(namespace: string) {
   // 初始化组件适配器
@@ -35,6 +36,9 @@ async function bootstrap(namespace: string) {
     loading: 'loading', // 在这里可以自定义指令名称，也可以明确提供false表示不注册这个指令
     spinning: 'spinning',
   });
+
+  // 注册自定义指令，包括v-electron-drag-and-drop
+  registerDirectives(app);
 
   // 国际化 i18n 配置
   await setupI18n(app);

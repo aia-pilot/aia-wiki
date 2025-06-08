@@ -5,6 +5,7 @@ import { Card, Input, Select, Button, Pagination, Modal, Form, message, Tag } fr
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { getAppList, createApp, type 智能应用VM } from '#/api/app/app';
 import FileDirSelector from '#/components/FileDirSelector.vue';
+import type { ElectronDragAndDropOptions } from '#/directives/electron-drag-and-drop';
 
 const router = useRouter();
 const searchText = ref('');
@@ -27,7 +28,6 @@ const createFormState = ref({
 
 // 拖拽状态
 const isDragging = ref(false);
-const dropAreaRef = ref<HTMLElement | null>(null);
 
 // 获取智能应用数据
 const fetchAppList = async () => {
@@ -126,6 +126,23 @@ const handleDrop = ({ isDirectory, filePath }: {isDirectory: boolean, filePath: 
   message.info('请拖拽一个CP文件到此处');
 };
 
+// 处理拖拽悬停事件
+const handleDragOver = () => {
+  isDragging.value = true;
+};
+
+// 处理拖拽离开事件
+const handleDragLeave = () => {
+  isDragging.value = false;
+};
+
+// 拖拽指令配置
+const ElectronDragAndDropOptions: ElectronDragAndDropOptions = {
+  onDrop: handleDrop,
+  onDragOver: handleDragOver,
+  onDragLeave: handleDragLeave
+};
+
 // 处理CP文件选择
 const handleFileDirSelected = (selectedPath: string) => {
   if (selectedPath && selectedPath.endsWith('.cp')) {
@@ -144,22 +161,13 @@ const handleFileDirSelected = (selectedPath: string) => {
 
 onMounted(() => {
   fetchAppList();
-
-  // 绑定拖拽事件，由Electorn处理，获得CP文件路径
-  // @ts-ignore
-  if (window.electronAPI?.bindFileFolderDrop && dropAreaRef.value) {
-    // @ts-ignore
-    window.electronAPI.bindFileFolderDrop(dropAreaRef.value, handleDrop);
-  }
 });
 </script>
 
 <template>
   <div
     class="app-home"
-    ref="dropAreaRef"
-    @dragover.prevent="isDragging = true"
-    @dragleave="isDragging = false"
+    v-electron-drag-and-drop="ElectronDragAndDropOptions"
     :class="{'dragging': isDragging}"
   >
     <!-- 页面标题 -->

@@ -13,7 +13,7 @@ import { enterAnimationPlugin } from './plugins/entry';
 
 const { packages } = getPackagesSync(process.cwd());
 
-const tailwindPackages: string[] = [];
+export const tailwindPackages: string[] = [];
 
 packages.forEach((pkg) => {
   // apps目录下和 @vben-core/tailwind-ui 包需要使用到 tailwindcss ui

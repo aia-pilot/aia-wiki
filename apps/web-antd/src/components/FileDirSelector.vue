@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Input, Button, message } from 'ant-design-vue';
 import { defineProps, defineEmits } from 'vue';
+import {IS_STANDALONE_APP} from "#/utils/aia-constants";
 
 const props = defineProps({
   // v-model 绑定值
@@ -38,8 +39,7 @@ const emit = defineEmits(['update:value', 'select']);
 const handleOpenFileDialog = async () => {
   try {
     // 调用Electron API打开系统对话框
-    // @ts-ignore
-    if (window.electronAPI) {
+    if (IS_STANDALONE_APP) {
       // @ts-ignore
       const paths = await window.electronAPI.invokeMain('use-sys-open-file-dir-dialog', {
         title: props.dialogTitle,

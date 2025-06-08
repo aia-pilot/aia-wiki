@@ -3,7 +3,8 @@ import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences } from './preferences';
 import {initAiaClient} from "#/store/aia-client";
-import { aiaSocket } from './utils/aia-socket'; // 导入aiaSocket
+import { aiaSocket } from './utils/aia-socket';
+import {IS_STANDALONE_APP} from "#/utils/aia-constants"; // 导入aiaSocket
 
 /**
  * 应用初始化完成之后再进行页面加载渲染
@@ -28,7 +29,7 @@ async function initApplication() {
 
   // 创建AiA Client，并watch用户账号，自动连接
   // @ts-ignore
-  window.electronAPI && await initAiaClient();
+  IS_STANDALONE_APP && await initAiaClient();
 
   // 初始化Socket连接
   await aiaSocket.init();

@@ -6,7 +6,9 @@ import {VbenIcon} from '@vben-core/shadcn-ui';
 import {getWikiList, createWiki, type 知识库VM} from '#/api/wiki/wiki';
 import {useUserStore} from "@vben/stores";
 import FileDirSelector from '#/components/FileDirSelector.vue';
-import {start, stop} from './wiki-progress-mcp';
+import {start} from './wiki-progress-mcp';
+// 导入 Electron 拖拽指令相关类型
+import type { ElectronDragAndDropOptions } from '#/directives/electron-drag-and-drop';
 
 const userStore = useUserStore();
 
@@ -31,7 +33,6 @@ const createFormState = ref({
 
 // 拖拽状态
 const isDragging = ref(false);
-const dropAreaRef = ref<HTMLElement | null>(null);
 
 // 获取知识库数据
 const fetchWikiList = async () => {
@@ -115,6 +116,24 @@ const handleDrop = ({isDirectory, filePath}: { isDirectory: boolean, filePath: s
   }
 };
 
+// 处理拖拽悬停事件
+const handleDragOver = () => {
+  if (userStore.isAiaClientConnected) {
+    isDragging.value = true;
+  }
+};
+
+// 处理拖拽离开事件
+const handleDragLeave = () => {
+  isDragging.value = false;
+};
+
+// 拖拽指令配置
+const ElectronDragAndDropOptions: ElectronDragAndDropOptions = {
+  onDrop: handleDrop,
+  onDragOver: handleDragOver,
+  onDragLeave: handleDragLeave
+};
 
 // 处理文件夹选择
 const handleFileDirSelected = (selectedPath: string) => {
@@ -129,26 +148,11 @@ const handleFileDirSelected = (selectedPath: string) => {
 
 onMounted(() => {
   fetchWikiList();
-
-  // 绑定拖拽事件，由Electorn处理，获得CP文件路径
-  // @ts-ignore
-  if (window.electronAPI?.bindFileFolderDrop && dropAreaRef.value) {
-    // @ts-ignore
-    window.electronAPI.bindFileFolderDrop(dropAreaRef.value, handleDrop);
-  };
-
   // 启动wiki-progress-mcp TODO：考虑是不是移到aia-client中去，在initialAiaClient中启动
   start();
 });
 
 onUnmounted(() => {
-  // 解绑拖拽事件
-  // @ts-ignore
-  if (window.electronAPI?.unbindFileFolderDrop && dropAreaRef.value) {
-    // @ts-ignore
-    window.electronAPI.unbindFileFolderDrop(dropAreaRef.value);
-  };
-
   // 停止wiki-progress-mcp
   // stop(); // 不能停，否则到了下一个页面 detail 、wiki-creating-status都会没有用
 });
@@ -159,9 +163,7 @@ onUnmounted(() => {
 <template>
   <div
     class="wiki-home"
-    ref="dropAreaRef"
-    @dragover.prevent="userStore.isAiaClientConnected && (isDragging = true)"
-    @dragleave.prevent="isDragging = false"
+    v-electron-drag-and-drop="ElectronDragAndDropOptions"
     :class="{'dragging': isDragging}"
   >
     <!-- 页面标题 -->

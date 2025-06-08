@@ -6,6 +6,8 @@ import {useVbenModal} from '@vben/common-ui';
 // 导入您的Schema定义
 // @ts-ignore
 import {instructionSchema, nodeSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, allNodeTypes} from "../../../../../../../aia-eaog/src/eaog.zod.js";
+// @ts-ignore
+import {cpNodeSchema, cpInstructionSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 
 // const emit = defineEmits<{
 //   success: [data: any];
@@ -47,6 +49,48 @@ const [Form, formApi] = useVbenForm({
       },
       rules: baseNodeSchema.shape.description,
     },
+    // 指令节点特有字段 action
+    {
+      component: 'Input',
+      fieldName: 'action',
+      label: '指令内容',
+      componentProps: {
+        placeholder: '请输入指令内容',
+      },
+      dependencies: {
+        triggerFields: ['type'],
+        show: (values) => values.type === 'instruction',
+      },
+      rules: cpInstructionSchema.shape.action,
+    },
+
+    // 指令节点特有字段 - params
+    {
+      component: 'JsonViewer',
+      fieldName: 'params',
+      label: 'params(JSON)',
+      defaultValue: {}, // 关键：设置默认值
+      componentProps: {
+        copyable: true,
+        expandDepth: 2,
+        previewMode: false, // 设为 false 启用编辑模式
+      }
+    },
+    // 指令节点特有字段 - results
+    {
+      component: 'JsonViewer',
+      fieldName: 'results',
+      label: 'results(JSON)',
+      defaultValue: {}, // 关键：设置默认值
+      componentProps: {
+        copyable: true,
+        expandDepth: 2,
+        previewMode: false, // 设为 false 启用编辑模式
+      }
+    },
+
+    // TODO: 指令节点特有字段 - params、results 专用控件 待开发，参考：https://deepwiki.com/search/dynamicrecordformexamplevuedyn_ee420cbb-9fca-47e9-a43e-31440755b3ce
+
     // 递归节点特有字段
     {
       component: 'Input',
@@ -58,8 +102,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         show: (values) => values.type === 'recursion',
-        rules: recursionSchema.shape.ref,
       },
+      rules: recursionSchema.shape.ref,
     },
     // 迭代器字段 - items
     {
@@ -72,8 +116,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         show: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
-        rules: iteratorBaseSchema.shape.items,
       },
+      rules: iteratorBaseSchema.shape.items,
     },
     // 迭代器字段 - item
     {
@@ -86,14 +130,14 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         show: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
-        rules: iteratorBaseSchema.shape.item,
       },
+      rules: iteratorBaseSchema.shape.item,
     },
   ],
   handleSubmit: async (values) => {
     try {
       // 使用完整的nodeSchema进行验证
-      const validatedData = nodeSchema.parse(values);
+      const validatedData = cpNodeSchema.parse(values);
       // TODO: 整个eaog校验，例如：children无重名。。。。
       onSuccess.value?.(validatedData);
     } catch (error) {
