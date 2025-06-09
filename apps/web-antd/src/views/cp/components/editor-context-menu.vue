@@ -9,7 +9,13 @@ import {
   ContextMenuSubContent,
   ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {type EaogNode, isLeafNode} from './eaog-node';
+import {
+  type EaogNode,
+  isLeafNode,
+  cloneDeepEaogNode,
+  insertNode,
+  removeNode
+} from './eaog-node';
 // 导入lucide.ts中可用的图标
 import {
   Circle,
@@ -23,22 +29,94 @@ import {
   Info,
   Expand
 } from '@vben/icons';
+import Debug from 'debug';
+import { ref } from 'vue';
+
+const debug = Debug('aia:cp-context-menu');
+
+// 组件内部状态
+const contextMenuNode = ref<EaogNode | null>(null);
+const clipboardNode = ref<EaogNode | null>(null);
+const clipboardWithChildren = ref<boolean>(false);
+
 // 组件属性
-defineProps<{
-  contextMenuNode: EaogNode | null;
-  clipboardNode: EaogNode | null;
-  // contextMenuKey?: number; // 用于强制更新菜单。 @toFix [在contextmenu出现后，再次右键，菜单位置不会跟随右键位置变化](https://deepwiki.com/search/contextmenu_0b63c8b3-fba8-4d39-afa1-3a8083c457d6)
+const props = defineProps<{
+  eaogData: EaogNode | null;
+  eaogNodeForm: any;
 }>();
 
-// 组件事件
+// 事件
 const emit = defineEmits<{
-  'new-node': [position: 'before' | 'after' | 'child' | 'parent'];
-  'edit-node': [];
-  'copy-node': [withChildren: boolean];
-  'paste-node': [position: 'before' | 'after' | 'child' | 'parent'];
-  'delete-node': [deleteSubtree: boolean];
+  'add-history': []; // 添加历史记录
 }>();
 
+// 设置当前右键点击的节点
+const setContextMenuNode = (node: EaogNode | null) => {
+  contextMenuNode.value = node;
+};
+
+// 处理节点操作函数
+const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
+  // 在这里实现新建节点的逻辑
+  debug('新建节点', position, contextMenuNode.value);
+  props.eaogNodeForm?.open({
+    node: contextMenuNode.value,
+    onSuccess: (newNode: EaogNode) => {
+      // 插入新节点到eaogData中
+      insertNode(props.eaogData, contextMenuNode.value, newNode, position);
+      emit('add-history'); // 添加当前状态到历史记录
+    }
+  });
+};
+
+const handleEditNode = () => {
+  debug('编辑节点', contextMenuNode.value);
+  props.eaogNodeForm?.open({
+    node: contextMenuNode.value,
+    onSuccess: (updatedNode: EaogNode) => {
+      // 更新eaogData中的节点
+      if (contextMenuNode.value) {
+        Object.assign(contextMenuNode.value, updatedNode);
+        emit('add-history'); // 添加当前状态到历史记录
+      }
+    }
+  });
+};
+
+const handleCopyNode = (withChildren: boolean) => {
+  // 在这里实现复制节点的逻辑
+  if (contextMenuNode.value) {
+    // 深拷贝节点，如果不复制子树，则清除children属性
+    const nodeCopy = cloneDeepEaogNode(contextMenuNode.value);
+    if (!withChildren && nodeCopy.children) {
+      nodeCopy.children = []; // 清除子节点
+    }
+    clipboardNode.value = nodeCopy;
+    clipboardWithChildren.value = withChildren;
+    debug('复制节点', withChildren ? '包含子树' : '仅节点', nodeCopy);
+  }
+};
+
+const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
+  // 在这里实现粘贴节点的逻辑
+  debug('粘贴节点', position, clipboardNode.value);
+  if (!clipboardNode.value || !contextMenuNode.value) return;
+  insertNode(props.eaogData, contextMenuNode.value, clipboardNode.value, position);
+  emit('add-history'); // 添加当前状态到历史记录
+};
+
+const handleDeleteNode = (deleteSubtree: boolean) => {
+  // 在这里实现删除节点的逻辑
+  debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
+  if (!contextMenuNode.value) return;
+  removeNode(props.eaogData, contextMenuNode.value, deleteSubtree);
+  emit('add-history'); // 添加当前状态到历史记录
+};
+
+// 暴露给父组件的方法
+defineExpose({
+  setContextMenuNode
+});
 </script>
 
 <template>
@@ -55,22 +133,22 @@ const emit = defineEmits<{
           新建节点
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem @click.prevent="() => emit('new-node', 'before')">
+          <ContextMenuItem @click.prevent="() => handleNewNode('before')">
             <ArrowLeft class="mr-2 h-4 w-4 icon"/>
             在前面
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => emit('new-node','after')">
+          <ContextMenuItem @click.prevent="() => handleNewNode('after')">
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             在后面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('new-node','child')"
+            @click.prevent="() => handleNewNode('child')"
             :disabled="isLeafNode(contextMenuNode)"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             作为子节点
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => emit('new-node','parent')">
+          <ContextMenuItem @click.prevent="() => handleNewNode('parent')">
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
             作为父节点
           </ContextMenuItem>
@@ -78,7 +156,7 @@ const emit = defineEmits<{
       </ContextMenuSub>
 
       <!-- 编辑节点 -->
-      <ContextMenuItem @click.prevent="emit('edit-node')">
+      <ContextMenuItem @click.prevent="handleEditNode">
         <Info class="mr-2 h-4 w-4 icon"/>
         编辑
       </ContextMenuItem>
@@ -90,12 +168,12 @@ const emit = defineEmits<{
           复制
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem @click.prevent="() => emit('copy-node', false)">
+          <ContextMenuItem @click.prevent="() => handleCopyNode(false)">
             <Copy class="mr-2 h-4 w-4 icon"/>
             仅节点
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('copy-node', true)"
+            @click.prevent="() => handleCopyNode(true)"
             :disabled="isLeafNode(contextMenuNode)"
           >
             <Expand class="mr-2 h-4 w-4 icon"/>
@@ -112,28 +190,28 @@ const emit = defineEmits<{
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('paste-node','before')"
+            @click.prevent="() => handlePasteNode('before')"
             :disabled="!clipboardNode"
           >
             <ArrowLeft class="mr-2 h-4 w-4 icon"/>
             粘贴到前面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('paste-node','after')"
+            @click.prevent="() => handlePasteNode('after')"
             :disabled="!clipboardNode"
           >
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             粘贴到后面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('paste-node','child')"
+            @click.prevent="() => handlePasteNode('child')"
             :disabled="!clipboardNode ||isLeafNode(contextMenuNode)"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             粘贴为子节点
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('paste-node','parent')"
+            @click.prevent="() => handlePasteNode('parent')"
             :disabled="!clipboardNode || isLeafNode(clipboardNode)"
           >
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
@@ -152,13 +230,13 @@ const emit = defineEmits<{
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => emit('delete-node', false)"
+            @click.prevent="() => handleDeleteNode(false)"
             :disabled="isLeafNode(contextMenuNode)"
           >
             <Copy class="mr-2 h-4 w-4 icon"/>
             仅删除节点（保留子节点）
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => emit('delete-node', true)">
+          <ContextMenuItem @click.prevent="() => handleDeleteNode(true)">
             <CircleX class="mr-2 h-4 w-4 icon"/>
             删除节点及子树
           </ContextMenuItem>

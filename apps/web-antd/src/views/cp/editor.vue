@@ -16,24 +16,18 @@
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
-import {
-  cloneDeepEaogNode,
-  type EaogNode, insertNode, removeNode
-} from './components/eaog-node';
+import {type EaogNode,} from './components/eaog-node';
 import {complexFlow} from './eaog-samples';
-import {onMounted, reactive, type Ref, ref} from 'vue';
+import {onMounted, type Ref, ref} from 'vue';
 
 import {Eaog} from "../../../../../../aia-eaog/src/eaog.js";
-import {cpEaogSchema} from "../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
-import {addNotifyBeforeNodes} from "../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
-import {convertBriefEaog} from "../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
 import { JsonViewer } from '@vben/common-ui';
+import { useHistory } from './composables/useHistory';
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 
 import Debug from 'debug';
-import {IS_DEV} from "#/utils/aia-constants";
 
 const debug = Debug('aia:cp-editor');
 
@@ -43,15 +37,14 @@ const clickedNode = ref<EaogNode | null>(null);
 // 当前选中的EAOG节点集
 const selectedNodes : {node: EaogNode, isSelectedRef: Ref<boolean>}[] = [];
 
-// 保存当前右键点击的节点，可能与selectedNode不同
-const contextMenuNode = ref<EaogNode | null>(null);
-
-// 剪切板中的节点
-const clipboardNode = ref<EaogNode | null>(null);
-const clipboardWithChildren = ref(false);
+// 上下文菜单的引用
+const contextMenuRef = ref<InstanceType<typeof EaogContextMenu>>();
 
 // 示例EAOG流程
-const eaogData = ref<EaogNode | null>(null);
+const currentEaog = ref<EaogNode | null>(null);
+
+// 使用历史记录管理 composable
+const history = useHistory();
 
 // 处理节点点击事件
 const handleNodeClick = (node: EaogNode, event: Event, isSelectedRef) => {
@@ -76,289 +69,53 @@ const handleNodeClick = (node: EaogNode, event: Event, isSelectedRef) => {
   }
 };
 
-// 处理节点右键点击事件，获取右键发生的节点
+// 处理节点右键点击事件，获取右键发生EaogNde节点，传递给上下文菜单
 const handleContextMenu = (e: MouseEvent) => {
-  // debug(`Context event event.defaultPrevented: ${e.defaultPrevented}`);
-  // moveContextMenuToMousePosition(e);
-  contextMenuNode.value = (e as any).eaogNode || null; // 从事件对象中获取当前节点
-};
-
-//  注意！HACK_FIX! 这里我们发现在右键菜单打开后，如果再次右键点击，菜单位置不会更新。
-//  我们先试图用下面moveContextMenuToMousePosition函数来更新菜单位��，但发现这样会出现，菜单先出现在原有位置，然后再移动到鼠标位置的情况。体验不佳。
-//  经过对源码的深入分析：我们发现问题出在vue-radix ContextMenu 通过创建虚拟元素（virtual element）���实现跟随鼠标位置显示菜单。@see https://deepwiki.com/search/contextmenu_474c04dd-1f1d-4751-8a84-28a4a010550d
-//  奇怪的是，在其源码 ContextMenuTrigger.vue # virtualEl = computed(() => ...)中，加上一句 virtualEl.getBoundingClientRect() ，先计算一下，就可以解决问题。
-//  @see .pnpm/radix-vue@1.9.17_vue@3.5.13_typescript@5.8.3_/node_modules/radix-vue/dist/index.js#L6070
-//
-// const moveContextMenuToMousePosition = async (e: MouseEvent) => {
-//   // 获取菜单元素
-//   const menu = document.querySelector('.eaog-context-menu') as HTMLElement | null;
-//   const menuWrapper = menu?.parentElement as HTMLElement | null;
-//   if (menuWrapper) {
-//     // 设置菜单位置为鼠标位置
-//     // await new Promise(resolve => setTimeout(resolve, 1000)); // 确保DOM更新
-//     // menuWrapper.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-//   }
-// };
-
-const historyEaogData = reactive<EaogNode[]>([]); // 历史记录，保存EAOG的状态，用于撤销和重做操作
-const currentEaogIndex = ref(-1); // 当前历史记录索引
-const addToHistory = () => {
-  // 清除当前索引之后的历史记录
-  historyEaogData.splice(currentEaogIndex.value + 1);
-  // 添加当前状态到历史记录
-  const node = eaogData.value;
-  if (historyEaogData.slice(-1)[0] && JSON.stringify(historyEaogData.slice(-1)[0]) === JSON.stringify(node)) {
-    // 如果最后一个历史记录与当前节点相同，则不添加
-    return;
-  }
-  historyEaogData.push(cloneDeepEaogNode(node));
-  currentEaogIndex.value = historyEaogData.length - 1; // 更新当前索引
-};
-
-const undoFromHistory = () => {
-  // 从历史记录中弹出最后一个状态
-  if (currentEaogIndex.value < 0) return;
-  currentEaogIndex.value--;
-  eaogData.value = cloneDeepEaogNode(historyEaogData[currentEaogIndex.value]);
-};
-
-const redoFromHistory = () => {
-  // 从历史记录中弹出下一个状态
-  if (currentEaogIndex.value >= historyEaogData.length - 1) return; // 如果已经是最后一个历史记录，则不操作
-  currentEaogIndex.value++;
-  eaogData.value = cloneDeepEaogNode(historyEaogData[currentEaogIndex.value]);
-};
-
-// 处理节点操作函数
-const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
-  // 在这里实现新建节点的逻辑
-  debug('新建节点', position, contextMenuNode.value);
-  eaogNodeForm.value?.open({
-    node: contextMenuNode.value,
-    onSuccess: (newNode: EaogNode) => {
-      // 插入新节点到eaogData中
-      insertNode(eaogData.value, contextMenuNode.value, newNode, position);
-      addToHistory(); // 添加当前状态到历史记录
-    }
-  });
-};
-
-const handleEditNode = () => {
-  debug('编辑节点', contextMenuNode.value);
-  eaogNodeForm.value?.open({
-    node: contextMenuNode.value,
-    onSuccess: (updatedNode: EaogNode) => {
-      // 更新eaogData中的节点
-      if (contextMenuNode.value) {
-        Object.assign(contextMenuNode.value, updatedNode);
-        addToHistory(); // 添加当前状态到历史记录
-      }
-    }
-  });
-};
-
-const handleCopyNode = (withChildren: boolean) => {
-  // 在这里实现复制节点的逻辑
-  if (contextMenuNode.value) {
-    // 深拷贝节点，如果不复制子树，则清除children属性
-    const nodeCopy = cloneDeepEaogNode(contextMenuNode.value);
-    if (!withChildren && nodeCopy.children) {
-      nodeCopy.children = []; // 清除子节点
-    }
-    clipboardNode.value = nodeCopy;
-    clipboardWithChildren.value = withChildren;
-    debug('复制节点', withChildren ? '包含子树' : '仅节点', nodeCopy);
-  }
-};
-
-const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
-  // 在这里实现粘贴节点的逻辑
-  debug('粘贴节点', position, clipboardNode.value);
-  if (!clipboardNode.value || !contextMenuNode.value) return;
-  insertNode(eaogData.value, contextMenuNode.value, clipboardNode.value, position);
-  addToHistory(); // 添加当前状态到历史记录
-};
-
-const handleDeleteNode = (deleteSubtree: boolean) => {
-  // 在这里实现删除节点的逻辑
-  debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
-  if (!contextMenuNode.value) return;
-  removeNode(eaogData.value, contextMenuNode.value, deleteSubtree);
-  addToHistory(); // 添加当前状态到历史记录
-};
-
-// 工具栏操作处理函数
-
-const handleRefresh = () => {
-  debug('刷新当前视图');
-  // 这里可以重新加载或刷新数据
-  // eaogData.value = cloneDeepEaogNode(complexFlow);
-};
-
-const parseTextToEaog = (eaogTxt: any): EaogNode | undefined => {
-  let json;
-  // 解析JSON文本
-  try {
-    json = JSON.parse(eaogTxt);
-  } catch (err) {
-    console.error('导入失败，文件格式错误:', err);
-    // 或者，evaluate as JavaScript object
-    try {
-      // eslint-disable-next-line no-eval
-      json = Function('"use strict"; return (' + eaogTxt + ')')();
-    } catch (err) {
-      console.error('导入失败，文件格式错误:', err);
-      return;
-    }
-  }
-  json = convertBriefEaog(json) // 有时候，用户导入的json是简写格式，我们需要转换为完整格式
-  const parsed = cpEaogSchema.safeParse(json); // 验证导入的数据格式
-  if (!parsed.success) {
-    console.error('导入的EAOG数据格式不正确:', parsed.error);
-  }
-  return parsed.data;
-
-}
-
-/**
- * 导入EAOG数据，优先从剪切板导入，其次从文件导入
- */
-const handleImport = async () => {
-  debug('导入EAOG数据');
-  const eaog = (IS_DEV && await importEaogFromClipboard()) || await importEaogFromFile();
-  if (eaog) {
-    eaogData.value = eaog;
-    debug('导入成功:', eaog);
-    addToHistory(); // 添加当前状态到历史记录
-  }
+  const eaogNode = (e as any).eaogNode || null; // 从事件对象中获取当前节点
+  contextMenuRef.value?.setContextMenuNode(eaogNode);
 };
 
 /**
- * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
+ * 工具栏、上下文Eaog更新处理函数
+ * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
  */
-const handleExport = async (event) => {
-  debug('导出当前EAOG');
-  const data = JSON.stringify(eaogData.value, null, 2);
-  await copyToClipboard(data);
-  if (event.shiftKey) {
-    downloadToFile(data);
-  }
+const handleEaogUpdate = (newCurrentEaog: EaogNode | undefined) => {
+  newCurrentEaog && (currentEaog.value = newCurrentEaog);
+  debug('更新Eaog:', newCurrentEaog);
 };
-
-const handleReport = () => {
-  debug('添加报告节点');
-  addNotifyBeforeNodes(selectedNodes.map(item => item.node));
-};
-
-const handleControl = () => {
-  debug('添加控制节点');
-  // TODO: 实现控制面板功能
-};
-
-const importEaogFromClipboard = async (): Promise<EaogNode | undefined> => {
-  try {
-    const text = await navigator.clipboard.readText();
-    debug('从剪切板读取内容成功');
-    return parseTextToEaog(text);
-  } catch (err) {
-    console.error('无法读取剪切板内容:', err);
-    return null;
-  }
-};
-
-const importEaogFromFile = (): Promise<EaogNode | undefined> => {
-  return new Promise((resolve) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) {
-        resolve(null);
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const content = event.target?.result as string;
-        debug('从文件读取内容成功');
-        resolve(parseTextToEaog(content));
-      };
-      reader.onerror = () => {
-        console.error('读取文件失败');
-        resolve();
-      };
-      reader.readAsText(file);
-    };
-
-    input.click(); // 触发文件选择对话框
-  });
-};
-
-const copyToClipboard = async (data: any) => {
-  try {
-    await navigator.clipboard.writeText(data);
-    debug('已复制到剪切板');
-  } catch (err) {
-    console.error('无法复制到剪切板:', err);
-  }
-};
-
-const downloadToFile = (data: any) => {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", "eaog-export.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
-}
-
 
 onMounted(() => {
   // 初始化时设置eaogData
-  eaogData.value = complexFlow;
-  addToHistory(); // 添加初始状态到历史记录
-  // window.eaogData = eaogData; // 方便调试时在浏览器控制台查看
-  // window.cloneDeepEaogNode = cloneDeepEaogNode
-  debug('CP编辑器已加载，初始EAOG数据:', eaogData.value);
+  currentEaog.value = complexFlow;
+  history.initHistory(currentEaog.value);
+  debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
 });
-
 </script>
 
 <template>
   <div class="cp-editor">
     <!-- 工具栏 -->
     <EditorToolbar
-      :is-undo-available="currentEaogIndex > 0"
-      :is-redo-available="currentEaogIndex < historyEaogData.length - 1"
-      @undo="undoFromHistory"
-      @redo="redoFromHistory"
-      @refresh="handleRefresh"
-      @export="handleExport"
-      @report="handleReport"
-      @control="handleControl"
-      @import="handleImport"
+      :eaog-data="currentEaog"
+      :selected-nodes="selectedNodes"
+      @update-eaog="handleEaogUpdate"
     />
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
     <div class="flex p-4">
       <!-- 上下文菜单组件 -->
       <EaogContextMenu
-        :context-menu-node="contextMenuNode"
-        :clipboard-node="clipboardNode"
-        @new-node="handleNewNode"
-        @edit-node="handleEditNode"
-        @copy-node="handleCopyNode"
-        @paste-node="handlePasteNode"
-        @delete-node="handleDeleteNode"
+        ref="contextMenuRef"
+        :eaog-data="currentEaog"
+        :eaog-node-form="eaogNodeForm"
+        @add-history="()=> history.addToHistory(currentEaog)"
       >
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
-          <div v-if="eaogData" class="eaog-container">
+          <div v-if="currentEaog" class="eaog-container">
             <EaogNodeComponent
-              :node="Eaog.create(eaogData)"
+              :node="currentEaog"
               @node-click="handleNodeClick"
               @contextmenu="handleContextMenu"
             />

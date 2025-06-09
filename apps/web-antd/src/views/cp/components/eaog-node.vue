@@ -66,12 +66,12 @@ const handleContextMenu = (event: MouseEvent) => {
   <div class="eaog-node" :class="childrenDirection">
     <!-- 节点头部 -->
     <div
-      class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative"
+      class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer"
       :class="{
-        'cursor-pointer hover:bg-gray-50': true,
         [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
         'bg-gray-50': nodeLevel === 0,
-        'bg-blue-100 border-2': isSelected // 选中状态高亮
+        'bg-blue-100 border-2': isSelected, // 选中状态高亮
+        'hover:bg-gray-50': !isSelected // 非选中状态时，hover效果
       }"
       @click.prevent="handleNodeClick"
       @contextmenu="handleContextMenu"
