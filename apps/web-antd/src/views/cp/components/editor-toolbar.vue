@@ -1,24 +1,23 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import { cloneDeepEaogNode, type EaogNode } from './eaog-node';
-import { cpEaogSchema } from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import { convertToEaogRoot, EditableEaogNode } from './eaog-node';
 import { addNotifyBeforeNodes } from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
-import { convertBriefEaog } from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import { useHistory } from '../composables/useHistory';
+import {message} from 'ant-design-vue';
 
 import Debug from 'debug';
 const debug = Debug('aia:cp-toolbar');
 
 const history = useHistory();
 const props = defineProps<{
-  eaogData: EaogNode | null;
-  selectedNodes: {node: EaogNode}[];
+  eaogData: EditableEaogNode | null;
+  selectedNodes: {node: EditableEaogNode}[];
 }>();
 
 // 定义组件要触发的事件，移除了历史相关的事件
 const emit = defineEmits<{
-  'update-eaog': [eaog: EaogNode];
+  'update-eaog': [eaog: EditableEaogNode];
 }>();
 
 // 工具栏操作处理函数
@@ -26,7 +25,7 @@ const handleRefresh = () => {
   debug('刷新当前视图');
 };
 
-const parseTextToEaog = (eaogTxt: any): EaogNode | undefined => {
+const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   let json;
   // 解析JSON文本
   try {
@@ -42,12 +41,7 @@ const parseTextToEaog = (eaogTxt: any): EaogNode | undefined => {
       return;
     }
   }
-  json = convertBriefEaog(json) // 有时候，用户导入的json是简写格式，我们需要转换为完整格式
-  const parsed = cpEaogSchema.safeParse(json); // 验证导入的数据格式
-  if (!parsed.success) {
-    console.error('导入的EAOG数据格式不正确:', parsed.error);
-  }
-  return parsed.data;
+  return convertToEaogRoot(json); // 转换为EditableEaogNode对象
 }
 
 /**
@@ -72,6 +66,8 @@ const handleExport = async (event) => {
   debug('导出当前EAOG');
   const data = JSON.stringify(props.eaogData, null, 2);
   await copyToClipboard(data);
+  message.success('EAOG数据已导出到剪贴板');
+
   if (event.shiftKey) {
     downloadToFile(data);
   }
@@ -80,6 +76,7 @@ const handleExport = async (event) => {
 const handleReport = () => {
   debug('添加报告节点');
   addNotifyBeforeNodes(props.selectedNodes.map(item => item.node)); // 这些nodes应该是reactive的
+  history.addToHistory(props.eaogData); // 添加当前EAOG到历史记录
 };
 
 const handleControl = () => {
@@ -106,7 +103,7 @@ const handleRedo = () => {
   emit('update-eaog', nextEaog); // 触发更新事件
 };
 
-const importEaogFromClipboard = async (): Promise<EaogNode | undefined> => {
+const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> => {
   try {
     const text = await navigator.clipboard.readText();
     debug('从剪切板读取内容成功');
@@ -117,7 +114,7 @@ const importEaogFromClipboard = async (): Promise<EaogNode | undefined> => {
   }
 };
 
-const importEaogFromFile = (): Promise<EaogNode | undefined> => {
+const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';

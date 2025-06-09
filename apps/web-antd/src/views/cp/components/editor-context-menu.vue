@@ -10,11 +10,8 @@ import {
   ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
 import {
-  type EaogNode,
-  isLeafNode,
-  cloneDeepEaogNode,
-  insertNode,
-  removeNode
+  EditableEaogNode,
+  isLeafNode
 } from './eaog-node';
 // 导入lucide.ts中可用的图标
 import {
@@ -35,13 +32,13 @@ import { ref } from 'vue';
 const debug = Debug('aia:cp-context-menu');
 
 // 组件内部状态
-const contextMenuNode = ref<EaogNode | null>(null);
-const clipboardNode = ref<EaogNode | null>(null);
+const contextMenuNode = ref<EditableEaogNode | null>(null);
+const clipboardNode = ref<EditableEaogNode | null>(null);
 const clipboardWithChildren = ref<boolean>(false);
 
 // 组件属性
 const props = defineProps<{
-  eaogData: EaogNode | null;
+  eaogData: EditableEaogNode | null;
   eaogNodeForm: any;
 }>();
 
@@ -51,7 +48,7 @@ const emit = defineEmits<{
 }>();
 
 // 设置当前右键点击的节点
-const setContextMenuNode = (node: EaogNode | null) => {
+const setContextMenuNode = (node: EditableEaogNode | null) => {
   contextMenuNode.value = node;
 };
 
@@ -61,10 +58,12 @@ const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   debug('新建节点', position, contextMenuNode.value);
   props.eaogNodeForm?.open({
     node: contextMenuNode.value,
-    onSuccess: (newNode: EaogNode) => {
-      // 插入新节点到eaogData中
-      insertNode(props.eaogData, contextMenuNode.value, newNode, position);
-      emit('add-history'); // 添加当前状态到历史记录
+    onSuccess: (newNode: EditableEaogNode) => {
+      // 使用 EditableEaogNode 的 insert 方法插入新节点
+      if (contextMenuNode.value) {
+        contextMenuNode.value.insert(newNode, position);
+        emit('add-history'); // 添加当前状态到历史记录
+      }
     }
   });
 };
@@ -73,11 +72,11 @@ const handleEditNode = () => {
   debug('编辑节点', contextMenuNode.value);
   props.eaogNodeForm?.open({
     node: contextMenuNode.value,
-    onSuccess: (updatedNode: EaogNode) => {
+    onSuccess: (updatedNode: EditableEaogNode) => {
       // 更新eaogData中的节点
       if (contextMenuNode.value) {
         Object.assign(contextMenuNode.value, updatedNode);
-        emit('add-history'); // 添加当前状态到历史记录
+        emit('add-history'); // 添加当��状态到历史记录
       }
     }
   });
@@ -86,8 +85,8 @@ const handleEditNode = () => {
 const handleCopyNode = (withChildren: boolean) => {
   // 在这里实现复制节点的逻辑
   if (contextMenuNode.value) {
-    // 深拷贝节点，如果不复制子树，则清除children属性
-    const nodeCopy = cloneDeepEaogNode(contextMenuNode.value);
+    // 使用 EditableEaogNode 的 cloneDeep 方法复制节点
+    const nodeCopy = contextMenuNode.value.cloneDeep();
     if (!withChildren && nodeCopy.children) {
       nodeCopy.children = []; // 清除子节点
     }
@@ -101,7 +100,9 @@ const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现粘贴节点的逻辑
   debug('粘贴节点', position, clipboardNode.value);
   if (!clipboardNode.value || !contextMenuNode.value) return;
-  insertNode(props.eaogData, contextMenuNode.value, clipboardNode.value, position);
+
+  // 使用 EditableEaogNode 的 insert 方法插入新节点
+  contextMenuNode.value.insert(clipboardNode.value, position);
   emit('add-history'); // 添加当前状态到历史记录
 };
 
@@ -109,7 +110,9 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
   // 在这里实现删除节点的逻辑
   debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
   if (!contextMenuNode.value) return;
-  removeNode(props.eaogData, contextMenuNode.value, deleteSubtree);
+
+  // 使用 EditableEaogNode 的 remove 方法删除节点
+  contextMenuNode.value.remove(deleteSubtree);
   emit('add-history'); // 添加当前状态到历史记录
 };
 

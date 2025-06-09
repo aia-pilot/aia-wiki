@@ -1,9 +1,8 @@
-import {reactive, ref, type Ref} from 'vue';
-import {cloneDeepEaogNode, type EaogNode} from '../components/eaog-node';
-
+import {reactive, ref} from 'vue';
+import {EditableEaogNode, convertToEaogRoot} from '../components/eaog-node';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作
-const historyData = reactive<EaogNode[]>([]);
+const historyData = reactive<EditableEaogNode[]>([]);
 // 当前历史记录索引
 const currentIndex = ref(-1);
 
@@ -15,9 +14,10 @@ export function useHistory() {
   /**
    * 初始化历史记录
    */
-  const initHistory = (eaog: EaogNode) => {
+  const initHistory = (node) => {
+    node = convertToEaogRoot(node);
     historyData.length = 0;
-    historyData.push(cloneDeepEaogNode(eaog));
+    historyData.push(node.cloneDeep());
     currentIndex.value = 0;
   };
 
@@ -25,20 +25,17 @@ export function useHistory() {
    * 添加当前状态到历史记录
    */
   const addToHistory = (node) => {
-    if (!node) {
-      throw new Error('Node cannot be null or undefined');
-    }
+    // node = convertToEaogRoot(node);
 
     // 清除当前索引之后的历史记录
     historyData.splice(currentIndex.value + 1);
 
     // 检查是否与最后一个历史记录相同
-    if (historyData.length > 0 &&
-      JSON.stringify(historyData[historyData.length - 1]) === JSON.stringify(node)) {
+    if (historyData.length > 0 && node.equals(historyData[historyData.length - 1])) {
       return;
     }
 
-    historyData.push(cloneDeepEaogNode(node));
+    historyData.push(node.cloneDeep());
     currentIndex.value = historyData.length - 1; // 更新当前索引
   };
 
@@ -48,7 +45,7 @@ export function useHistory() {
   const undo = () => {
     if (currentIndex.value <= 0) return;
     currentIndex.value--;
-    return cloneDeepEaogNode(historyData[currentIndex.value]);
+    return historyData[currentIndex.value].cloneDeep();
   };
 
   /**
@@ -57,7 +54,7 @@ export function useHistory() {
   const redo = () => {
     if (currentIndex.value >= historyData.length - 1) return;
     currentIndex.value++;
-    return cloneDeepEaogNode(historyData[currentIndex.value]);
+    return historyData[currentIndex.value].cloneDeep();
   };
 
   /**
@@ -69,7 +66,6 @@ export function useHistory() {
    * 检查是否可以重做
    */
   const canRedo = () => currentIndex.value < historyData.length - 1;
-
 
   return {
     historyData,

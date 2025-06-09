@@ -16,8 +16,8 @@
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
-import {type EaogNode,} from './components/eaog-node';
-import {complexFlow} from './eaog-samples';
+import {EditableEaogNode, convertToEaogRoot} from './components/eaog-node';
+import {complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {onMounted, type Ref, ref} from 'vue';
 
 import {Eaog} from "../../../../../../aia-eaog/src/eaog.js";
@@ -32,25 +32,25 @@ import Debug from 'debug';
 const debug = Debug('aia:cp-editor');
 
 // 当前点击的EAOG节点
-const clickedNode = ref<EaogNode | null>(null);
+const clickedNode = ref<EditableEaogNode | null>(null);
 
 // 当前选中的EAOG节点集
-const selectedNodes : {node: EaogNode, isSelectedRef: Ref<boolean>}[] = [];
+const selectedNodes : {node: EditableEaogNode, isSelectedRef: Ref<boolean>}[] = [];
 
 // 上下文菜单的引用
 const contextMenuRef = ref<InstanceType<typeof EaogContextMenu>>();
 
 // 示例EAOG流程
-const currentEaog = ref<EaogNode | null>(null);
+const currentEaog = ref<EditableEaogNode | null>(null);
 
 // 使用历史记录管理 composable
 const history = useHistory();
 
 // 处理节点点击事件
-const handleNodeClick = (node: EaogNode, event: Event, isSelectedRef) => {
+const handleNodeClick = (node: EditableEaogNode, event: Event, isSelectedRef) => {
   clickedNode.value = node;
 
-  // 处理选中逻辑，Shift键支持多选
+  // 处理选中逻��，Shift键支持多选
   if (selectedNodes.some(item => item.node === node)) { // 如果已经选中，则取消选中
     selectedNodes.splice(selectedNodes.findIndex(item => item.node === node), 1);
     isSelectedRef.value = false;
@@ -79,15 +79,17 @@ const handleContextMenu = (e: MouseEvent) => {
  * 工具栏、上下文Eaog更新处理函数
  * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
  */
-const handleEaogUpdate = (newCurrentEaog: EaogNode | undefined) => {
+const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
+  // newCurrentEaog && (currentEaog.value = Eaog.create(newCurrentEaog)); // 注意：Editor中不用create为可执行的Eaog对象。不过，我们已经证实，可以用Eaog.create的实例，来响应式的更新可视化树。这个技术可以用在调试界面。
   newCurrentEaog && (currentEaog.value = newCurrentEaog);
   debug('更新Eaog:', newCurrentEaog);
 };
 
 onMounted(() => {
   // 初始化时设置eaogData
-  currentEaog.value = complexFlow;
-  history.initHistory(currentEaog.value);
+  const initialEaog = convertToEaogRoot(complexFlow); // 使用示例流程并转换为EditableEaogNode
+  updateCurrentEaog(initialEaog);
+  history.initHistory(initialEaog);
   debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
 });
 </script>
@@ -98,7 +100,7 @@ onMounted(() => {
     <EditorToolbar
       :eaog-data="currentEaog"
       :selected-nodes="selectedNodes"
-      @update-eaog="handleEaogUpdate"
+      @update-eaog="updateCurrentEaog"
     />
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
@@ -108,7 +110,7 @@ onMounted(() => {
         ref="contextMenuRef"
         :eaog-data="currentEaog"
         :eaog-node-form="eaogNodeForm"
-        @add-history="()=> history.addToHistory(currentEaog)"
+        @add-history="history.addToHistory(currentEaog)"
       >
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">

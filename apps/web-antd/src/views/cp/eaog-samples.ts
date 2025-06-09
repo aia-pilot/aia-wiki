@@ -53,7 +53,6 @@ export const complexFlow: EaogNode = {
           type: "cor",
           name: "README是否存在",
           description: "条件：README文件是否存在",
-          condition: (params: any) => 'README文件路径' in params,
           children: [
             {
               type: "sand",
@@ -109,6 +108,8 @@ export const complexFlow: EaogNode = {
           type: "pfor",
           name: "遍历章节生成内容",
           description: "遍历知识库大纲，逐个章节生成对应的内容",
+          items: '章节列表',
+          item: '章节',
           children: [
             {
               type: "instruction",
@@ -205,7 +206,6 @@ export const advancedFlow: EaogNode = {
       type: "cor",
       name: "分析类型选择",
       description: "根据参数选择不同的分析方式",
-      condition: (params: any) => params.analysisType === 'content' || params.analysisType === 'structure' || params.analysisType === 'both',
       children: [
         {
           type: "sand",

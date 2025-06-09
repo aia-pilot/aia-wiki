@@ -2,19 +2,16 @@
 import {computed, ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
+import {EditableEaogNode} from './eaog-node';
 
 // 导入您的Schema定义
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 
-// const emit = defineEmits<{
-//   success: [data: any];
-// }>();
-
 // 节点类型选项
 const nodeTypeOptions = allNodeTypes.map((type: string) => ({label: type, value: type}));
 
-const formData = ref( {});
+const formData = ref({});
 const isEdit = computed(() => formData.value && Object.keys(formData.value).length > 0);
 const title = computed(() => isEdit.value ? '编辑节点' : '创建节点');
 const onSuccess = ref<((data: any) => void) | null>(null); // 用于接收父组件传入的成功回调
@@ -148,18 +145,18 @@ const [Form, formApi] = useVbenForm({
 const [Modal, modalApi] = useVbenModal({
   title: title.value,
   onConfirm: () => formApi.submitForm(),
-  // onOpenChange: (isOpen) => {
-  //   if (isOpen && isEdit.value) {
-  //     formApi.setValues(formData.value);
-  //   } else if (isOpen) {
-  //     formApi.resetForm();
-  //   }
-  // },
+  onOpenChange: (isOpen) => {
+    if (isOpen && isEdit.value) {
+      formApi.setValues(formData.value);
+    } else if (isOpen) {
+      formApi.resetForm();
+    }
+  },
 });
 
 // 暴露方法供父组件调用
 defineExpose({
-  open: ({ node, onSuccess: _onSuccess }: { node?: any; onSuccess: (data: any) => void }) => {
+  open: ({ node, onSuccess: _onSuccess }: { node?: EditableEaogNode; onSuccess: (data: any) => void }) => {
     if (node) {
       formData.value = node;
       formApi.setValues(node);
@@ -178,4 +175,3 @@ defineExpose({
     <Form/>
   </Modal>
 </template>
-
