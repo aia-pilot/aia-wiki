@@ -2,7 +2,6 @@
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 
-
 // 节点类型对应的颜色和图标
 export const nodeTypeUIConfig = {
   sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'},

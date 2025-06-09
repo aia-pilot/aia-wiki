@@ -21,9 +21,11 @@ import {
   type EaogNode, insertNode, removeNode
 } from './components/eaog-node';
 import {complexFlow} from './eaog-samples';
-import {onMounted, reactive, ref} from 'vue';
+import {onMounted, reactive, type Ref, ref} from 'vue';
 
+import {Eaog} from "../../../../../../aia-eaog/src/eaog.js";
 import {cpEaogSchema} from "../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {addNotifyBeforeNodes} from "../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
 import {convertBriefEaog} from "../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
 import { JsonViewer } from '@vben/common-ui';
@@ -244,12 +246,12 @@ const handleExport = async (event) => {
 };
 
 const handleReport = () => {
-  debug('生成报告');
-  // TODO: 实现报告生成功能
+  debug('添加报告节点');
+  addNotifyBeforeNodes(selectedNodes.map(item => item.node));
 };
 
 const handleControl = () => {
-  debug('打开控制面板');
+  debug('添加控制节点');
   // TODO: 实现控制面板功能
 };
 
@@ -356,7 +358,7 @@ onMounted(() => {
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
           <div v-if="eaogData" class="eaog-container">
             <EaogNodeComponent
-              :node="eaogData"
+              :node="Eaog.create(eaogData)"
               @node-click="handleNodeClick"
               @contextmenu="handleContextMenu"
             />
