@@ -4,7 +4,7 @@
  * 递归组件，用于渲染EAOG树形结构中的节点
  *
  * ## CP(eaog)
- * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构，说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
+ * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构���说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
  * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
  *
  * ### 可视化策略
@@ -14,21 +14,20 @@
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
 
-import { defineProps, defineEmits, ref } from 'vue';
+import { defineProps, defineEmits, ref, computed } from 'vue';
 import { Badge, Tooltip } from 'ant-design-vue';
-import {type EaogNode, getChildrenDirection, nodeTypeUIConfig} from "#/views/cp/components/eaog-node";
+import {type EaogNode, type EditableEaogNode, getChildrenDirection, nodeTypeUIConfig} from "#/views/cp/components/eaog-node";
 import Debug from 'debug';
 const debug = Debug('aia:eaog-node');
 
-const isSelected = ref(false); // 选中状态，默认为false
-
 const props = defineProps<{
-  node: EaogNode;
+  node: EditableEaogNode; // 修改类型为EditableEaogNode
   level?: number; // 节点层级，默认为0，便于视觉调试
 }>();
 
+// 不再需要node-click事件
 const emit = defineEmits<{
-  'node-click': [ node: EaogNode, event: Event, isSelected: Ref<boolean> ];
+  (e: 'contextmenu', event: MouseEvent): void;
 }>();
 
 // 默认层级为0
@@ -43,35 +42,38 @@ const getNodeTypeConfig = (type: string) => {
   };
 };
 
-// 获取子节点的布局方向
+// 计算属性：子节点的布局方向
 const childrenDirection = getChildrenDirection(props.node.type);
-// debug(`Node ${props.node.name}, Type: ${props.node.type}, Children Direction: ${childrenDirection}`, props.node);
 
 // 处理节点点击
 const handleNodeClick = (event: Event) => {
   debug(`Node clicked: ${props.node.name}`);
-  // isSelected.value = !isSelected.value; // 让editor组件控制是否选中
-  emit('node-click', props.node, event, isSelected);
+  // 使用EditableEaogNode的click方法，直接更新节点状态
+  props.node.click(true, event.shiftKey);
 };
 
 // 处理系统右键菜单事件，附加当前node
 const handleContextMenu = (event: MouseEvent) => {
   debug(`Context menu for node: ${props.node.name}`);
-  event.eaogNode = props.node; // 将当前节点附加到事件对象上，以便在右键菜单中使用
+  // 设置node为当前点击的节点
+  props.node.click(false); // 只设置为点击状态，不改变选中状态
+  // 将当前节点附加到事件对象上，以便在右键菜单中使用
+  event.eaogNode = props.node;
+  // 触发contextmenu事件，但不传递node
+  emit('contextmenu', event);
 };
-
 </script>
 
 <template>
-  <div class="eaog-node" :class="childrenDirection">
+  <div class="eaog-node" :class="[childrenDirection, { 'newly-added': node.isNewlyAdded }]">
     <!-- 节点头部 -->
     <div
       class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer"
       :class="{
         [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
         'bg-gray-50': nodeLevel === 0,
-        'bg-blue-100 border-2': isSelected, // 选中状态高亮
-        'hover:bg-gray-50': !isSelected // 非选中状态时，hover效果
+        'bg-blue-100 border-2': node.isSelected, // 使用节点的isSelected属性
+        'hover:bg-gray-50': !node.isSelected // 非选中状态时，hover效果
       }"
       @click.prevent="handleNodeClick"
       @contextmenu="handleContextMenu"
@@ -96,11 +98,11 @@ const handleContextMenu = (event: MouseEvent) => {
 
     <!-- 子节点 -->
     <div v-if="node.children && node.children.length > 0" class="eaog-node-children ml-6 pl-4">
-      <div v-for="(child, index) in node.children" :key="`${node.name}-${nodeLevel}-${index}`">
+      <div v-for="child in node.children" :key="child.name">
         <eaog-node
           :node="child"
           :level="nodeLevel + 1"
-          @node-click="(node, event, isSelectedRef) => emit('node-click', node, event, isSelectedRef)"
+          @contextmenu="emit('contextmenu', $event)"
         />
       </div>
     </div>
@@ -156,5 +158,44 @@ const handleContextMenu = (event: MouseEvent) => {
 }
 
 /** 孩子为水平布局。展示下边线。各孩子节点将平行连接到此下边线，表示并行 */
+
+/** 新添加节点的动画效果 */
+.newly-added {
+  animation: highlight-effect 2s ease-in-out;
+}
+
+@keyframes highlight-effect {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1.01);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.newly-added > .eaog-node-header {
+  animation: glow-effect 2s ease-in-out;
+}
+
+@keyframes glow-effect {
+  0% {
+    background-color: rgba(219, 234, 254, 0.1);
+  }
+  30% {
+    background-color: rgba(219, 234, 254, 0.9);
+  }
+  100% {
+    background-color: inherit;
+  }
+}
 
 </style>

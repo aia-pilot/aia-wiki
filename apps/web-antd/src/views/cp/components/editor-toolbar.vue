@@ -12,13 +12,18 @@ const debug = Debug('aia:cp-toolbar');
 const history = useHistory();
 const props = defineProps<{
   eaogData: EditableEaogNode | null;
-  selectedNodes: {node: EditableEaogNode}[];
 }>();
 
-// 定义组件要触发的事件，移除了历史相关的事件
+// 定义组件要触发的事件
 const emit = defineEmits<{
   'update-eaog': [eaog: EditableEaogNode];
 }>();
+
+// 直接从 eaogData 获取选中的节点
+const getSelectedNodes = (): EditableEaogNode[] => {
+  if (!props.eaogData) return [];
+  return props.eaogData.getSelectedNodes();
+};
 
 // 工具栏操作处理函数
 const handleRefresh = () => {
@@ -75,8 +80,14 @@ const handleExport = async (event) => {
 
 const handleReport = () => {
   debug('添加报告节点');
-  addNotifyBeforeNodes(props.selectedNodes.map(item => item.node)); // 这些nodes应该是reactive的
-  history.addToHistory(props.eaogData); // 添加当前EAOG到历史记录
+  // 直接获取选中节点并调用相关函数
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length > 0) {
+    addNotifyBeforeNodes(selectedNodes);
+    history.addToHistory(props.eaogData); // 添加当前EAOG到历史记录
+  } else {
+    message.warning('请先选择至少一个节点');
+  }
 };
 
 const handleControl = () => {

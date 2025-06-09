@@ -28,6 +28,7 @@ import {
 } from '@vben/icons';
 import Debug from 'debug';
 import { ref } from 'vue';
+import { nextTick } from 'vue'; // 添加 nextTick 导入
 
 const debug = Debug('aia:cp-context-menu');
 
@@ -62,7 +63,8 @@ const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
       // 使用 EditableEaogNode 的 insert 方法插入新节点
       if (contextMenuNode.value) {
         contextMenuNode.value.insert(newNode, position);
-        emit('add-history'); // 添加当前状态到历史记录
+        contextMenuNode.value.markAsNewlyAdded();
+        emit('add-history');
       }
     }
   });
@@ -76,7 +78,7 @@ const handleEditNode = () => {
       // 更新eaogData中的节点
       if (contextMenuNode.value) {
         Object.assign(contextMenuNode.value, updatedNode);
-        emit('add-history'); // 添加当��状态到历史记录
+        emit('add-history');
       }
     }
   });
@@ -102,8 +104,10 @@ const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   if (!clipboardNode.value || !contextMenuNode.value) return;
 
   // 使用 EditableEaogNode 的 insert 方法插入新节点
-  contextMenuNode.value.insert(clipboardNode.value, position);
-  emit('add-history'); // 添加当前状态到历史记录
+  const pastedNode = clipboardNode.value.cloneDeep();
+  contextMenuNode.value.insert(pastedNode, position);
+  pastedNode.markAsNewlyAdded()
+  emit('add-history');
 };
 
 const handleDeleteNode = (deleteSubtree: boolean) => {

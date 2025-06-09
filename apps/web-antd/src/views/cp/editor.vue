@@ -18,7 +18,7 @@ import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
 import {EditableEaogNode, convertToEaogRoot} from './components/eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
-import {onMounted, type Ref, ref} from 'vue';
+import {onMounted, ref, computed} from 'vue';
 
 import {Eaog} from "../../../../../../aia-eaog/src/eaog.js";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
@@ -31,56 +31,41 @@ import Debug from 'debug';
 
 const debug = Debug('aia:cp-editor');
 
-// 当前点击的EAOG节点
-const clickedNode = ref<EditableEaogNode | null>(null);
-
-// 当前选中的EAOG节点集
-const selectedNodes : {node: EditableEaogNode, isSelectedRef: Ref<boolean>}[] = [];
+// 当前EAOG数据
+const currentEaog = ref<EditableEaogNode | null>(null);
 
 // 上下文菜单的引用
 const contextMenuRef = ref<InstanceType<typeof EaogContextMenu>>();
 
-// 示例EAOG流程
-const currentEaog = ref<EditableEaogNode | null>(null);
-
 // 使用历史记录管理 composable
 const history = useHistory();
 
-// 处理节点点击事件
-const handleNodeClick = (node: EditableEaogNode, event: Event, isSelectedRef) => {
-  clickedNode.value = node;
+// 移除 clickedNode 计算属性，改为创建一个方法获取当前点击的节点
+const getClickedNode = (): EditableEaogNode | null => {
+  if (!currentEaog.value) return null;
 
-  // 处理选中逻��，Shift键支持多选
-  if (selectedNodes.some(item => item.node === node)) { // 如果已经选中，则取消选中
-    selectedNodes.splice(selectedNodes.findIndex(item => item.node === node), 1);
-    isSelectedRef.value = false;
-  } else { // 否则，添加到选中列表
-    selectedNodes.push({node, isSelectedRef});
-    isSelectedRef.value = true;
-  }
-  // 没有按下Shift键时，清除其他选中
-  if (!event.shiftKey) {
-    selectedNodes.forEach(item => {
-      if (item.node !== node) {
-        item.isSelectedRef.value = false;
-      }
-    });
-    selectedNodes.splice(0, selectedNodes.length, {node, isSelectedRef});
-  }
+  let clicked = null;
+  currentEaog.value.traverseAll(node => {
+    if (node.isClicked) {
+      clicked = node;
+    }
+  });
+
+  return clicked;
 };
 
-// 处理节点右键点击事件，获取右键发生EaogNde节点，传递给上下文菜单
+// 处理节点右键点击事件，获取右键发生EaogNode节点，传递给上下文菜单
 const handleContextMenu = (e: MouseEvent) => {
-  const eaogNode = (e as any).eaogNode || null; // 从事件对象中获取当前节点
+  const eaogNode = (e as any).eaogNode || null; // 从事件对象中��取当前节点
   contextMenuRef.value?.setContextMenuNode(eaogNode);
 };
 
 /**
  * 工具栏、上下文Eaog更新处理函数
- * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
+ * @param newCurrentEaog - 新的当前Eaog���点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
  */
 const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
-  // newCurrentEaog && (currentEaog.value = Eaog.create(newCurrentEaog)); // 注意：Editor中不用create为可执行的Eaog对象。不过，我们已经证实，可以用Eaog.create的实例，来响应式的更新可视化树。这个技术可以用在调试界面。
+  // newCurrentEaog && (currentEaog.value = Eaog.create(newCurrentEaog)); // 注意：Editor中不用create为可执行的Eaog对象。不过，我们已经证实，可以用Eaog.create的实例，来响应式的更新可视化树。��个技术可以用在调试界面。
   newCurrentEaog && (currentEaog.value = newCurrentEaog);
   debug('更新Eaog:', newCurrentEaog);
 };
@@ -99,7 +84,6 @@ onMounted(() => {
     <!-- 工具栏 -->
     <EditorToolbar
       :eaog-data="currentEaog"
-      :selected-nodes="selectedNodes"
       @update-eaog="updateCurrentEaog"
     />
 
@@ -118,7 +102,6 @@ onMounted(() => {
           <div v-if="currentEaog" class="eaog-container">
             <EaogNodeComponent
               :node="currentEaog"
-              @node-click="handleNodeClick"
               @contextmenu="handleContextMenu"
             />
           </div>
@@ -128,15 +111,15 @@ onMounted(() => {
       <!-- 节点详情区域 -->
       <div class="w-1/3 ml-4 p-4 border rounded-md">
         <h2 class="text-lg font-semibold mb-2">节点详情</h2>
-        <div v-if="clickedNode" class="node-details">
+        <div v-if="getClickedNode()" class="node-details">
           <div class="mb-4">
             <div class="mb-2">
               <span class="font-medium">名称：</span>
-              <span>{{ clickedNode.name }}</span>
+              <span>{{ getClickedNode()?.name }}</span>
             </div>
             <div class="mb-2">
               <span class="font-medium">类型：</span>
-              <span>{{ clickedNode.type }}</span>
+              <span>{{ getClickedNode()?.type }}</span>
             </div>
           </div>
 
@@ -144,7 +127,7 @@ onMounted(() => {
           <div>
             <div class="font-medium mb-2">完整JSON数据：</div>
             <JsonViewer
-              :value="clickedNode"
+              :value="getClickedNode()"
               :expand-depth="2"
               copyable
               boxed

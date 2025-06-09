@@ -63,6 +63,7 @@ export const convertToEaogRoot = (node: any) => {
   return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
 }
 
+const TRANSIENT_ATTRIBUTES = ['isNewlyAdded', 'isSelected', 'isClicked', 'parent'];
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
   id!: string;
@@ -72,7 +73,10 @@ export class EditableEaogNode implements EaogNode {
   children: EditableEaogNode[];
   parent?: EditableEaogNode;
 
-  // 其他 EaogNode 的属性...
+  // 其他 EditableEaogNode 的属性...
+  isNewlyAdded = false; // 标记是否为新添加的节点
+  isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
+  isClicked = false; // 标记是否被点击， Eaog Tree上只能有一个节点被点击
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -80,6 +84,86 @@ export class EditableEaogNode implements EaogNode {
     this.children = Array.isArray(node.children)
       ? node.children.map(child => new EditableEaogNode(child, this)) // 递归转换子节点
       : [];
+  }
+
+  // 点击节点
+  click(shouldSelect = true, multiSelect = false): void {
+    // 设置为点击状态
+    if (this.root) {
+      // 清除所有节点的点击状态
+      this.root.traverseAll(node => { node.isClicked = false; });
+    }
+    this.isClicked = true;
+
+    // 处理选中状态
+    if (shouldSelect) {
+      this.select(multiSelect);
+    }
+  }
+
+  // 选中节点
+  select(multiSelect = false): void {
+    if (!multiSelect && this.root) {
+      // 如果不是多选模式，清除所有节点的选中状态
+      this.root.traverseAll(node => { node.isSelected = false; });
+    }
+    this.isSelected = !this.isSelected; // 切换选中状态
+  }
+
+  // 取消选中节点
+  deselect(): void {
+    this.isSelected = false;
+  }
+
+  // 取消所有选中
+  deselectAll(): void {
+    if (this.root) {
+      this.root.traverseAll(node => { node.isSelected = false; });
+    }
+  }
+
+  // 获取所有被选中的节点
+  getSelectedNodes(): EditableEaogNode[] {
+    const selected: EditableEaogNode[] = [];
+    this.root.traverseAll(node => {
+      if (node.isSelected) {
+        selected.push(node);
+      }
+    });
+    return selected;
+  }
+
+  // 遍历所有节点
+  traverseAll(callback: (node: EditableEaogNode) => void): void {
+    callback(this);
+    for (const child of this.children) {
+      child.traverseAll(callback);
+    }
+  }
+
+  // 查找特定节点
+  findNode(predicate: (node: EditableEaogNode) => boolean): EditableEaogNode | null {
+    if (predicate(this)) {
+      return this;
+    }
+
+    for (const child of this.children) {
+      const found = child.findNode(predicate);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  // 设置新添加状态（用于动画效果）
+  markAsNewlyAdded(duration=2000): void { // 2秒后自动清除新添加标记，与CSS动画时长一致
+    this.isNewlyAdded = true;
+    // 可以添加一个自动清除新添加状态的逻辑
+    setTimeout(() => {
+      this.isNewlyAdded = false;
+    }, duration);
   }
 
   get isRoot(): boolean {
@@ -91,7 +175,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   get pathNodes(): EditableEaogNode[] {
-    return this.isRoot ? [this] : [...(this.parent as EditableEaogNode).pathNodes, this]; // 获取从根节点到当前节点的路径节点数组
+    return this.isRoot ? [this] : [...(this.parent as EditableEaogNode).pathNodes, this]; // 获取从根节点到当前节点的路径节点数���
   }
 
   get path(): string {
@@ -123,14 +207,16 @@ export class EditableEaogNode implements EaogNode {
    * omit parent reference to avoid circular references
    */
   cloneDeep(): EditableEaogNode {
-    const raw = toRaw(this); // 获取当前节点的原始数据，拆除 Vue 响应式引用
-    const clone = cloneDeepWith(raw, (v, k) => k === 'parent' ? undefined : v); // 深度克隆，忽略 parent 属性
-    return new EditableEaogNode(clone as EaogNode); // 返回新的 EditableEaogNode 实例, parent will be undefined
+    // const raw = toRaw(this); // 获取当前节点的原始数据，拆除 Vue 响应式引用
+    // const clone = cloneDeepWith(raw, (v, k) => TRANSIENT_ATTRIBUTES.includes(k) ? undefined : v); // 深度克隆，忽略 parent 属性
+    // return new EditableEaogNode(clone as EaogNode); // 返回新的 EditableEaogNode 实例, parent will be undefined
+    return new EditableEaogNode(this.toJSON() as EaogNode); // 直接使用 toJSON 方法转换为普通对象，然后创建新的 EditableEaogNode 实例
   }
+
 
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
-    return {...omit(this, ['parent', 'children']), children}; // 返回一个 JSON 对象，忽略 parent 和 children 属性
+    return {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
   }
 
   equals(other: EditableEaogNode): boolean {
@@ -265,7 +351,7 @@ export class EditableEaogNode implements EaogNode {
       }
       currentNode = currentNode.children.find(child => child.name === nodeName) as EditableEaogNode || null; // 查找子节点
     }
-    return currentNode; // 返回找到的节点或 null
+    return currentNode; // 返回找���的节点或 null
   }
 
   getNodeByPath(path: string): EditableEaogNode | null {
