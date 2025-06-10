@@ -650,9 +650,15 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.12.1
+      '@vben-core/icons':
+        specifier: workspace:*
+        version: link:../../packages/@core/base/icons
       '@vben-core/shadcn-ui':
         specifier: workspace:*
         version: link:../../packages/@core/ui-kit/shadcn-ui
+      '@vben-core/shared':
+        specifier: workspace:*
+        version: link:../../packages/@core/base/shared
       '@vben/access':
         specifier: workspace:*
         version: link:../../packages/effects/access

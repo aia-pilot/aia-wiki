@@ -2,11 +2,14 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
 import { convertToEaogRoot, EditableEaogNode } from './eaog-node';
+// @ts-ignore 忽略导入的类型
 import { addNotifyBeforeNodes } from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
+
 import { useHistory } from '../composables/useHistory';
 import {message} from 'ant-design-vue';
 
 import Debug from 'debug';
+import {triggerDownload} from "@vben-core/shared/utils";
 const debug = Debug('aia:cp-toolbar');
 
 const history = useHistory();
@@ -67,7 +70,7 @@ const handleImport = async () => {
 /**
  * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
  */
-const handleExport = async (event) => {
+const handleExport = async (event: MouseEvent) => {
   debug('导出当前EAOG');
   const data = JSON.stringify(props.eaogData, null, 2);
   await copyToClipboard(data);
@@ -105,13 +108,13 @@ const handleSave = () => {
 const handleUndo = () => {
   const prevEaog = history.undo();
   debug('撤销操作，当前EAOG:', prevEaog);
-  emit('update-eaog', prevEaog); // 触发更新事件
+  if (prevEaog) emit('update-eaog', prevEaog); // 触发更新事件
 };
 
 const handleRedo = () => {
   const nextEaog = history.redo();
   debug('重做操作，当前EAOG:', nextEaog);
-  emit('update-eaog', nextEaog); // 触发更新事件
+  if (nextEaog) emit('update-eaog', nextEaog); // 触发更新事件
 };
 
 const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> => {
@@ -121,7 +124,7 @@ const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> 
     return parseTextToEaog(text);
   } catch (err) {
     console.error('无法读取剪切板内容:', err);
-    return null;
+    return undefined;  // 返回undefined而不是null
   }
 };
 
@@ -133,7 +136,7 @@ const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
     input.onchange = (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) {
-        resolve(null);
+        resolve(undefined);
         return;
       }
 
@@ -145,7 +148,7 @@ const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
       };
       reader.onerror = () => {
         console.error('读取文件失败');
-        resolve();
+        resolve(undefined);
       };
       reader.readAsText(file);
     };
@@ -163,14 +166,16 @@ const copyToClipboard = async (data: any) => {
   }
 };
 
-const downloadToFile = (data: any) => {
-  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
-  const downloadAnchorNode = document.createElement('a');
-  downloadAnchorNode.setAttribute("href", dataStr);
-  downloadAnchorNode.setAttribute("download", "eaog-export.json");
-  document.body.appendChild(downloadAnchorNode);
-  downloadAnchorNode.click();
-  downloadAnchorNode.remove();
+const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
+  const href = 'data:text/json;charset=utf-8,' + encodeURIComponent(data);
+  triggerDownload(href, 'eaog-export.json');
+  // const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
+  // const downloadAnchorNode = document.createElement('a');
+  // downloadAnchorNode.setAttribute("href", dataStr);
+  // downloadAnchorNode.setAttribute("download", "eaog-export.json");
+  // document.body.appendChild(downloadAnchorNode);
+  // downloadAnchorNode.click();
+  // downloadAnchorNode.remove();
 };
 </script>
 

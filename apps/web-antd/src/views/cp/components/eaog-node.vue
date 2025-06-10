@@ -4,7 +4,7 @@
  * 递归组件，用于渲染EAOG树形结构中的节点
  *
  * ## CP(eaog)
- * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构���说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
+ * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构��点说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
  * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
  *
  * ### 可视化策略
@@ -14,10 +14,16 @@
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
 
-import { defineProps, defineEmits, ref, computed } from 'vue';
-import { Badge, Tooltip } from 'ant-design-vue';
-import {type EaogNode, type EditableEaogNode, getChildrenDirection, nodeTypeUIConfig} from "#/views/cp/components/eaog-node";
+import {defineProps, defineEmits, ref} from 'vue';
+import {Badge, Tooltip} from 'ant-design-vue';
+import {
+  type EditableEaogNode,
+  getChildrenDirection,
+  nodeTypeUIConfig
+} from "#/views/cp/components/eaog-node";
 import Debug from 'debug';
+import {ChevronDown} from "@vben-core/icons";
+
 const debug = Debug('aia:eaog-node');
 
 const props = defineProps<{
@@ -45,11 +51,21 @@ const getNodeTypeConfig = (type: string) => {
 // 计算属性：子节点的布局方向
 const childrenDirection = getChildrenDirection(props.node.type);
 
+// 添加折叠状态变量
+const isCollapsed = ref(false);
+
 // 处理节点点击
-const handleNodeClick = (event: Event) => {
+const handleNodeClick = (event: MouseEvent) => {
   debug(`Node clicked: ${props.node.name}`);
   // 使用EditableEaogNode的click方法，直接更新节点状态
   props.node.click(true, event.shiftKey);
+};
+
+// 处理折叠/展开按钮点击
+const toggleCollapse = (event: Event) => {
+  event.stopPropagation(); // 阻止事件冒泡，避免触发节点的点击事件
+  isCollapsed.value = !isCollapsed.value;
+  debug(`Node ${props.node.name} ${isCollapsed.value ? 'collapsed' : 'expanded'}`);
 };
 
 // 处理系统右键菜单事件，附加当前node
@@ -57,7 +73,7 @@ const handleContextMenu = (event: MouseEvent) => {
   debug(`Context menu for node: ${props.node.name}`);
   // 设置node为当前点击的节点
   props.node.click(false); // 只设置为点击状态，不改变选中状态
-  // 将当前节点附加到事件对象上，以便在右键菜单中使用
+  // @ts-ignore 将当前节点附加到事件对象上，以便在右键菜单中使用
   event.eaogNode = props.node;
   // 触发contextmenu事件，但不传递node
   emit('contextmenu', event);
@@ -68,7 +84,7 @@ const handleContextMenu = (event: MouseEvent) => {
   <div class="eaog-node" :class="[childrenDirection, { 'newly-added': node.isNewlyAdded }]">
     <!-- 节点头部 -->
     <div
-      class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer"
+      class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
       :class="{
         [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
         'bg-gray-50': nodeLevel === 0,
@@ -94,10 +110,22 @@ const handleContextMenu = (event: MouseEvent) => {
       <div v-if="node.ref" class="ml-2 px-2 py-1 bg-gray-100 rounded-md text-xs">
         引用: {{ node.ref }}
       </div>
+
+      <!-- 折叠/展开 子节点 -->
+      <ChevronDown
+        v-if="node.children && node.children.length > 0"
+        class="h-4 w-4 shrink-0 transition-transform duration-200 ml-2 text-gray-800"
+        :class="{
+          'transform rotate-180': !isCollapsed,
+          'opacity-0 group-hover:opacity-100': !isCollapsed,
+          'opacity-100': isCollapsed
+        }"
+        @click.stop="toggleCollapse"
+      />
     </div>
 
-    <!-- 子节点 -->
-    <div v-if="node.children && node.children.length > 0" class="eaog-node-children ml-6 pl-4">
+    <!-- 子节点 - 根据折叠状态显示或隐藏 -->
+    <div v-if="node.children && node.children.length > 0 && !isCollapsed" class="eaog-node-children ml-6 pl-4">
       <div v-for="child in node.children" :key="child.name">
         <eaog-node
           :node="child"
@@ -132,11 +160,11 @@ const handleContextMenu = (event: MouseEvent) => {
 
 /** 垂直孩子节点，最后一个孩子。
     连接线只画到子节点header的中点，和其icon中点高度一致。
-    这样可以避免最后一个孩子的连接线过长，影响视觉效果。
+    这样可以避免最后一个孩子的连接线过长，影响��觉效果。
 */
 .eaog-node.vertical > .eaog-node-children > div:last-child > .eaog-node > .eaog-node-header::before {
   content: "";
-  height: 50%; /* 连接线高度为子节点header的中点 */
+  height: 50%; /* 连接���高度为子节点header的中点 */
   @apply absolute -ml-2 -mt-8 border-l border-gray-300
 }
 
@@ -146,12 +174,12 @@ const handleContextMenu = (event: MouseEvent) => {
   @apply flex flex-wrap gap-4;
 }
 
-/** 节点容器 水平布局，heaer > eaog-node-info 展示下边线。各孩子节点将平行连接到此下边线。 TODO: media-query，布局变化，不再水平排布时，不显示下边线 */
+/** ��点容器 水平布局，heaer > eaog-node-info 展示下边线。各孩子节点将平行连接到此下边线。 TODO: media-query，布局变化，不再水平排布时，���显示下边线 */
 .eaog-node.horizontal > .eaog-node-header > .eaog-node-info {
   @apply flex flex-wrap gap-4 border-b border-gray-300 pb-2;
 }
 
-/** 水平孩子节点。展示上连接线，连接到容器的下边线。TODO：media-query，布局变化，不再水平排布时，不显示上连接线 */
+/** 水平孩���节点。展示上连接线，连接到容器的下边线。TODO：media-query，布局变化，不再水平排布时，不显示上连接线 */
 .eaog-node.horizontal > .eaog-node-children > div > .eaog-node::before {
   content: "";
   @apply absolute h-6 -mt-4 ml-10 border-r border-gray-300

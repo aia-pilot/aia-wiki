@@ -39,29 +39,15 @@ export const isContainerNode = (node: any): boolean => {
 // eaog.types.ts
 import {z} from 'zod';
 // @ts-ignore
-import {
-  cpEaogSchema,
-  cpNodeSchema
-} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {cpEaogSchema, cpNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+// @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
-import {toRaw} from "vue";
-import {cloneDeepWith, omit} from "lodash-es";
+import {omit} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
-/**
- * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象
- */
-export const convertToEaogRoot = (node: any) => {
-  node = IS_DEV ? convertBriefEaog(node) : node // @DEV，有时候导入的json是简写格式，我们需要转换为完整格式
-  const res = cpEaogSchema.safeParse(node); // 验证节点数据是否符合 EaogNode Schema
-  if (!res.success) {
-    throw new Error(`Invalid EaogNode data: ${res.error.message}`);
-  }
-  return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
-}
 
 const TRANSIENT_ATTRIBUTES = ['isNewlyAdded', 'isSelected', 'isClicked', 'parent'];
 export class EditableEaogNode implements EaogNode {
@@ -70,10 +56,28 @@ export class EditableEaogNode implements EaogNode {
   type!: string;
   name!: string;
   description?: string;
-  children: EditableEaogNode[];
-  parent?: EditableEaogNode;
 
-  // 其他 EditableEaogNode 的属性...
+
+  // 组合节点的属性
+  children: EditableEaogNode[];
+  parent?: EditableEaogNode; // EditableEaogNode属性（非EaogNode属性, TRANSIENT），用于维护树形结构
+
+  // 递归节点的属性
+  ref?: string;
+
+  // 条件节点的属性
+  condition?: any;
+  params?: any; // 指令节点亦有
+
+  // 指令节点的属性
+  action?: any;
+  results?: any;
+
+  // 迭代器节点的属性
+  item?: string | { contextName: string };
+  items?: string | { contextName: string };
+
+  // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
   isNewlyAdded = false; // 标记是否为新添加的节点
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isClicked = false; // 标记是否被点击， Eaog Tree上只能有一个节点被点击
@@ -82,7 +86,7 @@ export class EditableEaogNode implements EaogNode {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
     this.children = Array.isArray(node.children)
-      ? node.children.map(child => new EditableEaogNode(child, this)) // 递归转换子节点
+      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this)) // 递归转换子节点
       : [];
   }
 
@@ -182,20 +186,20 @@ export class EditableEaogNode implements EaogNode {
     return this.pathNodes.map(node => node.name).join('/'); // 获��从根节点到当前节点的路径字符串
   }
 
-  get previousSibling(): EditableEaogNode | null {
+  get previousSibling(): EditableEaogNode | undefined  {
     if (!this.parent) {
-      return null; // 如果没有父节点，则没有前一个兄弟节点
+      return undefined; // 如果没有父节点，则没有前一个兄弟节点
     }
     const index = this.indexInParent;
-    return index > 0 ? this.parent.children[index - 1] : null; // 返回前一个兄弟节点或 null
+    return index > 0 ? this.parent.children[index - 1] : undefined; // 返回前一个兄弟节点或 null
   }
 
-  get nextSibling(): EditableEaogNode | null {
+  get nextSibling(): EditableEaogNode | undefined {
     if (!this.parent) {
-      return null; // 如果没有父节点，则没有下一个兄弟节点
+      return undefined; // 如果没有父节点，则没有下一个兄弟节点
     }
     const index = this.indexInParent;
-    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : null; // 返回下一个兄弟节点或 null
+    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 返回下一个兄弟节点或 null
   }
 
   get indexInParent(): number {
@@ -282,7 +286,7 @@ export class EditableEaogNode implements EaogNode {
    * @param position 插入位置: 'before' | 'after' | 'child' | 'parent'
    * @returns 新插入的节点
    */
-  insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): void {
+  insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
     newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode); // 确保 newNode 是 EditableEaogNode 实例
     if (position === 'before' || position === 'after') {
       if (!this.parent) {
@@ -306,11 +310,11 @@ export class EditableEaogNode implements EaogNode {
     return newNode; // 返回新插入的节点
   }
 
-  replace(newNode: EditableEaogNode | EaogNode): EditableEaogNode {
+  replace(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
     const {previousSibling, nextSibling, parent} = this
     this.remove(); // 移除当前节点，先移除后加入，保障replace后的节点有正确的命名
     // 替换到原有位置
-    return previousSibling?.insert(newNode, 'after') || nextSibling.insert(newNode, 'before') || parent?.insert(newNode, 'child') || null
+    return previousSibling?.insert(newNode, 'after') || nextSibling?.insert(newNode, 'before') || parent?.insert(newNode, 'child') || undefined
   }
 
   /**
@@ -357,4 +361,18 @@ export class EditableEaogNode implements EaogNode {
   getNodeByPath(path: string): EditableEaogNode | null {
     return this.root.getDescendantByPath(path); // 从根节点开始查找
   }
+}
+
+
+
+/**
+ * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象
+ */
+export const convertToEaogRoot = (node: any) => {
+  node = IS_DEV ? convertBriefEaog(node) : node // @DEV，有时候导入的json是简写格式，我们需要转换为完整格式
+  const res = cpEaogSchema.safeParse(node); // 验证节点数据是否符合 EaogNode Schema
+  if (!res.success) {
+    throw new Error(`Invalid EaogNode data: ${res.error.message}`);
+  }
+  return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
 }

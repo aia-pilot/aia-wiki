@@ -28,6 +28,8 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "@vben-core/shadcn-ui": "workspace:*",
+    "@vben-core/shared": "workspace:*",
+    "@vben-core/icons": "workspace:*",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
     "@vben/constants": "workspace:*",
