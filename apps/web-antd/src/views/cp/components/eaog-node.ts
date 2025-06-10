@@ -1,5 +1,6 @@
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
+import {getCleanObj} from "../utils/clean-obj.js";
 
 // 节点类型对应的颜色和图标
 export const nodeTypeUIConfig = {
@@ -49,10 +50,9 @@ import {IS_DEV} from "#/utils/aia-constants";
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
 
-const TRANSIENT_ATTRIBUTES = ['isNewlyAdded', 'isSelected', 'isClicked', 'parent'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isClicked', 'parent'];
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
-  id!: string;
   type!: string;
   name!: string;
   description?: string;
@@ -78,7 +78,7 @@ export class EditableEaogNode implements EaogNode {
   items?: string | { contextName: string };
 
   // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
-  isNewlyAdded = false; // 标记是否为新添加的节点
+  isNewlyModified = false; // 标记是否为新添加的节点
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isClicked = false; // 标记是否被点击， Eaog Tree上只能有一个节点被点击
 
@@ -137,6 +137,17 @@ export class EditableEaogNode implements EaogNode {
     return selected;
   }
 
+  // 获取被点击的节点
+  getClickedNode(): EditableEaogNode | null {
+    let clickedNode: EditableEaogNode | null = null;
+    this.root.traverseAll(node => {
+      if (node.isClicked) {
+        clickedNode = node; // 找到被点击的节点
+      }
+    });
+    return clickedNode; // 返回被点击的节点或 null
+  }
+
   // 遍历所有节点
   traverseAll(callback: (node: EditableEaogNode) => void): void {
     callback(this);
@@ -161,12 +172,12 @@ export class EditableEaogNode implements EaogNode {
     return null;
   }
 
-  // 设置新添加状态（用于动画效果）
-  markAsNewlyAdded(duration=2000): void { // 2秒后自动清除新添加标记，与CSS动画时长一致
-    this.isNewlyAdded = true;
-    // 可以添加一个自动清除新添加状态的逻辑
+  // 设置新修改状态（用于动画效果）
+  markAsNewlyModifiedForAWhile(duration=2000): void {
+    this.isNewlyModified = true;
+    // 到时（2秒）取消。2秒，与CSS动画时长一致。
     setTimeout(() => {
-      this.isNewlyAdded = false;
+      this.isNewlyModified = false;
     }, duration);
   }
 
@@ -220,7 +231,8 @@ export class EditableEaogNode implements EaogNode {
 
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
-    return {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
+    const res = {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
+    return getCleanObj(res); // 确保返回的对象没有 undefined 属性
   }
 
   equals(other: EditableEaogNode): boolean {
@@ -228,6 +240,27 @@ export class EditableEaogNode implements EaogNode {
       return false; // 如果其他对象不是 EditableEaogNode 实例，返回 false
     }
     return JSON.stringify(this.toJSON()) === JSON.stringify(other.toJSON()); // 比较两个节点的 JSON 表示是否相等
+  }
+
+  /**
+   * 转换为表单值（编辑前、编辑后）
+   * 必须转换，否则Vben Form会读取不到值。因为，EditableEaogNode不是plain Object（有prototype链），通不过了 isPlainObject 检查，
+   * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入使用
+   * @param values 表单值
+   * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
+   */
+  getFormValues(values: Partial<EaogNode> | undefined): object | undefined {
+    if (!values) { // 编辑前，返回当前节点的可编辑属性
+      return omit(this.toJSON(), ['children', 'id']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
+    } else { // 编辑后，合并表单值
+      values = getCleanObj(values, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
+      const isModified = Object.keys(values).some(key => values[key] !== this[key]);
+      return isModified ? {...this.toJSON(), ...values} : undefined // 合并当前节点的属性和表单值
+    }
+  }
+
+  mergeFormValues(values: Partial<EaogNode>): void {
+    Object.assign(this, values);
   }
 
   /**
@@ -362,7 +395,6 @@ export class EditableEaogNode implements EaogNode {
     return this.root.getDescendantByPath(path); // 从根节点开始查找
   }
 }
-
 
 
 /**

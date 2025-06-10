@@ -34,8 +34,6 @@ const debug = Debug('aia:cp-editor');
 // 当前EAOG数据
 const currentEaog = ref<EditableEaogNode | null>(null);
 
-// 上下文菜单的引用
-const contextMenuRef = ref<InstanceType<typeof EaogContextMenu>>();
 
 // 使用历史记录管理 composable
 const history = useHistory();
@@ -54,15 +52,10 @@ const getClickedNode = (): EditableEaogNode | null => {
   return clicked;
 };
 
-// 处理节点右键点击事件，获取右键发生EaogNode节点，传递给上下文菜单
-const handleContextMenu = (e: MouseEvent) => {
-  const eaogNode = (e as any).eaogNode || null; // 从事件对象中��取当前节点
-  contextMenuRef.value?.setContextMenuNode(eaogNode);
-};
 
 /**
  * 工具栏、上下文Eaog更新处理函数
- * @param newCurrentEaog - 新的当前Eaog���点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
+ * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
  */
 const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
   // newCurrentEaog && (currentEaog.value = Eaog.create(newCurrentEaog)); // 注意：Editor中不用create为可执行的Eaog对象。不过，我们已经证实，可以用Eaog.create的实例，来响应式的更新可视化树。��个技术可以用在调试界面。
@@ -91,8 +84,7 @@ onMounted(() => {
     <div class="flex p-4">
       <!-- 上下文菜单组件 -->
       <EaogContextMenu
-        ref="contextMenuRef"
-        :eaog-data="currentEaog"
+        :current-eaog="currentEaog"
         :eaog-node-form="eaogNodeForm"
         @add-history="history.addToHistory(currentEaog)"
       >
@@ -100,10 +92,7 @@ onMounted(() => {
         <div class="w-2/3 p-4 border rounded-md">
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
           <div v-if="currentEaog" class="eaog-container">
-            <EaogNodeComponent
-              :node="currentEaog"
-              @contextmenu="handleContextMenu"
-            />
+            <EaogNodeComponent :node="currentEaog"/>
           </div>
         </div>
       </EaogContextMenu>

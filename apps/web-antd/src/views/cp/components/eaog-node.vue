@@ -4,7 +4,7 @@
  * 递归组件，用于渲染EAOG树形结构中的节点
  *
  * ## CP(eaog)
- * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构��点说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
+ * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构节点说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
  * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
  *
  * ### 可视化策略
@@ -14,7 +14,7 @@
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
 
-import {defineProps, defineEmits, ref} from 'vue';
+import {defineProps, ref} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
 import {
   type EditableEaogNode,
@@ -32,9 +32,9 @@ const props = defineProps<{
 }>();
 
 // 不再需要node-click事件
-const emit = defineEmits<{
-  (e: 'contextmenu', event: MouseEvent): void;
-}>();
+// const emit = defineEmits<{
+//   (e: 'contextmenu', event: MouseEvent): void;
+// }>();
 
 // 默认层级为0
 const nodeLevel = props.level ?? 0;
@@ -76,12 +76,12 @@ const handleContextMenu = (event: MouseEvent) => {
   // @ts-ignore 将当前节点附加到事件对象上，以便在右键菜单中使用
   event.eaogNode = props.node;
   // 触发contextmenu事件，但不传递node
-  emit('contextmenu', event);
+  // emit('contextmenu', event);
 };
 </script>
 
 <template>
-  <div class="eaog-node" :class="[childrenDirection, { 'newly-added': node.isNewlyAdded }]">
+  <div class="eaog-node" :class="[childrenDirection, { 'newly-added': node.isNewlyModified }]">
     <!-- 节点头部 -->
     <div
       class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
@@ -111,7 +111,7 @@ const handleContextMenu = (event: MouseEvent) => {
         引用: {{ node.ref }}
       </div>
 
-      <!-- 折叠/展开 子节点 -->
+      <!-- 折叠/展开 子节点（子树） -->
       <ChevronDown
         v-if="node.children && node.children.length > 0"
         class="h-4 w-4 shrink-0 transition-transform duration-200 ml-2 text-gray-800"
@@ -124,13 +124,12 @@ const handleContextMenu = (event: MouseEvent) => {
       />
     </div>
 
-    <!-- 子节点 - 根据折叠状态显示或隐藏 -->
+    <!-- 子节点（子树）-->
     <div v-if="node.children && node.children.length > 0 && !isCollapsed" class="eaog-node-children ml-6 pl-4">
       <div v-for="child in node.children" :key="child.name">
         <eaog-node
           :node="child"
           :level="nodeLevel + 1"
-          @contextmenu="emit('contextmenu', $event)"
         />
       </div>
     </div>

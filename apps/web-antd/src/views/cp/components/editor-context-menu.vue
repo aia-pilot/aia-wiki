@@ -27,68 +27,58 @@ import {
   Expand
 } from '@vben/icons';
 import Debug from 'debug';
-import { ref } from 'vue';
-import { nextTick } from 'vue'; // 添加 nextTick 导入
+import {computed, ref} from 'vue';
 
 const debug = Debug('aia:cp-context-menu');
 
+// 组件属性
+const props = defineProps<{
+  currentEaog: EditableEaogNode | null;
+  eaogNodeForm: any;
+}>();
+
 // 组件内部状态
-const contextMenuNode = ref<EditableEaogNode | null>(null);
+const currentNode = computed(() => props.currentEaog?.getClickedNode()); // 获取当前右键点击的节点
 const clipboardNode = ref<EditableEaogNode | null>(null);
 const clipboardWithChildren = ref<boolean>(false);
 
-// 组件属性
-const props = defineProps<{
-  eaogData: EditableEaogNode | null;
-  eaogNodeForm: any;
-}>();
 
 // 事件
 const emit = defineEmits<{
   'add-history': []; // 添加历史记录
 }>();
 
-// 设置当前右键点击的节点
-const setContextMenuNode = (node: EditableEaogNode | null) => {
-  contextMenuNode.value = node;
-};
 
 // 处理节点操作函数
 const handleNewNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现新建节点的逻辑
-  debug('新建节点', position, contextMenuNode.value);
+  debug('新建节点', position, currentNode.value);
   props.eaogNodeForm?.open({
-    node: contextMenuNode.value,
     onSuccess: (newNode: EditableEaogNode) => {
-      // 使用 EditableEaogNode 的 insert 方法插入新节点
-      if (contextMenuNode.value) {
-        contextMenuNode.value.insert(newNode, position);
-        contextMenuNode.value.markAsNewlyAdded();
-        emit('add-history');
-      }
+      currentNode.value.insert(newNode, position);
+      newNode.markAsNewlyModifiedForAWhile();
+      emit('add-history');
     }
   });
 };
 
 const handleEditNode = () => {
-  debug('编辑节点', contextMenuNode.value);
+  debug('编辑节点', currentNode.value);
   props.eaogNodeForm?.open({
-    node: contextMenuNode.value,
-    onSuccess: (updatedNode: EditableEaogNode) => {
-      // 更新eaogData中的节点
-      if (contextMenuNode.value) {
-        Object.assign(contextMenuNode.value, updatedNode);
-        emit('add-history');
-      }
+    node: currentNode.value,
+    onSuccess: (isModified: boolean) => {
+      if (!isModified) return; // 如果没有修改，直接返回
+      currentNode.value.markAsNewlyModifiedForAWhile();
+      emit('add-history');
     }
   });
 };
 
 const handleCopyNode = (withChildren: boolean) => {
   // 在这里实现复制节点的逻辑
-  if (contextMenuNode.value) {
+  if (currentNode.value) {
     // 使用 EditableEaogNode 的 cloneDeep 方法复制节点
-    const nodeCopy = contextMenuNode.value.cloneDeep();
+    const nodeCopy = currentNode.value.cloneDeep();
     if (!withChildren && nodeCopy.children) {
       nodeCopy.children = []; // 清除子节点
     }
@@ -101,29 +91,25 @@ const handleCopyNode = (withChildren: boolean) => {
 const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现粘贴节点的逻辑
   debug('粘贴节点', position, clipboardNode.value);
-  if (!clipboardNode.value || !contextMenuNode.value) return;
+  if (!clipboardNode.value || !currentNode.value) return;
 
   // 使用 EditableEaogNode 的 insert 方法插入新节点
   const pastedNode = clipboardNode.value.cloneDeep();
-  contextMenuNode.value.insert(pastedNode, position);
-  pastedNode.markAsNewlyAdded()
+  currentNode.value.insert(pastedNode, position);
+  pastedNode.markAsNewlyModifiedForAWhile()
   emit('add-history');
 };
 
 const handleDeleteNode = (deleteSubtree: boolean) => {
   // 在这里实现删除节点的逻辑
-  debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', contextMenuNode.value);
-  if (!contextMenuNode.value) return;
+  debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', currentNode.value);
+  if (!currentNode.value) return;
 
   // 使用 EditableEaogNode 的 remove 方法删除节点
-  contextMenuNode.value.remove(deleteSubtree);
+  currentNode.value.remove(deleteSubtree);
   emit('add-history'); // 添加当前状态到历史记录
 };
 
-// 暴露给父组件的方法
-defineExpose({
-  setContextMenuNode
-});
 </script>
 
 <template>
@@ -149,8 +135,8 @@ defineExpose({
             在后面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handleNewNode('child')"
-            :disabled="isLeafNode(contextMenuNode)"
+                           @click.prevent="() => handleNewNode('child')"
+                           :disabled="isLeafNode(currentNode)"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             作为子节点
@@ -180,8 +166,8 @@ defineExpose({
             仅节点
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handleCopyNode(true)"
-            :disabled="isLeafNode(contextMenuNode)"
+                           @click.prevent="() => handleCopyNode(true)"
+                           :disabled="isLeafNode(currentNode)"
           >
             <Expand class="mr-2 h-4 w-4 icon"/>
             包含子树
@@ -197,29 +183,29 @@ defineExpose({
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handlePasteNode('before')"
-            :disabled="!clipboardNode"
+                           @click.prevent="() => handlePasteNode('before')"
+                           :disabled="!clipboardNode"
           >
             <ArrowLeft class="mr-2 h-4 w-4 icon"/>
             粘贴到前面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handlePasteNode('after')"
-            :disabled="!clipboardNode"
+                           @click.prevent="() => handlePasteNode('after')"
+                           :disabled="!clipboardNode"
           >
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             粘贴到后面
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handlePasteNode('child')"
-            :disabled="!clipboardNode ||isLeafNode(contextMenuNode)"
+                           @click.prevent="() => handlePasteNode('child')"
+                           :disabled="!clipboardNode ||isLeafNode(currentNode)"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             粘贴为子节点
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handlePasteNode('parent')"
-            :disabled="!clipboardNode || isLeafNode(clipboardNode)"
+                           @click.prevent="() => handlePasteNode('parent')"
+                           :disabled="!clipboardNode || isLeafNode(clipboardNode)"
           >
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
             粘贴为父节点
@@ -237,8 +223,8 @@ defineExpose({
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
           <ContextMenuItem class="menu-item"
-            @click.prevent="() => handleDeleteNode(false)"
-            :disabled="isLeafNode(contextMenuNode)"
+                           @click.prevent="() => handleDeleteNode(false)"
+                           :disabled="isLeafNode(currentNode)"
           >
             <Copy class="mr-2 h-4 w-4 icon"/>
             仅删除节点（保留子节点）
@@ -264,7 +250,6 @@ div[role="menuitem"] .icon {
   color: #666; /* 暗灰色 */
   opacity: 0.85; /* 略微降低不透明度 */
 }
-
 
 
 /* 禁用菜单项 */

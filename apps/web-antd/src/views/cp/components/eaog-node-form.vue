@@ -6,14 +6,20 @@ import {EditableEaogNode} from './eaog-node';
 
 // 导入您的Schema定义
 // @ts-ignore
-import {cpNodeSchema, cpInstructionSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {
+  cpNodeSchema,
+  cpInstructionSchema,
+  recursionSchema,
+  iteratorBaseSchema,
+  baseNodeSchema,
+  allNodeTypes
+} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 
 // 节点类型选项
 const nodeTypeOptions = allNodeTypes.map((type: string) => ({label: type, value: type}));
 
-const formData = ref({});
-const isEdit = computed(() => formData.value && Object.keys(formData.value).length > 0);
-const title = computed(() => isEdit.value ? '编辑节点' : '创建节点');
+const editableEaogNode = ref<EditableEaogNode>();
+const title = ref(); // 模态框标题
 const onSuccess = ref<((data: any) => void) | null>(null); // 用于接收父组件传入的成功回调
 
 const [Form, formApi] = useVbenForm({
@@ -26,6 +32,11 @@ const [Form, formApi] = useVbenForm({
         options: nodeTypeOptions,
         placeholder: '请选择节点类型',
       },
+      dependencies: {
+        triggerFields: ['type'],
+        disabled: () => title.value === '编辑节点', // 编辑时禁用类型选择
+      },
+      controlClass: 'w-full',
       rules: z.string().min(1, '请选择节点类型'),
     },
     {
@@ -54,9 +65,9 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        show: (values) => values.type === 'instruction',
+        if: (values) => values.type === 'instruction',
+        rules: cpInstructionSchema.shape.action,
       },
-      rules: cpInstructionSchema.shape.action,
     },
 
     // 指令节点特有字段 - params
@@ -69,7 +80,11 @@ const [Form, formApi] = useVbenForm({
         copyable: true,
         expandDepth: 2,
         previewMode: false, // 设为 false 启用编辑模式
-      }
+      },
+      dependencies: {
+        triggerFields: ['type'],
+        if: (values) => values.type === 'instruction',
+      },
     },
     // 指令节点特有字段 - results
     {
@@ -81,7 +96,11 @@ const [Form, formApi] = useVbenForm({
         copyable: true,
         expandDepth: 2,
         previewMode: false, // 设为 false 启用编辑模式
-      }
+      },
+      dependencies: {
+        triggerFields: ['type'],
+        if: (values) => values.type === 'instruction',
+      },
     },
 
     // TODO: 指令节点特有字段 - params、results 专用控件 待开发，参考：https://deepwiki.com/search/dynamicrecordformexamplevuedyn_ee420cbb-9fca-47e9-a43e-31440755b3ce
@@ -96,9 +115,9 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        show: (values) => values.type === 'recursion',
+        if: (values) => values.type === 'recursion',
+        rules: recursionSchema.shape.ref,
       },
-      rules: recursionSchema.shape.ref,
     },
     // 迭代器字段 - items
     {
@@ -110,9 +129,9 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        show: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
+        if: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
+        rules: iteratorBaseSchema.shape.items,
       },
-      rules: iteratorBaseSchema.shape.items,
     },
     // 迭代器字段 - item
     {
@@ -124,54 +143,71 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        show: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
+        if: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
+        rules: iteratorBaseSchema.shape.item,
       },
-      rules: iteratorBaseSchema.shape.item,
     },
   ],
   handleSubmit: async (values) => {
     try {
-      // 使用完整的nodeSchema进行验证
-      const validatedData = cpNodeSchema.parse(values);
-      // TODO: 整个eaog校验，例如：children无重名。。。。
-      onSuccess.value?.(validatedData);
+      if (title.value === "编辑节点") {
+        // 合并回未编辑的值，如：children、id等，然后校验
+        const v = editableEaogNode.value.getFormValues(values)
+        const isModified = v !== undefined
+        if (isModified) {
+          cpNodeSchema.parse(v);
+          // 更新editableEaogNode的值
+          editableEaogNode.value.mergeFormValues(values);
+        }
+        onSuccess.value?.(isModified); // 调用父组件传入的回调
+      } else { // 新建节点
+        values = {...values, children: []} // 表单上没有children字段，手动添加
+        cpNodeSchema.parse(values)
+        // 创建新的EditableEaogNode实例
+        const newNode = new EditableEaogNode(values);
+        onSuccess.value?.(newNode);
+      }
+      modalApi.close(); // 提交成功后关闭模态框
     } catch (error) {
       console.error('表单验证失败:', error);
     }
+
   },
   showDefaultActions: false,
 });
 
 const [Modal, modalApi] = useVbenModal({
-  title: title.value,
   onConfirm: () => formApi.submitForm(),
   onOpenChange: (isOpen) => {
-    if (isOpen && isEdit.value) {
-      formApi.setValues(formData.value);
-    } else if (isOpen) {
-      formApi.resetForm();
+    if (isOpen) {
+      const {node, isEdit} = modalApi.getData<EditableEaogNode>();
+      if (isEdit) {
+        title.value = "编辑节点"
+        editableEaogNode.value = node;
+        formApi.setValues(node.getFormValues());
+      } else {
+        title.value = "新建节点";
+        formApi.resetForm();
+        editableEaogNode.value = undefined;
+      }
     }
   },
 });
 
-// 暴露方法供父组件调用
+// 暴露API供父组件调用
 defineExpose({
-  open: ({ node, onSuccess: _onSuccess }: { node?: EditableEaogNode; onSuccess: (data: any) => void }) => {
-    if (node) {
-      formData.value = node;
-      formApi.setValues(node);
-    } else {
-      formData.value = {};
-      formApi.resetForm();
-    }
+  open: ({node, onSuccess: _onSuccess}: {
+    node?: EditableEaogNode;
+    onSuccess: (data: any) => void
+  }) => {
+    modalApi.setData({node, isEdit: !!node}).open();
     onSuccess.value = _onSuccess;
-    modalApi.open();
   },
 });
 </script>
 
 <template>
-  <Modal>
+  <Modal :title="title">
     <Form/>
   </Modal>
 </template>
