@@ -68,6 +68,7 @@ export class EditableEaogNode implements EaogNode {
   // 条件节点的属性
   condition?: any;
   params?: any; // 指令节点亦有
+  choice?: string  // 条件节点的选择项，所有节点都有可能有
 
   // 指令节点的属性
   action?: any;
@@ -396,6 +397,9 @@ export class EditableEaogNode implements EaogNode {
   }
 }
 
+export const validateEaog = (eaog: EaogNode): z.SafeParseReturnType<EaogNode, z.ZodError> => {
+  return cpEaogSchema.safeParse(eaog); // 验证 EAOG 数据是否符合 cpEaogSchema
+}
 
 /**
  * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象

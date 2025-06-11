@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue';
+import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {EditableEaogNode} from './eaog-node';
@@ -12,6 +12,7 @@ import {
   recursionSchema,
   iteratorBaseSchema,
   baseNodeSchema,
+  corSchema,
   allNodeTypes
 } from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
 
@@ -145,6 +146,36 @@ const [Form, formApi] = useVbenForm({
         triggerFields: ['type'],
         if: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
         rules: iteratorBaseSchema.shape.item,
+      },
+    },
+
+    // 选择(cor) 字段 - condition
+    {
+      component: 'Input',
+      fieldName: 'condition',
+      label: '条件表达式',
+      componentProps: {
+        placeholder: '请输入条件表达式',
+      },
+      dependencies: {
+        triggerFields: ['type'],
+        if: (values) => ['cor'].includes(values.type),
+        rules: corSchema.shape.condition,
+      },
+    },
+
+    // 选项字段 - choice
+    {
+      component: 'Input',
+      fieldName: 'choice',
+      label: '选项名称',
+      componentProps: {
+        placeholder: '请输入选项名称',
+      },
+      dependencies: {
+        triggerFields: ['type'],
+        if: (values) => editableEaogNode.value.parent?.type === 'cor',
+        rules: baseNodeSchema.shape.choice,
       },
     },
   ],

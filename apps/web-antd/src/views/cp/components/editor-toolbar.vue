@@ -1,32 +1,30 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import { convertToEaogRoot, EditableEaogNode } from './eaog-node';
+import {convertToEaogRoot, EditableEaogNode, validateEaog} from './eaog-node';
 // @ts-ignore 忽略导入的类型
-import { addNotifyBeforeNodes } from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
+import {
+  addNotifyBeforeNodes,
+  addControlBeforeNodes
+} from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
 
-import { useHistory } from '../composables/useHistory';
+import {useHistory} from '../composables/useHistory';
 import {message} from 'ant-design-vue';
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
+
 const debug = Debug('aia:cp-toolbar');
 
 const history = useHistory();
 const props = defineProps<{
-  eaogData: EditableEaogNode | null;
+  currentEaog: EditableEaogNode | null;
 }>();
 
 // 定义组件要触发的事件
 const emit = defineEmits<{
   'update-eaog': [eaog: EditableEaogNode];
 }>();
-
-// 直接从 eaogData 获取选中的节点
-const getSelectedNodes = (): EditableEaogNode[] => {
-  if (!props.eaogData) return [];
-  return props.eaogData.getSelectedNodes();
-};
 
 // 工具栏操作处理函数
 const handleRefresh = () => {
@@ -72,7 +70,7 @@ const handleImport = async () => {
  */
 const handleExport = async (event: MouseEvent) => {
   debug('导出当前EAOG');
-  const data = JSON.stringify(props.eaogData, null, 2);
+  const data = JSON.stringify(props.currentEaog, null, 2);
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 
@@ -84,10 +82,10 @@ const handleExport = async (event: MouseEvent) => {
 const handleReport = () => {
   debug('添加报告节点');
   // 直接获取选中节点并调用相关函数
-  const selectedNodes = getSelectedNodes();
+  const selectedNodes = props.currentEaog.getSelectedNodes();
   if (selectedNodes.length > 0) {
     addNotifyBeforeNodes(selectedNodes);
-    history.addToHistory(props.eaogData); // 添加当前EAOG到历史记录
+    history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
   } else {
     message.warning('请先选择至少一个节点');
   }
@@ -95,6 +93,14 @@ const handleReport = () => {
 
 const handleControl = () => {
   debug('添加控制节点');
+// 直接获取选中节点并调用相关函数
+  const selectedNodes = props.currentEaog.getSelectedNodes()
+  if (selectedNodes.length > 0) {
+    addControlBeforeNodes(selectedNodes);
+    history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
+  } else {
+    message.warning('请先选择至少一个节点');
+  }
 };
 
 const handleOpen = () => {
@@ -115,6 +121,20 @@ const handleRedo = () => {
   const nextEaog = history.redo();
   debug('重做操作，当前EAOG:', nextEaog);
   if (nextEaog) emit('update-eaog', nextEaog); // 触发更新事件
+};
+
+const handleValidate = () => {
+  debug('校验EAOG数据');
+  if (!props.currentEaog) {
+    message.warning('当前没有可校验的数据');
+    return;
+  }
+  const res = validateEaog(props.currentEaog);
+  if (res.success) {
+    message.success('EAOG数据校验通过，符合数格：cpEaogSchema');
+  } else {
+    console.error('EAOG数据校验失败:', res.error);
+  }
 };
 
 const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> => {
@@ -182,29 +202,32 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
 <template>
   <div class="flex items-center gap-2 p-2 border-b">
     <!-- 打开、导入组 -->
-    <EditorToolbarButton icon="lucide:folder-open" tooltip="打开" @click="handleOpen" :disabled="!IS_STANDALONE_APP"/>
-    <EditorToolbarButton icon="lucide:upload" tooltip="导入" @click="handleImport" />
+    <EditorToolbarButton icon="lucide:folder-open" tooltip="打开" @click="handleOpen"
+                         :disabled="!IS_STANDALONE_APP"/>
+    <EditorToolbarButton icon="lucide:upload" tooltip="导入" @click="handleImport"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- 刷新、导出、保存组 -->
-    <EditorToolbarButton icon="lucide:refresh-cw" tooltip="刷新" @click="handleRefresh" />
-    <EditorToolbarButton icon="lucide:save" tooltip="保存" @click="handleSave" :disabled="!IS_STANDALONE_APP"/>
-    <EditorToolbarButton icon="lucide:download" tooltip="导出" @click="handleExport" />
+    <!-- 导出、保存组 -->
+    <EditorToolbarButton icon="lucide:save" tooltip="保存" @click="handleSave"
+                         :disabled="!IS_STANDALONE_APP"/>
+    <EditorToolbarButton icon="lucide:download" tooltip="导出" @click="handleExport"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
     <!-- 报告、控制组 -->
-    <EditorToolbarButton icon="lucide:file-text" tooltip="报告" @click="handleReport" />
-    <EditorToolbarButton icon="lucide:settings" tooltip="控制" @click="handleControl" />
+    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="handleReport"/>
+    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="handleControl"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- 撤销、重做组 -->
-    <EditorToolbarButton icon="lucide:undo" tooltip="撤销" :disabled="!history.canUndo()" @click="handleUndo" />
-    <EditorToolbarButton icon="lucide:redo" tooltip="重做" :disabled="!history.canRedo()" @click="handleRedo" />
+    <!-- 刷新、撤销、重做组 -->
+    <EditorToolbarButton icon="lucide:refresh-cw" tooltip="刷新" @click="handleRefresh"/>
+    <EditorToolbarButton icon="mdi:check-circle-outline" tooltip="校验" @click="handleValidate"/>
+    <EditorToolbarButton icon="lucide:undo" tooltip="撤销" :disabled="!history.canUndo()" @click="handleUndo"/>
+    <EditorToolbarButton icon="lucide:redo" tooltip="重做" :disabled="!history.canRedo()" @click="handleRedo"/>
   </div>
 </template>

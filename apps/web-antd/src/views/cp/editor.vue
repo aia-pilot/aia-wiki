@@ -76,7 +76,7 @@ onMounted(() => {
   <div class="cp-editor">
     <!-- 工具栏 -->
     <EditorToolbar
-      :eaog-data="currentEaog"
+      :current-eaog="currentEaog"
       @update-eaog="updateCurrentEaog"
     />
 
