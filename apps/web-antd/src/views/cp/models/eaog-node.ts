@@ -2,6 +2,7 @@
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import {z} from 'zod';
+import {ref, type Ref} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore
 import {cpEaogSchema, cpNodeSchema, compositeNodeSchema, baseNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore
@@ -15,7 +16,8 @@ const debug = Debug("aia:cp:eaog-node");
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isClicked', 'isCollapsed', 'parent'];
+// 将isClicked从TRANSIENT_ATTRIBUTES中移除
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent'];
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
   type!: string;
@@ -30,7 +32,7 @@ export class EditableEaogNode implements EaogNode {
   // 递归节点的属性
   ref?: string;
 
-  // 条件节点的属性
+  // 条件节点的��性
   condition?: any;
   params?: any; // 指令节点亦有
   choice?: string  // 条件节点的选择项，所有节点都有可能有
@@ -46,7 +48,7 @@ export class EditableEaogNode implements EaogNode {
   // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
   isNewlyModified = false; // 标记是否为新添加的节点
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
-  isClicked = false; // 标记是否被点击， Eaog Tree上只能有一个节点被点击
+  // isClicked 属性已移除
   isCollapsed = false; // 标记节点是否折叠子节点
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
@@ -87,12 +89,8 @@ export class EditableEaogNode implements EaogNode {
 
   // 点击节点
   click(shouldSelect = true, multiSelect = false): void {
-    // 设置为点击状态
-    if (this.root) {
-      // 清除所有节点的点击状态
-      this.root.traverseAll(node => { node.isClicked = false; });
-    }
-    this.isClicked = true;
+    // 设置为当前节点
+    currentNode.value = this;
 
     // 处理选中状态
     if (shouldSelect) {
@@ -136,16 +134,7 @@ export class EditableEaogNode implements EaogNode {
     return selected;
   }
 
-  // 获取被点击的节点
-  getClickedNode(): EditableEaogNode | null {
-    let clickedNode: EditableEaogNode | null = null;
-    this.root.traverseAll(node => {
-      if (node.isClicked) {
-        clickedNode = node; // 找到被点击的节点
-      }
-    });
-    return clickedNode; // 返回被点击的节点或 null
-  }
+  // getClickedNode函数已从类中移除
 
   // 遍历所有节点
   traverseAll(callback: (node: EditableEaogNode) => void): void {
@@ -226,7 +215,10 @@ export class EditableEaogNode implements EaogNode {
    * omit parent reference to avoid circular references
    */
   cloneDeep(): EditableEaogNode {
-    return new this.constructor(this.toJSON() as EaogNode); // 直接使用 toJSON 方法转换为普通对象，然后创建新的 EditableEaogNode 实例
+    const clone = new this.constructor(omit(this.toJSON(), ['children']));
+    clone.children = this.children.map(child => child.cloneDeep());
+    clone.children.forEach(child => child.parent = clone);
+    return clone;
   }
 
 
@@ -245,7 +237,7 @@ export class EditableEaogNode implements EaogNode {
 
   /**
    * 转换为表单值（编辑前、编辑后）
-   * 必须转换，否则Vben Form会读取不到值。因为，EditableEaogNode不是plain Object（有prototype链），通不过了 isPlainObject 检查，
+   * 必须转换，否则Vben Form会读取不到值���因为，EditableEaogNode不是plain Object（有prototype链），通不过了 isPlainObject 检查，
    * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入使用
    * @param values 表单值
    * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
@@ -308,7 +300,7 @@ export class EditableEaogNode implements EaogNode {
         this.children.splice(index + 1, 0, child);
       }
     } else {
-      // 如果没有指定锚点，则直接添加到子节点列表末尾
+      // 如果没有指定锚点，则直接添加到子节点��表末尾
       this.children.push(child);
     }
     child.parent = this; // 设置子节点的父节点为当前节点
@@ -335,10 +327,12 @@ export class EditableEaogNode implements EaogNode {
         throw new Error('Cannot promote non-composite node to parent');
       }
       if (!this.parent) {
-        throw new Error('Cannot promote node to root');
+        debug('更换根节点', newNode, this);
+        currentEaog.value = newNode; // 如果当前节点是根节点，则更新当前Eaog
+      } else {
+        this.parent.addChild(newNode, this, 'before'); // 在当前节点之前插入新节点
+        this.remove(); // 从当前父节点中移除当前节点
       }
-      this.parent.addChild(newNode, this, 'before'); // 在当前节点之前插入新节点
-      this.remove(); // 从当前父节点中移除当前节点
       newNode.addChild(this); // 将当前节点添加为新节点的子节点
     }
     return newNode; // 返回新插入的节点
@@ -415,14 +409,33 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * 根据路径获取节点
+   * ���据路径获取节点
    * @param path 路径字符串，格式为 "/node1/node2/node3"
-   * @returns 找到的节点或 null
+   * @returns ��到的节点或 null
    */
   getNodeByPath(path: string): EditableEaogNode | null {
     return this.root.getDescendantByPath(path); // 从根节点开始查找
   }
 }
+
+// 当前EAOG数据作为全局共享状态
+export const currentEaog: Ref<EditableEaogNode | null> = ref(null);
+
+// 当前被点击的节点
+export const currentNode: Ref<EditableEaogNode | null> = ref(null);
+
+/**
+ * 更新当前EAOG数据
+ * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
+ */
+export const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
+  if (newCurrentEaog) {
+    currentEaog.value = newCurrentEaog;
+    // 当更新EAOG对象时重置currentNode
+    currentNode.value = null;
+  }
+  debug('更新Eaog:', newCurrentEaog);
+};
 
 export const validateEaog = (eaog: EaogNode): z.SafeParseReturnType<EaogNode, z.ZodError> => {
   return cpEaogSchema.safeParse(eaog); // 验证 EAOG 数据是否符合 cpEaogSchema

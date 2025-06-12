@@ -18,7 +18,6 @@ class EaogFramework extends EditableEaogNode {
     if (!this.isRoot && !this.isLeaf) throw new Error("Root node is required to create an EaogFramework");
     if (!this.meta?.framework) throw new Error("EaogFramework root node must have meta.framework set to true.");
     if (this.descendants.some(d => d.meta?.framework)) throw new Error("EaogFramework root node cannot have descendants with meta.framework set to true.");
-    if (this.isMounted) throw new Error("EaogFramework is already mounted. Cannot create a new instance.");
   }
 
   get mountPoints(): EditableEaogNode[] {
@@ -90,6 +89,9 @@ class EaogFramework extends EditableEaogNode {
   }
 
   private mountNode(node: EditableEaogNode, mountPoint: EditableEaogNode) {
+    if (this.isMounted) {
+      throw new Error("EaogFramework is already mounted. Cannot mount more nodes.");
+    }
     // 将所有nodes的name中存在形如："控制：${mountPointName}" 替换为 `控制：mountNodeName`，让节点名称更加清晰。
     const nameReplaceRegex = new RegExp('\\${' + mountPoint.name + '}', 'g');
     [this, ...this.descendants].forEach(n => {

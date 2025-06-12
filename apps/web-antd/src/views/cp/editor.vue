@@ -16,52 +16,25 @@
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
-import {EditableEaogNode, convertToEaogRoot} from './models/eaog-node';
+import {
+  convertToEaogRoot,
+  currentEaog,
+  currentNode,
+  updateCurrentEaog,
+} from './models/eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
-import {onMounted, ref, computed} from 'vue';
+import {onMounted, ref} from 'vue';
 
-import {Eaog} from "../../../../../../aia-eaog/src/eaog.js";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
 import { JsonViewer } from '@vben/common-ui';
-import { useHistory } from './composables/useHistory';
-
-const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 
 import Debug from 'debug';
-
 const debug = Debug('aia:cp-editor');
 
-// 当前EAOG数据
-const currentEaog = ref<EditableEaogNode | null>(null);
-
-
-// 使用历史记录管理 composable
+import {useHistory} from './composables/eaog-history';
 const history = useHistory();
 
-// 移除 clickedNode 计算属性，改为创建一个方法获取当前点击的节点
-const getClickedNode = (): EditableEaogNode | null => {
-  if (!currentEaog.value) return null;
-
-  let clicked = null;
-  currentEaog.value.traverseAll(node => {
-    if (node.isClicked) {
-      clicked = node;
-    }
-  });
-
-  return clicked;
-};
-
-
-/**
- * 工具栏、上下文Eaog更新处理函数
- * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
- */
-const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
-  // newCurrentEaog && (currentEaog.value = Eaog.create(newCurrentEaog)); // 注意：Editor中不用create为可执行的Eaog对象。不过，我们已经证实，可以用Eaog.create的实例，来响应式的更新可视化树。��个技术可以用在调试界面。
-  newCurrentEaog && (currentEaog.value = newCurrentEaog);
-  debug('更新Eaog:', newCurrentEaog);
-};
+const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 
 onMounted(() => {
   // 初始化时设置eaogData
@@ -75,19 +48,12 @@ onMounted(() => {
 <template>
   <div class="cp-editor">
     <!-- 工具栏 -->
-    <EditorToolbar
-      :current-eaog="currentEaog"
-      @update-eaog="updateCurrentEaog"
-    />
+    <EditorToolbar :eaog-node-form="eaogNodeForm"/>
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
     <div class="flex p-4">
       <!-- 上下文菜单组件 -->
-      <EaogContextMenu
-        :current-eaog="currentEaog"
-        :eaog-node-form="eaogNodeForm"
-        @add-history="history.addToHistory(currentEaog)"
-      >
+      <EaogContextMenu :eaog-node-form="eaogNodeForm">
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
@@ -100,15 +66,15 @@ onMounted(() => {
       <!-- 节点详情区域 -->
       <div class="w-1/3 ml-4 p-4 border rounded-md">
         <h2 class="text-lg font-semibold mb-2">节点详情</h2>
-        <div v-if="getClickedNode()" class="node-details">
+        <div v-if="currentNode" class="node-details">
           <div class="mb-4">
             <div class="mb-2">
               <span class="font-medium">名称：</span>
-              <span>{{ getClickedNode()?.name }}</span>
+              <span>{{ currentNode.name }}</span>
             </div>
             <div class="mb-2">
               <span class="font-medium">类型：</span>
-              <span>{{ getClickedNode()?.type }}</span>
+              <span>{{ currentNode.type }}</span>
             </div>
           </div>
 
@@ -116,7 +82,7 @@ onMounted(() => {
           <div>
             <div class="font-medium mb-2">完整JSON数据：</div>
             <JsonViewer
-              :value="getClickedNode()"
+              :value="currentNode"
               :expand-depth="2"
               copyable
               boxed

@@ -1,5 +1,5 @@
 import {reactive, ref} from 'vue';
-import {EditableEaogNode, convertToEaogRoot} from '../models/eaog-node';
+import {EditableEaogNode, convertToEaogRoot, currentEaog} from '../models/eaog-node';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作
 const historyData = reactive<EditableEaogNode[]>([]);
@@ -14,28 +14,28 @@ export function useHistory() {
   /**
    * 初始化历史记录
    */
-  const initHistory = (node) => {
-    node = convertToEaogRoot(node);
+  const initHistory = (node: EditableEaogNode) => {
     historyData.length = 0;
     historyData.push(node.cloneDeep());
     currentIndex.value = 0;
   };
 
   /**
-   * 添加当前状态到历史记录
+   * 添加当前状态到历史记录，不再需要传递节点参数，直接使用共享的currentEaog
    */
-  const addToHistory = (node) => {
-    // node = convertToEaogRoot(node);
+  const addToHistory = () => {
+    const eaog = currentEaog.value;
+    if (!eaog) return;
 
     // 清除当前索引之后的历史记录
     historyData.splice(currentIndex.value + 1);
 
     // 检查是否与最后一个历史记录相同
-    if (historyData.length > 0 && node.equals(historyData[historyData.length - 1])) {
+    if (historyData.length > 0 && eaog.equals(historyData[historyData.length - 1])) {
       return;
     }
 
-    historyData.push(node.cloneDeep());
+    historyData.push(eaog.cloneDeep());
     currentIndex.value = historyData.length - 1; // 更新当前索引
   };
 
@@ -67,6 +67,8 @@ export function useHistory() {
    */
   const canRedo = () => currentIndex.value < historyData.length - 1;
 
+  const getLast = () => historyData[historyData.length - 1];
+
   return {
     historyData,
     currentIndex,
@@ -75,6 +77,7 @@ export function useHistory() {
     redo,
     canUndo,
     canRedo,
+    getLast,
     initHistory
   };
 }

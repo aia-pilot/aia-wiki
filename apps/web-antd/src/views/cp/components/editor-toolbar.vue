@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {convertToEaogRoot, EditableEaogNode, validateEaog} from '../models/eaog-node';
-import {useHistory} from '../composables/useHistory';
+import {convertToEaogRoot, currentEaog, currentNode, EditableEaogNode, updateCurrentEaog, validateEaog} from '../models/eaog-node';
+import {useHistory} from '../composables/eaog-history';
 import {message} from 'ant-design-vue';
+import {onMounted, onUnmounted} from 'vue'; // 导入Vue的生命周期钩子
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
@@ -13,16 +14,20 @@ import {eaogFrameworks} from "../models/eaog-framework";
 const debug = Debug('aia:cp-toolbar');
 
 const history = useHistory();
-const props = defineProps<{
-  currentEaog: EditableEaogNode | null;
-}>();
 
-// 定义组件要触发的事件
-const emit = defineEmits<{
-  'update-eaog': [eaog: EditableEaogNode];
+// 组件属性
+const props = defineProps<{
+  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // 可选的EaogNodeForm实例，用于新建/编辑节点
 }>();
 
 // 工具栏操作处理函数
+const handleNew = () => {
+  debug('新建Eaog');
+  props.eaogNodeForm?.open({
+    formMode: 'create-eaog', // 使用新增的模式
+  });
+};
+
 const handleRefresh = () => {
   debug('刷新当前视图');
 };
@@ -54,19 +59,22 @@ const handleImport = async () => {
   const eaog = (IS_DEV && await importEaogFromClipboard()) || await importEaogFromFile();
   if (eaog) {
     debug('导入成功:', eaog);
-    // history.clear(); // 清除历史记录
-    history.addToHistory(eaog); // 添加当前EAOG到历史记录
-    emit('update-eaog', eaog); // 触发更新事件，传递克隆的EAOG数据
-    // 历史记录在 editor 中处理，不需要在这里触发事件
+    updateCurrentEaog(eaog); // 更新当前EAOG
+    history.addToHistory(); // 添加当前EAOG到历史记录
   }
 };
 
 /**
- * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
+ * 导出当前EAOG数据为JSON文本到系���剪贴板，当Shift键按下时，导出为文件（下载）
  */
 const handleExport = async (event: MouseEvent) => {
   debug('导出当前EAOG');
-  const data = JSON.stringify(props.currentEaog, null, 2);
+  if (!currentEaog.value) {
+    message.warning('当前没有可导出的数据');
+    return;
+  }
+
+  const data = JSON.stringify(currentEaog.value, null, 2);
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 
@@ -77,8 +85,8 @@ const handleExport = async (event: MouseEvent) => {
 
 const applyFramework = (framework) => {
   debug(`添加'${framework.meta.name}' Framework`);
-  // 直接获取选中节点并调用相关函数
-  const selectedNodes = props.currentEaog?.getSelectedNodes();
+  // 直接获取选中节点并调用相���函数
+  const selectedNodes = currentEaog.value?.getSelectedNodes();
   if (selectedNodes?.length > 0) {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
@@ -95,39 +103,46 @@ const applyFramework = (framework) => {
       framework.isCollapsed = true; // 默认折叠，除非用户展开。
       framework.markAsNewlyModifiedForAWhile();
     });
-    history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
+    history.addToHistory(); // 添加当前EAOG（已变更）到历史记录
   } else {
     message.warning('请先选择至少一个节点');
   }
 };
 
 const handleOpen = () => {
-  debug('打开EAOG数据');
+  if (IS_STANDALONE_APP) {
+    debug('打开本地EAOG文件');
+    message.warning('功能尚未实现，敬请期待！');
+  }
+  // 打开文件的逻辑
 };
 
 const handleSave = () => {
-  debug('保存当前EAOG数据');
+  if (IS_STANDALONE_APP) {
+    debug('保存当前EAOG到本地文件');
+    message.warning('功能尚未实现，敬请期待！');
+  }
 };
 
 const handleUndo = () => {
   const prevEaog = history.undo();
   debug('撤销操作，当前EAOG:', prevEaog);
-  if (prevEaog) emit('update-eaog', prevEaog); // 触发更新事件
+  if (prevEaog) updateCurrentEaog(prevEaog);
 };
 
 const handleRedo = () => {
   const nextEaog = history.redo();
   debug('重做操作，当前EAOG:', nextEaog);
-  if (nextEaog) emit('update-eaog', nextEaog); // 触发更新事件
+  if (nextEaog) updateCurrentEaog(nextEaog);
 };
 
 const handleValidate = () => {
   debug('校验EAOG数据');
-  if (!props.currentEaog) {
+  if (!currentEaog.value) {
     message.warning('当前没有可校验的数据');
     return;
   }
-  const res = validateEaog(props.currentEaog);
+  const res = validateEaog(currentEaog.value);
   if (res.success) {
     message.success('EAOG数据校验通过，符合数格：CP Schema 0.0.1');
   } else {
@@ -195,36 +210,78 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
   // downloadAnchorNode.click();
   // downloadAnchorNode.remove();
 };
+
+// 添加和移除键盘事件监听器
+const onKeyDown = (event: KeyboardEvent) => {
+  // Ctrl+N 新建
+  if (event.ctrlKey && event.key === 'n') {
+    event.preventDefault();
+    handleNew();
+  }
+  // Ctrl+O 打开
+  else if (event.ctrlKey && event.key === 'o') {
+    event.preventDefault();
+    handleOpen();
+  }
+  // Ctrl+S 保存
+  else if (event.ctrlKey && event.key === 's') {
+    event.preventDefault();
+    handleSave();
+  }
+  // Ctrl+Z 撤销
+  else if (event.ctrlKey && event.key === 'z') {
+    event.preventDefault();
+    handleUndo();
+  }
+  // Ctrl+Y 重做
+  else if (event.ctrlKey && event.key === 'y') {
+    event.preventDefault();
+    handleRedo();
+  }
+  // Ctrl+Shift+I 导入
+  else if (event.ctrlKey && event.shiftKey && event.key === 'i') {
+    event.preventDefault();
+    handleImport();
+  }
+  // Ctrl+Shift+E 导出
+  else if (event.ctrlKey && event.shiftKey && event.key === 'e') {
+    event.preventDefault();
+    handleExport(event);
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown);
+});
 </script>
 
 <template>
   <div class="flex items-center gap-2 p-2 border-b">
-    <!-- 打开、导入组 -->
-    <EditorToolbarButton icon="lucide:folder-open" tooltip="打开" @click="handleOpen"
-                         :disabled="!IS_STANDALONE_APP"/>
-    <EditorToolbarButton icon="lucide:upload" tooltip="导入" @click="handleImport"/>
+    <!-- 新建、 打开、导入组 -->
+    <EditorToolbarButton icon="ant-design:file-add-outlined" tooltip="新建 Ctrl+N" @click="handleNew"/>
+    <EditorToolbarButton icon="lucide:folder-open" tooltip="打开 Ctrl+O" @click="handleOpen" :disabled="!IS_STANDALONE_APP"/>
+    <EditorToolbarButton icon="lucide:upload" tooltip="导入 Ctrl+Shift+I" @click="handleImport"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
     <!-- 导出、保存组 -->
-    <EditorToolbarButton icon="lucide:save" tooltip="保存" @click="handleSave"
+    <EditorToolbarButton icon="lucide:save" tooltip="保存 Ctrl+S" @click="handleSave"
                          :disabled="!IS_STANDALONE_APP"/>
-    <EditorToolbarButton icon="lucide:download" tooltip="导出" @click="handleExport"/>
+    <EditorToolbarButton icon="lucide:download" tooltip="导出 Ctrl+Shift+E" @click="handleExport"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- Frameworks：通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
+    <!-- Frameworks：通知、报告、控制组 通知（事前）、报告��事前），报告（事后）-->
     <EditorToolbarButton v-for="framework in eaogFrameworks"
                          :icon="framework.meta.icon" :tooltip="framework.meta.name"
-                         :disabled="!(props.currentEaog?.getSelectedNodes().length > 0)"
+                         :disabled="!(currentEaog?.getSelectedNodes().length > 0)"
                          @click="applyFramework(framework)"/>
-
-
-<!--    <EditorToolbarButton icon="ant-design:notification-outlined" tooltip="通知" @click="applyFramework(notifyEaogFramework, '通知')"/>-->
-<!--    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="applyFramework(controlEaogFramework, '控制')"/>-->
-<!--    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="applyFramework(reportEaogFramework, '报告')"/>-->
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
@@ -232,7 +289,7 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
     <!-- 刷新、撤销、重做组 -->
     <EditorToolbarButton icon="lucide:refresh-cw" tooltip="刷新" @click="handleRefresh"/>
     <EditorToolbarButton icon="mdi:check-circle-outline" tooltip="校验" @click="handleValidate"/>
-    <EditorToolbarButton icon="lucide:undo" tooltip="撤销" :disabled="!history.canUndo()" @click="handleUndo"/>
-    <EditorToolbarButton icon="lucide:redo" tooltip="重做" :disabled="!history.canRedo()" @click="handleRedo"/>
+    <EditorToolbarButton icon="lucide:undo" tooltip="撤销 Ctrl+Z" :disabled="!history.canUndo()" @click="handleUndo"/>
+    <EditorToolbarButton icon="lucide:redo" tooltip="重做 Ctrl+Y" :disabled="!history.canRedo()" @click="handleRedo"/>
   </div>
 </template>
