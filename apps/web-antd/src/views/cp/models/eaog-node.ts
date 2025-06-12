@@ -226,10 +226,7 @@ export class EditableEaogNode implements EaogNode {
    * omit parent reference to avoid circular references
    */
   cloneDeep(): EditableEaogNode {
-    // const raw = toRaw(this); // 获取当前节点的原始数据，拆除 Vue 响应式引用
-    // const clone = cloneDeepWith(raw, (v, k) => TRANSIENT_ATTRIBUTES.includes(k) ? undefined : v); // 深度克隆，忽略 parent 属性
-    // return new EditableEaogNode(clone as EaogNode); // 返回新的 EditableEaogNode 实例, parent will be undefined
-    return new EditableEaogNode(this.toJSON() as EaogNode); // 直接使用 toJSON 方法转换为普通对象，然后创建新的 EditableEaogNode 实例
+    return new this.constructor(this.toJSON() as EaogNode); // 直接使用 toJSON 方法转换为普通对象，然后创建新的 EditableEaogNode 实例
   }
 
 

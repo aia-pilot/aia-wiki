@@ -1,4 +1,6 @@
 import {type EaogNode, EditableEaogNode} from "./eaog-node";
+// @ts-ignore 忽略导入的类型
+import {eaogFrameworks as eaogFrameworkDefs} from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
 
 /**
  * Eaog Framework预定义了一定的执行结构，可以包装、装饰、结构化组装已有的行为（lc、cp、mcp、……）。
@@ -67,10 +69,26 @@ class EaogFramework extends EditableEaogNode {
     }
     return mountedNodes[0];
   }
+
+  /**
+   * 将Framework应用到指定的Eaog节点上。即：Eaog节点挂载到Framework上，然后再替换回去。
+   * @param {EditableEaogNode} eaog - 要应用的Eaog节点。
+   * @return {EaogFramework} 返回新的EaogFramework实例，包含已挂载的Eaog节点，且已经替换到原Eaog节点位置。
+   * TODO: 目前只有一个mount point，后续可能会有多个mount point
+   */
+  applyToEaog(eaog: EditableEaogNode) {
+    const framework = this.cloneDeep(); // 克隆一个新的EaogFramework实例，避免修改原始实例。Framework总是一次性消费的。
+    const placeholder = eaog.replaceWithPlaceHolder(); // 替换下来，记住位置
+    framework.mountEaog(eaog)
+    placeholder.replaceWith(framework)
+    return framework;
+  }
+
   private isMountPointsMatch(mountPointMap: any) {
     return mountPointMap.size !== this.mountPoints.length &&
             !this.mountPoints.every(mp => mountPointMap.has(mp.name));
   }
+
   private mountNode(node: EditableEaogNode, mountPoint: EditableEaogNode) {
     // 将所有nodes的name中存在形如："控制：${mountPointName}" 替换为 `控制：mountNodeName`，让节点名称更加清晰。
     const nameReplaceRegex = new RegExp('\\${' + mountPoint.name + '}', 'g');
@@ -93,22 +111,6 @@ class EaogFramework extends EditableEaogNode {
   }
 }
 
-export const addMountedFrameworkToEaog = (eaog: EditableEaogNode, frameworkDef: EaogNode) => {
+export const eaogFrameworks = eaogFrameworkDefs.map(def => new EaogFramework(def));
 
-  const framework = new EaogFramework(frameworkDef);
-  const placeholder = eaog.replaceWithPlaceHolder(); // 替换下来，记住位置
-  framework.mountEaog(eaog) // TODO: 目前只有一个mount point，后续可能会有多个mount point
-  placeholder.replaceWith(framework)  // 替换回去，到原位置
 
-  // 压缩不必要的层级。
-  const children = framework.children;
-  // const isShrunken = framework.shrinkSequentialParent();
-  const isShrunken = false;
-
-  // 标记为新修改的节点，以便展示动效。
-  // const newNodes = isShrunken ? children : [framework];
-  // newNodes.forEach(node => node === eaog || node.markAsNewlyModifiedForAWhile())
-
-  framework.isCollapsed = true; // 默认折叠，除非用户展开。
-  framework.markAsNewlyModifiedForAWhile();
-}

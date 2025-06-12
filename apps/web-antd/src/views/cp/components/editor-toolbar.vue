@@ -2,21 +2,13 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
 import {convertToEaogRoot, EditableEaogNode, validateEaog} from '../models/eaog-node';
-// @ts-ignore 忽略导入的类型
-import {
-  addNotifyBeforeNodes,
-  addControlBeforeNodes,
-  notifyEaogFramework,
-  controlEaogFramework,
-  reportEaogFramework
-} from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
-
 import {useHistory} from '../composables/useHistory';
 import {message} from 'ant-design-vue';
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
-import {addMountedFrameworkToEaog} from "#/views/cp/models/eaog-framework";
+// @ts-ignore 忽略导入的类型
+import {eaogFrameworks} from "../models/eaog-framework";
 
 const debug = Debug('aia:cp-toolbar');
 
@@ -83,13 +75,25 @@ const handleExport = async (event: MouseEvent) => {
   }
 };
 
-const applyFramework = (framework: any, type: string) => {
-  debug(`添加${type}节点`);
+const applyFramework = (framework) => {
+  debug(`添加'${framework.meta.name}' Framework`);
   // 直接获取选中节点并调用相关函数
   const selectedNodes = props.currentEaog?.getSelectedNodes();
   if (selectedNodes?.length > 0) {
     selectedNodes.forEach(node => {
-      addMountedFrameworkToEaog(node, framework);
+      framework = framework.applyToEaog(node)
+
+      // 压缩不必要的层级。
+      // const children = framework.children;
+      // const isShrunken = framework.shrinkSequentialParent();
+      // const isShrunken = false;
+
+      // 标记为新修改的节点，以便展示动效。
+      // const newNodes = isShrunken ? children : [framework];
+      // newNodes.forEach(node => node === eaog || node.markAsNewlyModifiedForAWhile())
+
+      framework.isCollapsed = true; // 默认折叠，除非用户展开。
+      framework.markAsNewlyModifiedForAWhile();
     });
     history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
   } else {
@@ -211,10 +215,16 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- 通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
-    <EditorToolbarButton icon="ant-design:notification-outlined" tooltip="通知" @click="applyFramework(notifyEaogFramework, '通知')"/>
-    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="applyFramework(controlEaogFramework, '控制')"/>
-    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="applyFramework(reportEaogFramework, '报告')"/>
+    <!-- Frameworks：通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
+    <EditorToolbarButton v-for="framework in eaogFrameworks"
+                         :icon="framework.meta.icon" :tooltip="framework.meta.name"
+                         :disabled="!(props.currentEaog?.getSelectedNodes().length > 0)"
+                         @click="applyFramework(framework)"/>
+
+
+<!--    <EditorToolbarButton icon="ant-design:notification-outlined" tooltip="通知" @click="applyFramework(notifyEaogFramework, '通知')"/>-->
+<!--    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="applyFramework(controlEaogFramework, '控制')"/>-->
+<!--    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="applyFramework(reportEaogFramework, '报告')"/>-->
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
