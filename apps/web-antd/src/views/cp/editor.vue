@@ -16,7 +16,7 @@
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
-import {EditableEaogNode, convertToEaogRoot} from './components/eaog-node';
+import {EditableEaogNode, convertToEaogRoot} from './models/eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {onMounted, ref, computed} from 'vue';
 

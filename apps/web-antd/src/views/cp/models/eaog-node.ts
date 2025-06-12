@@ -1,62 +1,27 @@
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
-import {getCleanObj} from "../utils/clean-obj.js";
-
-// 节点类型对应的颜色和图标
-export const nodeTypeUIConfig = {
-  sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'},
-  pand: {color: 'green', icon: '⇉', description: '并行与节点：子节点并行执行，全部完成才继续'},
-  pfor: {color: 'green', icon: '⇉', description: '并行循环：对列表元素并行执行'},
-  cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'},
-  instruction: {color: 'purple', icon: '◉', description: '指令节点：执行具体操作'},
-  sitr: {color: 'cyan', icon: '↻', description: '顺序迭代：重复执行子节点'},
-  recursion: {color: 'magenta', icon: '↺', description: '递归：调用其他节点'}
-};
-// 根据节点类型判断子节点的排列方向
-export const getChildrenDirection = (nodeType: string): 'vertical' | 'horizontal' | '' => {
-  return Eaog.isLeafType(nodeType) ? ''  // 叶子节点没有子节点，返回空字符串
-    : Eaog.isConcurrentType(nodeType) || Eaog.isConditionalType(nodeType) ? 'horizontal'  // 并行和条件节点的子节点水平排列
-      : 'vertical'; // 其余节点的子节点垂直排列
-};
-
-export const isLeafNode = (node: any): boolean => {
-  return Eaog.isLeafType(node?.type);
-}
-
-export const isContainerNode = (node: any): boolean => {
-  return !isLeafNode(node);
-}
-
-/**
- * EAOG示例用例集
- * 用于驱动CP可视化组件的开发
- */
-
-/**
- * 定义 EAOG 节点类型接口
- * TODO：按照 eaog.zod.js 中的定义
- */
-
-// eaog.types.ts
+import {getCleanObj} from "../utils/clean-obj";
 import {z} from 'zod';
 // @ts-ignore
-import {cpEaogSchema, cpNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+import {cpEaogSchema, cpNodeSchema, compositeNodeSchema, baseNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 
+import Debug from 'debug';
+const debug = Debug("aia:cp:eaog-node");
+
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
-
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isClicked', 'parent'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isClicked', 'isCollapsed', 'parent'];
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
   type!: string;
   name!: string;
   description?: string;
-
+  meta?: Record<string, any>; // 元数据，可能包含额外信息
 
   // 组合节点的属性
   children: EditableEaogNode[];
@@ -82,6 +47,7 @@ export class EditableEaogNode implements EaogNode {
   isNewlyModified = false; // 标记是否为新添加的节点
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isClicked = false; // 标记是否被点击， Eaog Tree上只能有一个节点被点击
+  isCollapsed = false; // 标记节点是否折叠子节点
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -89,6 +55,34 @@ export class EditableEaogNode implements EaogNode {
     this.children = Array.isArray(node.children)
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this)) // 递归转换子节点
       : [];
+  }
+
+  // 新增的 getter 方法
+  get isLeaf(): boolean {
+    return Eaog.isLeafType(this.type);
+  }
+
+  get isContainer(): boolean {
+    return !this.isLeaf;
+  }
+
+  get isFramework(): boolean {
+    return this.meta?.framework === true; // 判断是否为 Eaog Framework
+  }
+
+  get childrenDirection(): 'vertical' | 'horizontal' | '' {
+    return this.isLeaf ? ''  // 叶子节点没有子节点，返回空字符串
+      : Eaog.isConcurrentType(this.type) || Eaog.isConditionalType(this.type) ? 'horizontal'  // 并行和条件节点的子节点水平排列
+      : 'vertical'; // 其余节点的子节点垂直排列
+  }
+
+  /**
+   * 递归获取所有子孙节点
+   */
+  get descendants(): EditableEaogNode[] {
+    return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
+      return acc.concat(child, child.descendants);
+    }, []);
   }
 
   // 点击节点
@@ -109,8 +103,12 @@ export class EditableEaogNode implements EaogNode {
   // 选中节点
   select(multiSelect = false): void {
     if (!multiSelect && this.root) {
-      // 如果不是多选模式，清除所有节点的选中状态
-      this.root.traverseAll(node => { node.isSelected = false; });
+      // 如果不是多选模式，清除所有其它节点的选中状态
+      this.root.traverseAll(node => {
+        if (node !== this) {
+          node.isSelected = false;
+        }
+      })
     }
     this.isSelected = !this.isSelected; // 切换选中状态
   }
@@ -182,6 +180,11 @@ export class EditableEaogNode implements EaogNode {
     }, duration);
   }
 
+  // 切换折叠状态
+  toggleCollapse(): void {
+    this.isCollapsed = !this.isCollapsed;
+  }
+
   get isRoot(): boolean {
     return !this.parent; // 如果没有父节点，则为根节点
   }
@@ -211,7 +214,7 @@ export class EditableEaogNode implements EaogNode {
       return undefined; // 如果没有父节点，则没有下一个兄弟节点
     }
     const index = this.indexInParent;
-    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 返回下一个兄弟节点或 null
+    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // ���回下一个兄弟节点或 null
   }
 
   get indexInParent(): number {
@@ -233,7 +236,7 @@ export class EditableEaogNode implements EaogNode {
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
     const res = {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
-    return getCleanObj(res); // 确保返回的对象没有 undefined 属性
+    return getCleanObj(res) as any; // 确保返回的对象没有 undefined 属性
   }
 
   equals(other: EditableEaogNode): boolean {
@@ -255,7 +258,7 @@ export class EditableEaogNode implements EaogNode {
       return omit(this.toJSON(), ['children', 'id']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
     } else { // 编辑后，合并表单值
       values = getCleanObj(values, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
-      const isModified = Object.keys(values).some(key => values[key] !== this[key]);
+      const isModified = Object.keys(values).some(key => values[key as keyof typeof values] !== (this as any)[key]);
       return isModified ? {...this.toJSON(), ...values} : undefined // 合并当前节点的属性和表单值
     }
   }
@@ -329,7 +332,7 @@ export class EditableEaogNode implements EaogNode {
 
       this.parent.addChild(newNode, this, position); // 使用父节点的 addChild 方法插入新节点
     } else if (position === 'child') {
-      this.addChild(newNode); // 直接添加为当前节点的子节点的最后一个
+      this.addChild(newNode); // 直接添加为当前节点的子节点的最���一个
     } else if (position === 'parent') { // 新节点作为当前节点的父节点，插入当前节点的位置
       if (!Eaog.isCompositeType(newNode.type)) {
         throw new Error('Cannot promote non-composite node to parent');
@@ -344,11 +347,28 @@ export class EditableEaogNode implements EaogNode {
     return newNode; // 返回新插入的节点
   }
 
-  replace(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
+  replaceWith(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
     const {previousSibling, nextSibling, parent} = this
     this.remove(); // 移除当前节点，先移除后加入，保障replace后的节点有正确的命名
     // 替换到原有位置
     return previousSibling?.insert(newNode, 'after') || nextSibling?.insert(newNode, 'before') || parent?.insert(newNode, 'child') || undefined
+  }
+
+  replaceWithPlaceHolder(): EditableEaogNode {
+    const placeholder = createPlaceHolderNode(this.name); // 创建一个占位符节点
+    return this.replaceWith(placeholder)!; // 替换当前节点为占位符
+  }
+
+  /**
+   * 如果当前节点是sequential的，其父节点也是sequential的，则将当前节点的所有子节点提升到父节点位置，取代当前节点。
+   */
+  shrinkSequentialParent(): boolean {
+    if (!this.parent || !Eaog.isSequentialType(this.parent.type) || !Eaog.isSequentialType(this.type)) {
+      debug('Cannot shrink non-sequential parent or node', this, this.parent);
+      return false
+    }
+    this.remove(false); // 不删除子树，只提升子节点
+    return true
   }
 
   /**
@@ -379,6 +399,11 @@ export class EditableEaogNode implements EaogNode {
     return this;
   }
 
+  /**
+   * 根据路径获取后代节点
+   * @param path 路径字符串，格式为 "node1/node2/node3"
+   * @returns 找到的子节点或 null
+   */
   getDescendantByPath(path: string): EditableEaogNode | null {
     const pathNodes = path.split('/').filter(Boolean); // 分割路径并过滤空字符串
     let currentNode: EditableEaogNode | null = this;
@@ -392,6 +417,11 @@ export class EditableEaogNode implements EaogNode {
     return currentNode; // 返回找���的节点或 null
   }
 
+  /**
+   * 根据路径获取节点
+   * @param path 路径字符串，格式为 "/node1/node2/node3"
+   * @returns 找到的节点或 null
+   */
   getNodeByPath(path: string): EditableEaogNode | null {
     return this.root.getDescendantByPath(path); // 从根节点开始查找
   }
@@ -412,3 +442,24 @@ export const convertToEaogRoot = (node: any) => {
   }
   return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
 }
+
+
+// 创建一个占位符节点，常用于替换节点时占住原有节点位置
+export const createPlaceHolderNode = (name: string) => {
+  return new EditableEaogNode({
+    type: 'empty',
+    name: `${name}-placeholder`,
+    description: 'This is a placeholder node',
+  });
+}
+
+// 节点类型对应的颜色和图标
+export const nodeTypeUIConfig = {
+  sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'},
+  pand: {color: 'green', icon: '⇉', description: '并行与节点：子节点并行执行，全部完成才继续'},
+  pfor: {color: 'green', icon: '⇉', description: '并行循环：对列表元素并行执行'},
+  cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'},
+  instruction: {color: 'purple', icon: '◉', description: '指令节点：执行具体操作'},
+  sitr: {color: 'cyan', icon: '↻', description: '顺序迭代：重复执行子节点'},
+  recursion: {color: 'magenta', icon: '↺', description: '递归：调用其他节点'}
+};

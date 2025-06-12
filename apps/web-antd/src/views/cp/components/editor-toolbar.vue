@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {convertToEaogRoot, EditableEaogNode, validateEaog} from './eaog-node';
+import {convertToEaogRoot, EditableEaogNode, validateEaog} from '../models/eaog-node';
 // @ts-ignore 忽略导入的类型
 import {
   addNotifyBeforeNodes,
-  addControlBeforeNodes
+  addControlBeforeNodes,
+  notifyEaogFramework,
+  controlEaogFramework,
+  reportEaogFramework
 } from "../../../../../../../aia-se-comp/design/CPG函数/insert-notify-control-report.js";
 
 import {useHistory} from '../composables/useHistory';
@@ -13,6 +16,7 @@ import {message} from 'ant-design-vue';
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
+import {addMountedFrameworkToEaog} from "#/views/cp/models/eaog-framework";
 
 const debug = Debug('aia:cp-toolbar');
 
@@ -79,24 +83,14 @@ const handleExport = async (event: MouseEvent) => {
   }
 };
 
-const handleReport = () => {
-  debug('添加报告节点');
+const applyFramework = (framework: any, type: string) => {
+  debug(`添加${type}节点`);
   // 直接获取选中节点并调用相关函数
-  const selectedNodes = props.currentEaog.getSelectedNodes();
-  if (selectedNodes.length > 0) {
-    addNotifyBeforeNodes(selectedNodes);
-    history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
-  } else {
-    message.warning('请先选择至少一个节点');
-  }
-};
-
-const handleControl = () => {
-  debug('添加控制节点');
-// 直接获取选中节点并调用相关函数
-  const selectedNodes = props.currentEaog.getSelectedNodes()
-  if (selectedNodes.length > 0) {
-    addControlBeforeNodes(selectedNodes);
+  const selectedNodes = props.currentEaog?.getSelectedNodes();
+  if (selectedNodes?.length > 0) {
+    selectedNodes.forEach(node => {
+      addMountedFrameworkToEaog(node, framework);
+    });
     history.addToHistory(props.currentEaog); // 添加当前EAOG（已变更）到历史记录
   } else {
     message.warning('请先选择至少一个节点');
@@ -131,7 +125,7 @@ const handleValidate = () => {
   }
   const res = validateEaog(props.currentEaog);
   if (res.success) {
-    message.success('EAOG数据校验通过，符合数格：cpEaogSchema');
+    message.success('EAOG数据校验通过，符合数格：CP Schema 0.0.1');
   } else {
     console.error('EAOG数据校验失败:', res.error);
   }
@@ -217,9 +211,10 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- 报告、控制组 -->
-    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="handleReport"/>
-    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="handleControl"/>
+    <!-- 通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
+    <EditorToolbarButton icon="ant-design:notification-outlined" tooltip="通知" @click="applyFramework(notifyEaogFramework, '通知')"/>
+    <EditorToolbarButton icon="ic:outline-airline-stops" tooltip="控制" @click="applyFramework(controlEaogFramework, '控制')"/>
+    <EditorToolbarButton icon="ic:baseline-read-more" tooltip="报告" @click="applyFramework(reportEaogFramework, '报告')"/>
 
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>

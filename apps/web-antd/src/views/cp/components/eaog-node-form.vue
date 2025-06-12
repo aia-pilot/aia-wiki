@@ -2,7 +2,7 @@
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
-import {EditableEaogNode} from './eaog-node';
+import {EditableEaogNode} from '../models/eaog-node';
 
 // 导入您的Schema定义
 // @ts-ignore
@@ -14,7 +14,7 @@ import {
   baseNodeSchema,
   corSchema,
   allNodeTypes
-} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog-schema.js";
+} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 
 // 节点类型选项
 const nodeTypeOptions = allNodeTypes.map((type: string) => ({label: type, value: type}));

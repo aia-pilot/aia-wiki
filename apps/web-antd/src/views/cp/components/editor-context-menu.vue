@@ -9,10 +9,7 @@ import {
   ContextMenuSubContent,
   ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {
-  EditableEaogNode,
-  isLeafNode
-} from './eaog-node';
+import {EditableEaogNode,} from '../models/eaog-node';
 // 导入lucide.ts中可用的图标
 import {
   Circle,
@@ -136,7 +133,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
                            @click.prevent="() => handleNewNode('child')"
-                           :disabled="isLeafNode(currentNode)"
+                           :disabled="currentNode.isLeaf"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             作为子节点
@@ -167,7 +164,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
                            @click.prevent="() => handleCopyNode(true)"
-                           :disabled="isLeafNode(currentNode)"
+                           :disabled="currentNode.isLeaf"
           >
             <Expand class="mr-2 h-4 w-4 icon"/>
             包含子树
@@ -198,14 +195,14 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
                            @click.prevent="() => handlePasteNode('child')"
-                           :disabled="!clipboardNode ||isLeafNode(currentNode)"
+                           :disabled="!clipboardNode ||currentNode.isLeaf"
           >
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             粘贴为子节点
           </ContextMenuItem>
           <ContextMenuItem class="menu-item"
                            @click.prevent="() => handlePasteNode('parent')"
-                           :disabled="!clipboardNode || isLeafNode(clipboardNode)"
+                           :disabled="!clipboardNode || clipboardNode.isLeaf"
           >
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
             粘贴为父节点
@@ -224,7 +221,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
         <ContextMenuSubContent>
           <ContextMenuItem class="menu-item"
                            @click.prevent="() => handleDeleteNode(false)"
-                           :disabled="isLeafNode(currentNode)"
+                           :disabled="currentNode.isLeaf"
           >
             <Copy class="mr-2 h-4 w-4 icon"/>
             仅删除节点（保留子节点）

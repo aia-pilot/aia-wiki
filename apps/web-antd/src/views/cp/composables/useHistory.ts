@@ -1,5 +1,5 @@
 import {reactive, ref} from 'vue';
-import {EditableEaogNode, convertToEaogRoot} from '../components/eaog-node';
+import {EditableEaogNode, convertToEaogRoot} from '../models/eaog-node';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作
 const historyData = reactive<EditableEaogNode[]>([]);
