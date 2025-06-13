@@ -1,4 +1,4 @@
-import {type EaogNode, EditableEaogNode} from "./eaog-node";
+import {type EaogNode, EditableEaogNode} from "./editable-eaog-node";
 // @ts-ignore 忽略导入的类型
 import {eaogFrameworks as eaogFrameworkDefs} from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
 

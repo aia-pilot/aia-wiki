@@ -2,7 +2,7 @@
  * EAOG示例用例集
  * 用于驱动CP可视化组件的开发
  */
-import type {EaogNode} from "#/views/cp/models/eaog-node";
+import type {EaogNode} from "#/views/cp/models/editable-eaog-node";
 
 // 示例1: 简单的顺序执行流程
 export const simpleSequentialFlow: EaogNode = {

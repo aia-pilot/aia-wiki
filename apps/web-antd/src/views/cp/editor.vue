@@ -21,7 +21,7 @@ import {
   currentEaog,
   currentNode,
   updateCurrentEaog,
-} from './models/eaog-node';
+} from './models/editable-eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {onMounted, ref} from 'vue';
 
@@ -58,7 +58,7 @@ onMounted(() => {
         <div class="w-2/3 p-4 border rounded-md">
           <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
           <div v-if="currentEaog" class="eaog-container">
-            <EaogNodeComponent :node="currentEaog"/>
+            <EaogNodeComponent :node="currentEaog" :eaog-node-form="eaogNodeForm"/>
           </div>
         </div>
       </EaogContextMenu>

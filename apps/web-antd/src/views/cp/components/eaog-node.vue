@@ -14,20 +14,21 @@
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
 
-import {defineProps, ref} from 'vue';
+import {defineProps} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
 import {
   type EditableEaogNode,
   nodeTypeUIConfig
-} from "#/views/cp/models/eaog-node";
+} from "#/views/cp/models/editable-eaog-node";
 import Debug from 'debug';
-import {iconify2Class} from "#/views/cp/utils/iconify-vben-class";
 import {VbenIcon} from "@vben-core/shadcn-ui";
+import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
 
 const debug = Debug('aia:eaog-node');
 
 const props = defineProps<{
-  node: EditableEaogNode; // 修改类型为EditableEaogNode
+  node: EditableEaogNode;
+  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // EaogNodeForm实例，用于编辑节点
   level?: number; // 节点层级，默认为0，便于视觉调试
 }>();
 
@@ -71,16 +72,17 @@ const handleContextMenu = (event: MouseEvent) => {
   <!-- 使用 node.childrenDirection 来动态设置 class -->
   <div class="eaog-node" :class="[node.childrenDirection, { 'newly-added': node.isNewlyModified, 'framework': node.isFramework }]">
     <!-- 节点头部 -->
-    <div
-      class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
-      :class="{
-        [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
-        'bg-gray-50': nodeLevel === 0,
-        'bg-blue-100 border-2': node.isSelected, // 使用节点的isSelected属性
-        'hover:bg-gray-50': !node.isSelected // 非选中状态时，hover效果
-      }"
-      @click.prevent="handleNodeClick"
-      @contextmenu="handleContextMenu"
+    <div class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
+         :class="{
+          [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
+          'bg-gray-50': nodeLevel === 0,
+          'bg-blue-100 border-2': node.isSelected,
+          'border border-blue-200': node.isFramework && node.isCollapsed, // 框架节点折叠时显示双线边框
+          'hover:bg-gray-50': !node.isSelected // 非选中状态时，hover效果
+        }"
+         @click.prevent="handleNodeClick"
+         @dblclick.stop="eaogNodeForm?.editNode()"
+         @contextmenu="handleContextMenu"
     >
       <Tooltip :title="getNodeTypeConfig(node.type).description">
         <Badge
@@ -106,6 +108,7 @@ const handleContextMenu = (event: MouseEvent) => {
         :icon="node.isFramework ? node.meta.icon : 'ant-design:down-outlined'"
         class="size-4 shrink-0 transition-all duration-300 ease-in-out ml-2 text-gray-800"
         :class="{
+          'text-blue-500': node.isFramework,
           'opacity-100': node.isCollapsed,
           'transform rotate-180 opacity-0 group-hover:opacity-100': !node.isCollapsed
         }"
@@ -116,10 +119,7 @@ const handleContextMenu = (event: MouseEvent) => {
     <!-- 子节点（子树）-->
     <div v-if="node.children && node.children.length > 0 && !node.isCollapsed" class="eaog-node-children ml-6 pl-4">
       <div v-for="child in node.children" :key="child.name">
-        <eaog-node
-          :node="child"
-          :level="nodeLevel + 1"
-        />
+        <eaog-node :node="child" :eaogNodeForm="eaogNodeForm" :level="nodeLevel + 1"/>
       </div>
     </div>
   </div>
@@ -127,8 +127,9 @@ const handleContextMenu = (event: MouseEvent) => {
 
 <style scoped>
 
+/* stylelint-disable */
 /** 节点容器 垂直布局 */
-.eaog-node.vertical > div.eaog-node-children {
+.eaog-node.vertical > .eaog-node-children {
   @apply flex flex-col;
 }
 

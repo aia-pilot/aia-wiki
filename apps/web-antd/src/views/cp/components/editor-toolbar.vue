@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {convertToEaogRoot, currentEaog, currentNode, EditableEaogNode, updateCurrentEaog, validateEaog} from '../models/eaog-node';
+import {
+  convertToEaogRoot,
+  currentEaog,
+  currentNode,
+  EditableEaogNode,
+  updateCurrentEaog,
+  validateEaog,
+  zogErrorToString
+} from '../models/editable-eaog-node';
 import {useHistory} from '../composables/eaog-history';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted} from 'vue'; // 导入Vue的生命周期钩子
@@ -17,20 +25,8 @@ const history = useHistory();
 
 // 组件属性
 const props = defineProps<{
-  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // 可选的EaogNodeForm实例，用于新建/编辑节点
+  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // EaogNodeForm实例，用于新建Eaog
 }>();
-
-// 工具栏操作处理函数
-const handleNew = () => {
-  debug('新建Eaog');
-  props.eaogNodeForm?.open({
-    formMode: 'create-eaog', // 使用新增的模式
-  });
-};
-
-const handleRefresh = () => {
-  debug('刷新当前视图');
-};
 
 const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   let json;
@@ -38,13 +34,13 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   try {
     json = JSON.parse(eaogTxt);
   } catch (err) {
-    console.error('导入失败，文件格式错误:', err);
+    console.warn('导入失败，文件格式错误:', err);
     // 或者，evaluate as JavaScript object
     try {
       // eslint-disable-next-line no-eval
       json = Function('"use strict"; return (' + eaogTxt + ')')();
     } catch (err) {
-      console.error('导入失败，文件格式错误:', err);
+      console.warn('导入失败，文件格式错误:', err);
       return;
     }
   }
@@ -56,7 +52,7 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
  */
 const handleImport = async () => {
   debug('导入EAOG数据');
-  const eaog = (IS_DEV && await importEaogFromClipboard()) || await importEaogFromFile();
+  const eaog = (IS_DEV && await importEaogFromClipboard() || loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
   if (eaog) {
     debug('导入成功:', eaog);
     updateCurrentEaog(eaog); // 更新当前EAOG
@@ -75,6 +71,7 @@ const handleExport = async (event: MouseEvent) => {
   }
 
   const data = JSON.stringify(currentEaog.value, null, 2);
+  localStorage.setItem('aia-editor-eaog', data); // 保存到本地存储，供后续使用
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 
@@ -91,15 +88,6 @@ const applyFramework = (framework) => {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
 
-      // 压缩不必要的层级。
-      // const children = framework.children;
-      // const isShrunken = framework.shrinkSequentialParent();
-      // const isShrunken = false;
-
-      // 标记为新修改的节点，以便展示动效。
-      // const newNodes = isShrunken ? children : [framework];
-      // newNodes.forEach(node => node === eaog || node.markAsNewlyModifiedForAWhile())
-
       framework.isCollapsed = true; // 默认折叠，除非用户展开。
       framework.markAsNewlyModifiedForAWhile();
     });
@@ -107,6 +95,10 @@ const applyFramework = (framework) => {
   } else {
     message.warning('请先选择至少一个节点');
   }
+};
+
+const handleRefresh = () => {
+  debug('刷新当前视图');
 };
 
 const handleOpen = () => {
@@ -146,7 +138,7 @@ const handleValidate = () => {
   if (res.success) {
     message.success('EAOG数据校验通过，符合数格：CP Schema 0.0.1');
   } else {
-    console.error('EAOG数据校验失败:', res.error);
+    message.error(`EAOG数据校验失败: ${zogErrorToString(res.error)}`, 5);
   }
 };
 
@@ -156,9 +148,19 @@ const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> 
     debug('从剪切板读取内容成功');
     return parseTextToEaog(text);
   } catch (err) {
-    console.error('无法读取剪切板内容:', err);
-    return undefined;  // 返回undefined而不是null
+    console.warn('无法读取剪切板内容:', err);
+    return undefined;
   }
+};
+
+const loadFromLocalStorage = (key: string): EditableEaogNode | undefined => {
+  const data = localStorage.getItem(key);
+  if (data) {
+    debug('从本地存储读取内容成功');
+    return parseTextToEaog(data);
+  }
+  debug('本地存储中没有找到数据');
+  return undefined;
 };
 
 const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
@@ -180,7 +182,7 @@ const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
         resolve(parseTextToEaog(content));
       };
       reader.onerror = () => {
-        console.error('读取文件失败');
+        console.warn('读取文件失败');
         resolve(undefined);
       };
       reader.readAsText(file);
@@ -195,20 +197,13 @@ const copyToClipboard = async (data: any) => {
     await navigator.clipboard.writeText(data);
     debug('已复制到剪切板');
   } catch (err) {
-    console.error('无法复制到剪切板:', err);
+    message.error(`无法复制到剪切板: ${JSON.stringify(err)}`);
   }
 };
 
 const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
   const href = 'data:text/json;charset=utf-8,' + encodeURIComponent(data);
   triggerDownload(href, 'eaog-export.json');
-  // const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(data);
-  // const downloadAnchorNode = document.createElement('a');
-  // downloadAnchorNode.setAttribute("href", dataStr);
-  // downloadAnchorNode.setAttribute("download", "eaog-export.json");
-  // document.body.appendChild(downloadAnchorNode);
-  // downloadAnchorNode.click();
-  // downloadAnchorNode.remove();
 };
 
 // 添加和移除键盘事件监听器
@@ -216,7 +211,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   // Ctrl+N 新建
   if (event.ctrlKey && event.key === 'n') {
     event.preventDefault();
-    handleNew();
+    props.eaogNodeForm?.createEaog();
   }
   // Ctrl+O 打开
   else if (event.ctrlKey && event.key === 'o') {
@@ -262,7 +257,7 @@ onUnmounted(() => {
 <template>
   <div class="flex items-center gap-2 p-2 border-b">
     <!-- 新建、 打开、导入组 -->
-    <EditorToolbarButton icon="ant-design:file-add-outlined" tooltip="新建 Ctrl+N" @click="handleNew"/>
+    <EditorToolbarButton icon="ant-design:file-add-outlined" tooltip="新建 Ctrl+N" @click="eaogNodeForm?.createEaog()"/>
     <EditorToolbarButton icon="lucide:folder-open" tooltip="打开 Ctrl+O" @click="handleOpen" :disabled="!IS_STANDALONE_APP"/>
     <EditorToolbarButton icon="lucide:upload" tooltip="导入 Ctrl+Shift+I" @click="handleImport"/>
 

@@ -2,32 +2,72 @@
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
-import {currentNode, currentEaog, EditableEaogNode} from '../models/eaog-node';
+import {currentNode, currentEaog, EditableEaogNode, zogErrorToString} from '../models/editable-eaog-node';
 
 import {useHistory} from '../composables/eaog-history';
+
 const history = useHistory();
 
 // 导入您的Schema定义
+// @formatter:off
 // @ts-ignore
-import {
-  cpNodeSchema,
-  cpInstructionSchema,
-  recursionSchema,
-  iteratorBaseSchema,
-  baseNodeSchema,
-  corSchema,
-  allNodeTypes
-} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {cpNodeSchema, cpInstructionSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {message} from "ant-design-vue";
+// @formatter:on
 
 // 节点类型选项
 const nodeTypeOptions = allNodeTypes.map((type: string) => ({label: type, value: type}));
 
-const title = ref(); // 模态框标题
-// 将isEdit改为mode，使用字符串枚举
+const title = ref(); // 模态框标题，这个需要保持响应式以更新UI
+
+// 使用普通变量而非响应式变量
 type FormMode = 'create-eaog' | 'edit-node' | 'add-node';
-const mode = ref<FormMode>('add-node');
-const position = ref<'before' | 'after' | 'child' | 'parent'>('after');
-const tempNodeValues = ref<any>(); // 用于暂存新建节点的值
+let formMode: FormMode = 'add-node';
+let insertPosition: 'before' | 'after' | 'child' | 'parent' = 'after';
+
+// 简化函数，减少重复代码
+const checkFormValues = (formValues: Record<string, any>) => {
+  const nodeValues = {...formValues, children: []}; // 表单上没有children字段，手动添加
+  cpNodeSchema.parse(nodeValues); // Zod校验表单数据，出错会抛出异常
+  return nodeValues;
+}
+
+const createNodeFromForm = (formValues: Record<string, any>) => {
+  const nodeValues = checkFormValues(formValues)
+  return new EditableEaogNode(nodeValues);
+}
+
+// 处理表单提交
+const handleFormSubmit = async (formValues: Record<string, any>) => {
+  const { valid } = await formApi.validate();
+  if (!valid) {
+    return; // 如果验证失败，直接返回
+  }
+  try {
+    if (formMode === 'edit-node') {
+      const nodeValues = checkFormValues(formValues)
+      currentNode.value?.mergeFormValues(nodeValues);
+      currentNode.value?.markAsNewlyModifiedForAWhile();
+    } else if (formMode === 'create-eaog') {
+      const newNode = createNodeFromForm(formValues);
+      currentEaog.value = newNode;
+      currentNode.value = null;
+    } else { // 'add-node' 模式
+      const newNode = createNodeFromForm(formValues);
+      currentNode.value?.insert(newNode, insertPosition);
+      newNode.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
+    }
+
+    history.addToHistory();
+    modalApi.close(); // 提交成功后关闭模态框
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      message.error(`表单验证失败，请检查输入.${zogErrorToString(error)}`, 5);
+    } else {
+      message.error(`提交失败: ${error instanceof Error ? error.message : '未知错误'}`, 5);
+    }
+  }
+}
 
 const [Form, formApi] = useVbenForm({
   schema: [
@@ -41,7 +81,7 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        disabled: () => mode.value === 'edit-node', // 编辑时禁用类型选择
+        disabled: () => formMode === 'edit-node', // 编辑时禁用类型选择
       },
       controlClass: 'w-full',
       rules: z.string().min(1, '请选择节点类型'),
@@ -62,6 +102,7 @@ const [Form, formApi] = useVbenForm({
       },
       rules: baseNodeSchema.shape.description,
     },
+
     // 指令节点特有字段 action
     {
       component: 'Input',
@@ -73,8 +114,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         if: (values) => values.type === 'instruction',
-        rules: cpInstructionSchema.shape.action,
       },
+        rules: cpInstructionSchema.shape.action,
     },
 
     // 指令节点特有字段 - params
@@ -123,8 +164,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         if: (values) => values.type === 'recursion',
-        rules: recursionSchema.shape.ref,
       },
+        rules: recursionSchema.shape.ref,
     },
     // 迭代器字段 - items
     {
@@ -137,8 +178,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         if: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
-        rules: iteratorBaseSchema.shape.items,
       },
+        rules: iteratorBaseSchema.shape.items,
     },
     // 迭代器字段 - item
     {
@@ -151,8 +192,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         if: (values) => ['sitr', 'pitr', 'for', 'pfor'].includes(values.type),
-        rules: iteratorBaseSchema.shape.item,
       },
+        rules: iteratorBaseSchema.shape.item,
     },
 
     // 选择(cor) 字段 - condition
@@ -166,8 +207,8 @@ const [Form, formApi] = useVbenForm({
       dependencies: {
         triggerFields: ['type'],
         if: (values) => ['cor'].includes(values.type),
-        rules: corSchema.shape.condition,
       },
+      rules: corSchema.shape.condition,
     },
 
     // 选项字段 - choice
@@ -180,90 +221,63 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        if: (values) => currentNode.value?.parent?.type === 'cor',
-        rules: baseNodeSchema.shape.choice,
+        if: () => currentNode.value?.parent?.type === 'cor',
       },
+      // rules: baseNodeSchema.shape.choice,
+      rules: z.string().min(1, '选项名称不能为空'),
     },
   ],
-  handleSubmit: async (values) => {
-    try {
-      if (mode.value === 'edit-node') {
-        // 编辑节点模式
-        // 合并回未编辑的值，如：children、id等，然后校验
-        const v = currentNode.value.getFormValues(values);
-        const isModified = v !== undefined;
-        if (isModified) {
-          cpNodeSchema.parse(v);
-          // 更新currentNode的值
-          currentNode.value.mergeFormValues(values);
-          currentNode.value.markAsNewlyModifiedForAWhile();
-        }
-      } else {
-        // 新建节点模式 (add-node 或 create-eaog)
-        values = {...values, children: []}; // 表单上没有children字段，手动添加
-        cpNodeSchema.parse(values);
-
-        // 创建新的EditableEaogNode实例
-        const newNode = new EditableEaogNode(values);
-
-        if (mode.value === 'create-eaog') {
-          // 新建EAOG
-          currentEaog.value = newNode;
-          currentNode.value = null; // 清空当前节点
-        } else if (currentNode.value) {
-          // 添加节点
-          currentNode.value.insert(newNode, position.value);
-          newNode.markAsNewlyModifiedForAWhile();
-        } else if (currentEaog.value == null) {
-          // 没有当前EAOG时自动创建
-          currentEaog.value = newNode;
-        } else {
-          console.error('当前没有可插入的父节点');
-          return;
-        }
-      }
-
-      history.addToHistory();
-      modalApi.close(); // 提交成功后关闭模态框
-    } catch (error) {
-      console.error('表单验证失败:', error);
-    }
-  },
+  handleSubmit: handleFormSubmit,
   showDefaultActions: false,
 });
 
-const [Modal, modalApi] = useVbenModal({
-  onConfirm: () => formApi.submitForm(),
-  onOpenChange: (isOpen) => {
-    if (isOpen) {
-      const { formMode = 'add-node', insertPosition = 'after' } = modalApi.getData() || {};
-      mode.value = formMode;
-      position.value = insertPosition;
-
-      // 根据不同模式设置标题和表单数据
-      if (mode.value === 'edit-node') {
+const handleModalOpen = (isOpen: boolean) => {
+  if (isOpen) {
+    // 根据不同模式设置标题和表单数据
+    switch (formMode) {
+      case 'edit-node':
         title.value = "编辑节点";
-        formApi.setValues(currentNode.value?.getFormValues());
-      } else if (mode.value === 'create-eaog') {
+        formApi.setValues(currentNode.value?.getObjFromFormValues() as Record<string, any> || {});
+        break;
+      case 'create-eaog':
         title.value = "新建EAOG";
         formApi.resetForm();
-      } else {
-        // add-node 模式
+        break;
+      case 'add-node':
         title.value = "添加节点";
         formApi.resetForm();
-      }
+        break;
     }
-  },
+  }
+}
+
+const [Modal, modalApi] = useVbenModal({
+  onConfirm: () => formApi.submitForm(),
+  onOpenChange: handleModalOpen,
 });
+
+// 表单操作方法 - 使用普通变量
+const createEaog = () => {
+  formMode = 'create-eaog';
+  modalApi.open();
+};
+
+const editNode = () => {
+  formMode = 'edit-node';
+  modalApi.open();
+};
+
+const addNode = (position: 'before' | 'after' | 'child' | 'parent' = 'after') => {
+  formMode = 'add-node';
+  insertPosition = position;
+  modalApi.open();
+};
 
 // 暴露API供父组件调用
 defineExpose({
-  open: ({ formMode = 'add-node', insertPosition = 'after' }: {
-    formMode?: FormMode;
-    insertPosition?: 'before' | 'after' | 'child' | 'parent';
-  } = {}) => {
-    modalApi.setData({ formMode, insertPosition }).open();
-  }
+  createEaog,
+  editNode,
+  addNode
 });
 </script>
 

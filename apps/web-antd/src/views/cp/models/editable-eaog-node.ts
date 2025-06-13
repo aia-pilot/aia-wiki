@@ -3,14 +3,15 @@ import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import {z} from 'zod';
 import {ref, type Ref} from 'vue'; // 添加Vue的ref引入
-// @ts-ignore
-import {cpEaogSchema, cpNodeSchema, compositeNodeSchema, baseNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+// @ts-ignore 忽略导入的类型
+import {cpEaogSchema, cpNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 
 import Debug from 'debug';
+
 const debug = Debug("aia:cp:eaog-node");
 
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
@@ -18,6 +19,7 @@ export type EaogNode = z.infer<typeof cpNodeSchema>;
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
 const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent'];
+
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
   type!: string;
@@ -75,7 +77,7 @@ export class EditableEaogNode implements EaogNode {
   get childrenDirection(): 'vertical' | 'horizontal' | '' {
     return this.isLeaf ? ''  // 叶子节点没有子节点，返回空字符串
       : Eaog.isConcurrentType(this.type) || Eaog.isConditionalType(this.type) ? 'horizontal'  // 并行和条件节点的子节点水平排列
-      : 'vertical'; // 其余节点的子节点垂直排列
+        : 'vertical'; // 其余节点的子节点垂直排列
   }
 
   /**
@@ -85,6 +87,13 @@ export class EditableEaogNode implements EaogNode {
     return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
       return acc.concat(child, child.descendants);
     }, []);
+  }
+
+  /**
+   * 获取当前节点及其所有子孙节点
+   */
+  get nodes(): EditableEaogNode[] {
+    return [this, ...this.descendants];
   }
 
   // 点击节点
@@ -119,7 +128,9 @@ export class EditableEaogNode implements EaogNode {
   // 取消所有选中
   deselectAll(): void {
     if (this.root) {
-      this.root.traverseAll(node => { node.isSelected = false; });
+      this.root.traverseAll(node => {
+        node.isSelected = false;
+      });
     }
   }
 
@@ -161,7 +172,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   // 设置新修改状态（用于动画效果）
-  markAsNewlyModifiedForAWhile(duration=2000): void {
+  markAsNewlyModifiedForAWhile(duration = 2000): void {
     this.isNewlyModified = true;
     // 到时（2秒）取消。2秒，与CSS动画时长一致。
     setTimeout(() => {
@@ -190,7 +201,7 @@ export class EditableEaogNode implements EaogNode {
     return this.pathNodes.map(node => node.name).join('/'); // 获��从根节点到当前节点的路径字符串
   }
 
-  get previousSibling(): EditableEaogNode | undefined  {
+  get previousSibling(): EditableEaogNode | undefined {
     if (!this.parent) {
       return undefined; // 如果没有父节点，则没有前一个兄弟节点
     }
@@ -215,9 +226,10 @@ export class EditableEaogNode implements EaogNode {
    * omit parent reference to avoid circular references
    */
   cloneDeep(): EditableEaogNode {
-    const clone = new this.constructor(omit(this.toJSON(), ['children']));
+    // 使用类型断言告诉 TypeScript this.constructor 是一个可构造的类型
+    const clone = new (this.constructor as new (data: EaogNode) => EditableEaogNode)(omit(this.toJSON(), ['children']));
     clone.children = this.children.map(child => child.cloneDeep());
-    clone.children.forEach(child => child.parent = clone);
+    clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
     return clone;
   }
 
@@ -237,18 +249,18 @@ export class EditableEaogNode implements EaogNode {
 
   /**
    * 转换为表单值（编辑前、编辑后）
-   * 必须转换，否则Vben Form会读取不到值���因为，EditableEaogNode不是plain Object（有prototype链），通不过了 isPlainObject 检查，
+   * 必须转换，否则Vben Form会读取不到值。因为，表单绑定的currentNode<EditableEaogNode>，不是plain Object（有prototype链），通不过了 isPlainObject 检查，
    * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入使用
-   * @param values 表单值
+   * @param formValues 表单值
    * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
    */
-  getFormValues(values: Partial<EaogNode> | undefined): object | undefined {
-    if (!values) { // 编辑前，返回当前节点的可编辑属性
+  getObjFromFormValues(formValues: Partial<EaogNode> | undefined): object | undefined {
+    if (!formValues) { // 编辑前，空表单，返回当前节点的可编辑属性
       return omit(this.toJSON(), ['children', 'id']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
     } else { // 编辑后，合并表单值
-      values = getCleanObj(values, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
-      const isModified = Object.keys(values).some(key => values[key as keyof typeof values] !== (this as any)[key]);
-      return isModified ? {...this.toJSON(), ...values} : undefined // 合并当前节点的属性和表单值
+      formValues = getCleanObj(formValues, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
+      const isModified = Object.keys(formValues).some(key => formValues[key as keyof typeof formValues] !== (this as any)[key]);
+      return isModified ? {...this.toJSON(), ...formValues} : undefined // 合并当前节点的属性和表单值
     }
   }
 
@@ -409,7 +421,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * ���据路径获取节点
+   * 根据路径获取节点
    * @param path 路径字符串，格式为 "/node1/node2/node3"
    * @returns ��到的节点或 null
    */
@@ -437,9 +449,23 @@ export const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) 
   debug('更新Eaog:', newCurrentEaog);
 };
 
-export const validateEaog = (eaog: EaogNode): z.SafeParseReturnType<EaogNode, z.ZodError> => {
-  return cpEaogSchema.safeParse(eaog); // 验证 EAOG 数据是否符合 cpEaogSchema
-}
+export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any, any> => {
+  for (const n of eaog.nodes) {
+    // 补充验证cor节点children有choice，其余节点children没有choice
+    if ((n.parent?.type === 'cor' && n.choice === undefined) || (n.parent?.type !== 'cor' && n.choice !== undefined)) {
+      // 返回ZodError
+      return {
+        success: false,
+        error: z.ZodError.create([{
+          code: z.ZodIssueCode.custom,
+          path: [n.path],
+          message: n.parent?.type === 'cor' ? `条件节点的子节点必须有choice属性` : `非条件节点的子节点不能有choice属性`
+        }])
+      };
+    }
+  }
+  return cpEaogSchema.safeParse(eaog.toJSON()); // 验证整个Eaog对象是否符合cpEaogSchema
+};
 
 /**
  * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象
@@ -448,9 +474,16 @@ export const convertToEaogRoot = (node: any) => {
   node = IS_DEV ? convertBriefEaog(node) : node // @DEV，有时候导入的json是简写格式，我们需要转换为完整格式
   const res = cpEaogSchema.safeParse(node); // 验证节点数据是否符合 EaogNode Schema
   if (!res.success) {
-    throw new Error(`Invalid EaogNode data: ${res.error.message}`);
+    throw new Error(`Invalid EaogNode data: ${zogErrorToString(res.error)}`);
   }
   return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
+}
+
+export const zogErrorToString = (error: z.ZodError): string => {
+  // 将 ZodError 转换为字符串
+  return error.errors.map(err => {
+    return `${err.path.join('.')} - ${err.message}`;
+  }).join('\n');
 }
 
 
