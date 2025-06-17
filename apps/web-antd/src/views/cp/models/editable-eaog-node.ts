@@ -1,10 +1,9 @@
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
-import {z} from 'zod';
 import {ref, type Ref} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore 忽略导入的类型
-import {cpEaogSchema, cpNodeSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {cpEaogSchema, cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
@@ -431,10 +430,10 @@ export class EditableEaogNode implements EaogNode {
 }
 
 // 当前EAOG数据作为全局共享状态
-export const currentEaog: Ref<EditableEaogNode | null> = ref(null);
+export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
 
 // 当前被点击的节点
-export const currentNode: Ref<EditableEaogNode | null> = ref(null);
+export const currentNode: Ref<EditableEaogNode | undefined> = ref();
 
 /**
  * 更新当前EAOG数据
@@ -444,7 +443,7 @@ export const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) 
   if (newCurrentEaog) {
     currentEaog.value = newCurrentEaog;
     // 当更新EAOG对象时重置currentNode
-    currentNode.value = null;
+    currentNode.value = undefined; // 清除当前选中节点
   }
   debug('更新Eaog:', newCurrentEaog);
 };
@@ -499,10 +498,12 @@ export const createPlaceHolderNode = (name: string) => {
 // 节点类型对应的颜色和图标
 export const nodeTypeUIConfig = {
   sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'},
+  for: {color: 'blue', icon: '↻', description: '循环节点：对列表元素依次执行'},
   pand: {color: 'green', icon: '⇉', description: '并行与节点：子节点并行执行，全部完成才继续'},
   pfor: {color: 'green', icon: '⇉', description: '并行循环：对列表元素并行执行'},
   cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'},
   instruction: {color: 'purple', icon: '◉', description: '指令节点：执行具体操作'},
   sitr: {color: 'cyan', icon: '↻', description: '顺序迭代：重复执行子节点'},
+  pitr: {color: 'cyan', icon: '⇉', description: '并行迭代：对列表元素并行执行'},
   recursion: {color: 'magenta', icon: '↺', description: '递归：调用其他节点'}
 };

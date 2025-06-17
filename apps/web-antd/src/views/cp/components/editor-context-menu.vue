@@ -6,7 +6,7 @@ import {
 import {currentNode, EditableEaogNode} from '../models/editable-eaog-node';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
-import {ref} from 'vue';
+import {onMounted, onUnmounted, ref} from 'vue';
 
 import {useHistory} from '../composables/eaog-history';
 
@@ -14,7 +14,6 @@ const history = useHistory();
 
 import Debug from 'debug';
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
-import {message} from "ant-design-vue";
 
 const debug = Debug('aia:cp-context-menu');
 
@@ -62,7 +61,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
   if (!node) return;
   if (deleteSubtree) {
     if (node.isRoot) {
-      currentNode.value = null;
+      currentNode.value = undefined;
     } else {
       node.remove(true);
     }
@@ -70,7 +69,7 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
     if (node.isRoot) { //此时仅有一个子节点，升级为根节点
       node.children.length === 1
       && (currentNode.value = node.children[0])
-      && (currentNode.value.parent = null);
+      && (currentNode.value.parent = undefined); // 升级为根节点
     } else {
       node.remove(false);
     }
@@ -85,6 +84,32 @@ const canDeleteNodeButKeepChildren = () => {
   const n = currentNode.value!
   return (n.isContainer && !n.isRoot) || (n.isRoot && n.children.length <= 1)
 }
+
+const onKeyDown = (event: KeyboardEvent) => {
+  const isModifier = event.ctrlKey || event.metaKey; // 同时支持 Ctrl 和 Command(⌘)
+
+  if (event.key === 'Delete' || event.key === 'Backspace') {
+    // 删除当前选中的节点
+    handleDeleteNode(true);
+    event.preventDefault(); // 阻止默认行为
+  } else if (event.key === 'c' && isModifier) {
+    // Ctrl/⌘ + C 复制节点
+    handleCopyNode(true);
+    event.preventDefault();
+  } else if (event.key === 'v' && isModifier) {
+    // Ctrl/⌘ + V 粘贴节点
+    handlePasteNode('after');
+    event.preventDefault();
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', onKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeyDown);
+});
 
 </script>
 

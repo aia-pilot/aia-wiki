@@ -12,6 +12,9 @@ import {reactive, ref, watch} from "vue"; // 导入watch函数
 // @ts-ignore
 import {AiaClient} from "../../../../../../aia-se-comp/src/aia-server-client/aia-client.js";
 import {useUserStore} from "@vben/stores";
+// @ts-ignore
+import {文本流内容, 流内容库} from "../../../../../../aia-infra/src/流内容";
+import {aiaSocket} from '#/utils/aia-socket';
 
 const debug = Debug('aia:wiki-progress-server');
 
@@ -22,13 +25,15 @@ export enum MessageType {
   WARNING = 'warning',
   ERROR = 'error',
   SUCCESS = 'success',
-  CONFIRM = 'confirm' // 新增确认类型
+  CONFIRM = 'confirm', // 新增确认类型
+  STREAM_RESULT = 'stream-result', // 流式返回结果
 }
 
 // 定义消息接口
 export interface BaseMessage {
   type?: MessageType;
   message: string;
+  stream?: any;
   data?: any;
 }
 
@@ -133,6 +138,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         })),
       },
       {
+        name: "stream-result",
+        description: "发送流式返回结果（文本流），通常用于长时间运行的操作",
+        inputSchema: zodToJsonSchema(z.object({
+          data: z.object({
+            messageName: z.string().describe('流式消息名称'), // → 流内容.messageName @see aia-infra/src/流内容/流内容.js#L63
+          })
+        })),
+        outputSchema: zodToJsonSchema(MessageOutputSchema),
+      },
+      {
         name: "clearMessages",
         description: "清除所有消息",
         inputSchema: zodToJsonSchema(z.object({})),
@@ -143,7 +158,87 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 export const progressMessages = reactive<BaseMessage[]>([]); // 用于存储进度消息
+
+function handleStreamResult(args: any) {
+  const messageName = args.data!.messageName!
+
+  // 创建流式消息对象
+  const stream = {content: (new 文本流内容({messageName})).toJSON()}
+  流内容库.接收含流内容(stream, {socket: aiaSocket.socket})
+  // 流内容库.接收含流内容(stream, {socket: aiaSocket.socket, modifier: reactive})
+  const streamMessage: BaseMessage = reactive({
+    type: MessageType.STREAM_RESULT,
+    message: `应该显示stream.content`,
+    data: {
+      id : messageName,
+      stream,
+    }
+  });
+
+  progressMessages.push(streamMessage);
+  debug(`添加流式结果消息: ${messageName}`);
+
+  return {
+    content: [{type: "text", text: 'success'}],
+    structuredContent: {success: true},
+  };
+}
+
+function handleConfirm(args: any) {
+  // 为确认消息生成唯一ID（如果没有提供）
+  const confirmData = args?.data as ConfirmData | undefined;
+  const confirmId = confirmData?.id || `confirm_${Date.now()}`;
+
+  // 设置超时时间，默认1分钟(60000毫秒) 和 MCP协议默认值相同，@see @modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+  const DEFAULT_REQUEST_TIMEOUT_MSEC = 60000;
+
+  const timeoutDuration = confirmData?.timeout || DEFAULT_REQUEST_TIMEOUT_MSEC;
+  const endTime = Date.now() + timeoutDuration;
+
+  const confirmMessage: ConfirmMessage = reactive({
+    message: (args?.message || "请确认操作") as string,
+    type: MessageType.CONFIRM,
+    data: {
+      id: confirmId,
+      result: undefined, // 初始设置为undefined
+      timeout: timeoutDuration, // 超时时间(毫秒)
+      endTime: endTime // 超时截止时间戳
+    }
+  });
+  progressMessages.push(confirmMessage);
+
+  debug(`等待用户确认消息: ${confirmId}, 超时时间: ${timeoutDuration}ms`);
+
+  // 等待用户响应
+  return new Promise((resolve) => {
+    // 使用Vue的watch函数监听result变化
+    const stopWatch = watch(() => confirmMessage.data?.result, (newValue) => {
+      // 只有当result从undefined变为有值时触发
+      if (newValue !== undefined) {
+        debug(`用户确认结果: ${newValue ? '继续' : '取消'}`);
+        // 停止监听避免内存泄漏
+        stopWatch();
+        clearTimeout(timeoutId); // 清除超时定时器
+        const choice = newValue ? '继续' : '取消';
+        resolve({content: [{type: "text", text: choice}], structuredContent: {success: true, choice}});
+      }
+    });
+
+    // 设置超时
+    const timeoutId = setTimeout(() => {
+      stopWatch(); // 停止监听
+      debug(`确认消息超时: ${confirmId}`);
+      // 设置超时结果
+      if (confirmMessage.data) {
+        confirmMessage.data.result = false;
+      }
+      resolve({content: [{type: "text", text: '超时未确认'}], structuredContent: {success: false, choice: '取消'}});
+    }, timeoutDuration);
+  });
+}
+
 // 设置工具调用处理器
+// @ts-ignore
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     const {name, arguments: args} = request.params;
@@ -155,7 +250,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "error":
       case "success":
         const message: BaseMessage = {
-          message: "",
+          message: "", // 默认消息内容为空
           type: name as MessageType,
           ...args
         };
@@ -164,57 +259,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           content: [{type: "text", text: 'success'}],
           structuredContent: {success: true},
         }
+      case "stream-result":
+        return handleStreamResult(args);
       case "confirm":
-        // 为确认消息生成唯一ID（如果没有提供）
-        const confirmData = args?.data as ConfirmData | undefined;
-        const confirmId = confirmData?.id || `confirm_${Date.now()}`;
-
-        // 设置超时时间，默认1分钟(60000毫秒) 和 MCP协议默认值相同，@see @modelcontextprotocol/sdk/dist/esm/shared/protocol.js
-        const DEFAULT_REQUEST_TIMEOUT_MSEC = 60000;
-
-        const timeoutDuration = confirmData?.timeout || DEFAULT_REQUEST_TIMEOUT_MSEC;
-        const endTime = Date.now() + timeoutDuration;
-
-        const confirmMessage: ConfirmMessage = reactive({
-          message: (args?.message || "请确认操作") as string,
-          type: MessageType.CONFIRM,
-          data: {
-            id: confirmId,
-            result: undefined, // 初始设置为undefined
-            timeout: timeoutDuration, // 超时时间(毫秒)
-            endTime: endTime // 超时截止时间戳
-          }
-        });
-        progressMessages.push(confirmMessage);
-
-        debug(`等待用户确认消息: ${confirmId}, 超时时间: ${timeoutDuration}ms`);
-
-        // 等待用户响应
-        return new Promise((resolve) => {
-          // 使用Vue的watch函数监听result变化
-          const stopWatch = watch(() => confirmMessage.data?.result, (newValue) => {
-            // 只有当result从undefined变为有值时触发
-            if (newValue !== undefined) {
-              debug(`用户确认结果: ${newValue ? '继续' : '取消'}`);
-              // 停止监听避免内存泄漏
-              stopWatch();
-              clearTimeout(timeoutId); // 清除超时定时器
-              const choice = newValue ? '继续' : '取消';
-              resolve({content: [{type: "text", text: choice}], structuredContent: {success: true, choice}});
-            }
-          });
-
-          // 设置超时
-          const timeoutId = setTimeout(() => {
-            stopWatch(); // 停止监听
-            debug(`确认消息超时: ${confirmId}`);
-            // 设置超时结果
-            if (confirmMessage.data) {
-              confirmMessage.data.result = false;
-            }
-            resolve({content: [{type: "text", text: '超时未确认'}], structuredContent: {success: false, choice: '取消'}});
-          }, timeoutDuration);
-        });
+        return handleConfirm(args);
       case "clearMessages":
         progressMessages.splice(0, progressMessages.length); // 清除所有消息
         return {success: true};

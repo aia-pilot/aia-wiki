@@ -2,6 +2,9 @@
 import {onMounted, defineProps, computed, reactive, watch, ref, onUnmounted} from 'vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { Spin } from 'ant-design-vue';
+// @ts-ignore
+import {流内容库, 文本流内容} from "../../../../../../aia-infra/src/流内容/index.js";
+
 import {
   progressMessages as globalProgressMessages,
   MessageType,
@@ -20,7 +23,7 @@ let countdownTimer: number | null = null;
 
 const progressMessages = computed(() => props.useFakeData ? fakeProgressMessages : globalProgressMessages.filter((msg: BaseMessage) => {
   return msg.data.id === props.wikiId
-}));
+}))
 
 // 所有confirm消息都有result时，serverWorking为true
 const serverWorking = computed(() => {
@@ -49,17 +52,17 @@ const props = defineProps({
 });
 
 // 模拟数据，用于测试
-  const fakeMessages: BaseMessage[] = [
-    { type: MessageType.INFO, message: '开始处理知识库数据...' , data: { id: 'fake-wiki-id' }},
-    { type: MessageType.PROGRESS, message: '正在解析文档内容', data: { id: 'fake-wiki-id', total: 5, current: 1 } },
-    { type: MessageType.PROGRESS, message: '正在提取文档关键信息', data: { id: 'fake-wiki-id', total: 5, current: 2 } },
-    { type: MessageType.WARNING, message: '部分文档内容格式不规范，尝试自动修复', data: { id: 'fake-wiki-id', file: 'document3.md' } },
-    { type: MessageType.PROGRESS, message: '正在生成文档向量嵌入', data: { id: 'fake-wiki-id', total: 5, current: 3 } },
-    { type: MessageType.ERROR, message: '文档处理错误', data: { id: 'fake-wiki-id', file: 'document4.md', error: 'Parsing error at line 120' } },
-    { type: MessageType.PROGRESS, message: '正在构建知识图谱连接', data: { id: 'fake-wiki-id', total: 5, current: 4 } },
-    { type: MessageType.CONFIRM, message: '确认继续处理剩余文档?', data: { id: 'fake-wiki-id'} },
-    { type: MessageType.SUCCESS, message: '知识库数据处理完成', data: { id: 'fake-wiki-id', total: 5, current: 5, success: 4, failed: 1 } },
-  ];
+const fakeMessages: BaseMessage[] = [
+  { type: MessageType.INFO, message: '开始处理知识库数据...' , data: { id: 'fake-wiki-id' }},
+  { type: MessageType.PROGRESS, message: '正在解析文档内容', data: { id: 'fake-wiki-id', total: 5, current: 1 } },
+  { type: MessageType.PROGRESS, message: '正在提取文档关键信息', data: { id: 'fake-wiki-id', total: 5, current: 2 } },
+  { type: MessageType.WARNING, message: '部分文档内容格式不规范，尝试自动修复', data: { id: 'fake-wiki-id', file: 'document3.md' } },
+  { type: MessageType.PROGRESS, message: '正在生成文档向量嵌入', data: { id: 'fake-wiki-id', total: 5, current: 3 } },
+  { type: MessageType.ERROR, message: '文档处理错误', data: { id: 'fake-wiki-id', file: 'document4.md', error: 'Parsing error at line 120' } },
+  { type: MessageType.PROGRESS, message: '正在构建知识图谱连接', data: { id: 'fake-wiki-id', total: 5, current: 4 } },
+  { type: MessageType.CONFIRM, message: '确认继续处理剩余文档?', data: { id: 'fake-wiki-id'} },
+  { type: MessageType.SUCCESS, message: '知识库数据处理完成', data: { id: 'fake-wiki-id', total: 5, current: 5, success: 4, failed: 1 } },
+];
 
 // 添加模拟数据
 const fakeProgressMessages = reactive<BaseMessage[]>([]);
@@ -103,7 +106,8 @@ const getMessageIcon = (type: MessageType) => {
     warning: 'carbon:warning',
     error: 'carbon:error-filled',
     progress: 'carbon:in-progress',
-    confirm: 'carbon:help-filled', // 新增确认类型图标
+    confirm: 'carbon:help-filled',
+    stream: 'carbon:stream',
   };
   return iconMap[type] || 'carbon:time';
 };
@@ -215,7 +219,7 @@ watch(() => fakeProgressMessages, (messages) => {
         >
           <VbenIcon :icon="getMessageIcon(message.type as MessageType)" class="message-icon" />
           <div class="message-content">
-            <span class="message-text">{{ message.message }}</span>
+            <span class="message-text">{{ message.type === MessageType.STREAM_RESULT ? message.data.stream.content : message.message}}</span>
 
             <!-- 确认消息类型显示按钮 -->
             <div v-if="message.type === MessageType.CONFIRM" class="confirm-actions">
@@ -240,8 +244,8 @@ watch(() => fakeProgressMessages, (messages) => {
                   v-if="message.data?.result == null"
                   class="countdown"
                   :class="{
-                    'countdown-warning': countdowns[message.data?.id] && countdowns[message.data?.id] <= 60,
-                    'countdown-danger': countdowns[message.data?.id] && countdowns[message.data?.id] <= 30
+                    'countdown-warning': countdowns[message.data?.id]! <= 60,
+                    'countdown-danger': countdowns[message.data?.id]! <= 30
                   }"
                 >
                   <VbenIcon icon="carbon:time" class="countdown-icon" />

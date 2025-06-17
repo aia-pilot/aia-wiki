@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import {omit} from 'lodash-es';
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
@@ -46,12 +47,12 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
   try {
     if (formMode === 'edit-node') {
       const nodeValues = checkFormValues(formValues)
-      currentNode.value?.mergeFormValues(nodeValues);
+      currentNode.value?.mergeFormValues(omit(nodeValues, ['children'])); // 合并表单数据到当前节点，保留原来的children
       currentNode.value?.markAsNewlyModifiedForAWhile();
     } else if (formMode === 'create-eaog') {
       const newNode = createNodeFromForm(formValues);
       currentEaog.value = newNode;
-      currentNode.value = null;
+      currentNode.value = undefined;
     } else { // 'add-node' 模式
       const newNode = createNodeFromForm(formValues);
       currentNode.value?.insert(newNode, insertPosition);
@@ -79,10 +80,10 @@ const [Form, formApi] = useVbenForm({
         options: nodeTypeOptions,
         placeholder: '请选择节点类型',
       },
-      dependencies: {
-        triggerFields: ['type'],
-        disabled: () => formMode === 'edit-node', // 编辑时禁用类型选择
-      },
+      // dependencies: {
+      //   triggerFields: ['type'],
+      //   disabled: () => formMode === 'edit-node', // 编辑时禁用类型选择
+      // },
       controlClass: 'w-full',
       rules: z.string().min(1, '请选择节点类型'),
     },
@@ -283,6 +284,6 @@ defineExpose({
 
 <template>
   <Modal :title="title">
-    <Form/>
+   <Form @keydown.stop @click.stop @dblclick.stop/>
   </Modal>
 </template>

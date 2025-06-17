@@ -84,6 +84,12 @@ const handleContextMenu = (event: MouseEvent) => {
          @dblclick.stop="eaogNodeForm?.editNode()"
          @contextmenu="handleContextMenu"
     >
+
+      <!-- 条件分支 -->
+      <div v-if="node.parent?.type === 'cor'" class="cor-children-chioce absolute left-11 -top-3 transform text-xs text-gray-400">
+        {{ node.choice }}
+      </div>
+
       <Tooltip :title="getNodeTypeConfig(node.type).description">
         <Badge
           :text="getNodeTypeConfig(node.type).icon"
@@ -98,7 +104,7 @@ const handleContextMenu = (event: MouseEvent) => {
         <div v-if="node.description" class="text-xs text-gray-500">{{ node.isFramework ? node.mountedNode.description : node.description }}</div>
       </div>
 
-      <div v-if="node.ref" class="ml-2 px-2 py-1 bg-gray-100 rounded-md text-xs">
+      <div v-if="node.ref" class="ml-2 px-2 py-1 text-xs text-gray-400">
         引用: {{ node.ref }}
       </div>
 

@@ -108,7 +108,7 @@ function initSocketListeners() {
 
   // 监听知识库创建失败事件
   aiaSocket.on('wiki-creation-failed', async (data: { id: string; status: string; message: string }) => {
-    message.error(data.message || '知识库创建失败');
+    message.error(data.message || '知识库创建失败', 5);
     debug(`知识库 ${data.id} 创建失败，状态：${data.status}`);
     const wiki = wikiCache.get(data.id);
     // @ts-ignore

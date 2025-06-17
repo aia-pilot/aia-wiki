@@ -63,7 +63,7 @@ const handleImport = async () => {
 /**
  * 导出当前EAOG数据为JSON文本到系���剪贴板，当Shift键按下时，导出为文件（下载）
  */
-const handleExport = async (event: MouseEvent) => {
+const handleExport = async (event: MouseEvent | KeyBoardEvent) => {
   debug('导出当前EAOG');
   if (!currentEaog.value) {
     message.warning('当前没有可导出的数据');
@@ -208,38 +208,40 @@ const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
 
 // 添加和移除键盘事件监听器
 const onKeyDown = (event: KeyboardEvent) => {
-  // Ctrl+N 新建
-  if (event.ctrlKey && event.key === 'n') {
+  const isModifier = event.ctrlKey || event.metaKey; // 同时支持 Ctrl 和 Command(⌘)
+
+  // Ctrl/⌘+N 新建
+  if (isModifier && event.key === 'n') {
     event.preventDefault();
     props.eaogNodeForm?.createEaog();
   }
-  // Ctrl+O 打开
-  else if (event.ctrlKey && event.key === 'o') {
+  // Ctrl/⌘+O 打开
+  else if (isModifier && event.key === 'o') {
     event.preventDefault();
     handleOpen();
   }
-  // Ctrl+S 保存
-  else if (event.ctrlKey && event.key === 's') {
+  // Ctrl/⌘+S 保存
+  else if (isModifier && event.key === 's') {
     event.preventDefault();
     handleSave();
   }
-  // Ctrl+Z 撤销
-  else if (event.ctrlKey && event.key === 'z') {
+  // Ctrl/⌘+Z 撤销
+  else if (isModifier && event.key === 'z' && !event.shiftKey) {
     event.preventDefault();
     handleUndo();
   }
-  // Ctrl+Y 重做
-  else if (event.ctrlKey && event.key === 'y') {
+  // Ctrl/⌘+Y 或 Ctrl/⌘+Shift+Z 重做
+  else if ((isModifier && event.key === 'y') || (isModifier && event.shiftKey && event.key === 'z')) {
     event.preventDefault();
     handleRedo();
   }
-  // Ctrl+Shift+I 导入
-  else if (event.ctrlKey && event.shiftKey && event.key === 'i') {
+  // Ctrl/⌘+Shift+I 导入
+  else if (isModifier && event.shiftKey && event.key === 'i') {
     event.preventDefault();
     handleImport();
   }
-  // Ctrl+Shift+E 导出
-  else if (event.ctrlKey && event.shiftKey && event.key === 'e') {
+  // Ctrl/⌘+Shift+E 导出
+  else if (isModifier && event.shiftKey && event.key === 'e') {
     event.preventDefault();
     handleExport(event);
   }

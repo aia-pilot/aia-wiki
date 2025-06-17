@@ -11,7 +11,7 @@ const debug = Debug('aia:socket');
  * 负责管理与服务端的WebSocket连接
  */
 class AiaSocketClient {
-  private socket: Socket | null = null;
+  readonly socket: Socket | null = null;
   private userId: string | null = null;
   private connected = false;
   private eventHandlers: Map<string, Set<(data: any) => void>> = new Map();

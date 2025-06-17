@@ -113,6 +113,7 @@ class EaogFramework extends EditableEaogNode {
   }
 }
 
+
 export const eaogFrameworks = eaogFrameworkDefs.map(def => new EaogFramework(def));
 
 

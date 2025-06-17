@@ -56,7 +56,6 @@ onMounted(() => {
       <EaogContextMenu :eaog-node-form="eaogNodeForm">
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">
-          <h2 class="text-lg font-semibold mb-2">EAOG可视化</h2>
           <div v-if="currentEaog" class="eaog-container">
             <EaogNodeComponent :node="currentEaog" :eaog-node-form="eaogNodeForm"/>
           </div>
