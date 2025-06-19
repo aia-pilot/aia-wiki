@@ -164,16 +164,16 @@ function handleStreamResult(args: any) {
 
   // 创建流式消息对象
   const stream = {content: (new 文本流内容({messageName})).toJSON()}
-  流内容库.接收含流内容(stream, {socket: aiaSocket.socket})
-  // 流内容库.接收含流内容(stream, {socket: aiaSocket.socket, modifier: reactive})
-  const streamMessage: BaseMessage = reactive({
+  流内容库.接收含流内容(stream, {socket: aiaClient.socket, modifier: reactive})
+  const streamMessage: BaseMessage = {
     type: MessageType.STREAM_RESULT,
     message: `应该显示stream.content`,
     data: {
-      id : messageName,
+      id : args.data?.id || `stream_${Date.now()}`, // 为流消息生成唯一ID
+      messageName,
       stream,
     }
-  });
+  };
 
   progressMessages.push(streamMessage);
   debug(`添加流式结果消息: ${messageName}`);
@@ -347,6 +347,10 @@ export const start = async (): Promise<void> => {
   if (!isConnected.value) {
     const userStore = useUserStore();
     await aiaClient.connect(aiaSvcBaseUrl, userStore.userInfo?.id, userStore.userInfo?.aiaClientBindToken)
+      .then(_ => {
+        debug("连接Aia Server成功")
+        return _
+      })
       .catch((error: { message: string }) => {
         debug("连接Aia Server时出错:", error.message);
       });

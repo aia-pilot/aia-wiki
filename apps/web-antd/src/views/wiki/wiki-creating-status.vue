@@ -261,9 +261,9 @@ watch(() => fakeProgressMessages, (messages) => {
               </div>
             </div>
 
-            <div v-if="message.data && message.type !== MessageType.CONFIRM" class="message-data">
-              {{ typeof message.data === 'object' ? JSON.stringify(message.data) : message.data }}
-            </div>
+<!--            <div v-if="message.data && message.type !== MessageType.CONFIRM" class="message-data">-->
+<!--              {{ typeof message.data === 'object' ? JSON.stringify(message.data) : message.data }}-->
+<!--            </div>-->
           </div>
         </div>
       </div>
