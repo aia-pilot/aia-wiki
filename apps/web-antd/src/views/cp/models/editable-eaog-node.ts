@@ -249,7 +249,7 @@ export class EditableEaogNode implements EaogNode {
   /**
    * 转换为表单值（编辑前、编辑后）
    * 必须转换，否则Vben Form会读取不到值。因为，表单绑定的currentNode<EditableEaogNode>，不是plain Object（有prototype链），通不过了 isPlainObject 检查，
-   * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入使用
+   * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入����用
    * @param formValues 表单值
    * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
    */
@@ -268,7 +268,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * 保障子节点名称唯一。如果已经有同名子节点，则在名称后添加数字后缀（依次递增）。
+   * 保障子节点������一。如果已经有同名子节点，则在名称后添加数字后缀（依次递增）。
    */
   _ensureChildWithUniqueName(child: EditableEaogNode): void {
     child.name = this._getUniqueName(child.name, this.children.map(c => c.name));
@@ -402,34 +402,104 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * 根据路径获取后代节点
+   * 根据路径获取后代节���
    * @param path 路径字符串，格式为 "node1/node2/node3"
    * @returns 找到的子节点或 null
    */
   getDescendantByPath(path: string): EditableEaogNode | null {
     const pathNodes = path.split('/').filter(Boolean); // 分割路径并过滤空字符串
-    let currentNode: EditableEaogNode | null = this;
 
-    for (const nodeName of pathNodes) {
-      if (!currentNode || currentNode.name !== nodeName) {
-        return null; // 如果当前节点不存在或名称不匹配，返回 null
-      }
-      currentNode = currentNode.children.find(child => child.name === nodeName) as EditableEaogNode || null; // 查找子节点
+    // 空路径返回当前节点
+    if (pathNodes.length === 0) {
+      return this;
     }
-    return currentNode; // 返回找���的节点或 null
+
+    let currentNode: EditableEaogNode = this;
+
+    // 遍历路径节点名称
+    for (let i = 0; i < pathNodes.length; i++) {
+      const nodeName = pathNodes[i];
+
+      // 在当前层次查找匹配名称的子节点
+      const childNode = currentNode.children.find(child => child.name === nodeName);
+
+      if (!childNode) {
+        debug(`找不到名为 ${nodeName} 的子节点，在路径 ${path} 中，当前节点是 ${currentNode.name}`);
+        return null;
+      }
+
+      currentNode = childNode;
+    }
+
+    return currentNode;
   }
 
   /**
    * 根据路径获取节点
-   * @param path 路径字符串，格式为 "/node1/node2/node3"
-   * @returns ��到的节点或 null
+   * @param path 路径字符串，格式如 "/root/node1/node2" 或 "root/node1/node2"
+   * @returns 找到的节点或 null
    */
   getNodeByPath(path: string): EditableEaogNode | null {
-    return this.root.getDescendantByPath(path); // 从根节点开始查找
+    // 去除开头的斜杠
+    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+    // 拆分路径
+    const pathParts = cleanPath.split('/').filter(Boolean);
+
+    if (pathParts.length === 0) {
+      return null;
+    }
+
+    // 获取根节点
+    const rootNode = this.root;
+
+    // 首先检查根节点名称是否匹配
+    if (pathParts[0] !== rootNode.name) {
+      debug(`根节点名称不匹配: 期望 ${pathParts[0]}，实际 ${rootNode.name}`);
+      return null;
+    }
+
+    // 从根节点开始，顺着���径查找
+    let currentNode: EditableEaogNode = rootNode;
+
+    for (let i = 1; i < pathParts.length; i++) {
+      const childName = pathParts[i];
+      const childNode = currentNode.children.find(child => child.name === childName);
+
+      if (!childNode) {
+        debug(`在路径 ${path} 中找不到子节点 ${childName}`);
+        return null;
+      }
+
+      currentNode = childNode;
+    }
+
+    return currentNode;
+  }
+
+  /**
+   * 移动节点到新的位置
+   * @param targetNode 目标节点
+   * @param position 移动位置: 'before' | 'after' | 'child'
+   * @returns 是否成功移动
+   */
+  moveTo(targetNode: EditableEaogNode, position: 'before' | 'after' | 'child'): boolean {
+    // 防止将节点移动到自己
+    if (this === targetNode) {
+      return false;
+    }
+
+    // 防止将节点移动到自己的子节点中（会造成循环引用）
+    if (position === 'child' && this.descendants.includes(targetNode)) {
+      return false;
+    }
+    this.remove();
+    targetNode.insert(this, position);
+    return true; // 成功移动
   }
 }
 
-// 当前EAOG数据作为全局共享状态
+// 当前EAOG数据作为��局共享状态
 export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
 
 // 当前被点击的节点
@@ -475,12 +545,11 @@ export const convertToEaogRoot = (node: any) => {
   if (!res.success) {
     throw new Error(`Invalid EaogNode data: ${zogErrorToString(res.error)}`);
   }
-  return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
+  return new EditableEaogNode(res.data); // 返回一个���的 EditableEaogNode 实例
 }
 
 export const zogErrorToString = (error: z.ZodError): string => {
-  // 将 ZodError 转换为字符串
-  return error.errors.map(err => {
+  return error.errors.map((err: z.ZodIssue) => {
     return `${err.path.join('.')} - ${err.message}`;
   }).join('\n');
 }
@@ -502,6 +571,7 @@ export const nodeTypeUIConfig = {
   pand: {color: 'green', icon: '⇉', description: '并行与节点：子节点并行执行，全部完成才继续'},
   pfor: {color: 'green', icon: '⇉', description: '并行循环：对列表元素并行执行'},
   cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'},
+  por: {color: 'orange', icon: '⇉', description: '并行或节点：子节点中任意一个完成即可继续'},
   instruction: {color: 'purple', icon: '◉', description: '指令节点：执行具体操作'},
   sitr: {color: 'cyan', icon: '↻', description: '顺序迭代：重复执行子节点'},
   pitr: {color: 'cyan', icon: '⇉', description: '并行迭代：对列表元素并行执行'},

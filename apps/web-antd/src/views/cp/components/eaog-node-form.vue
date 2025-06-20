@@ -5,7 +5,7 @@ import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {currentNode, currentEaog, EditableEaogNode, zogErrorToString} from '../models/editable-eaog-node';
 
-import {useHistory} from '../composables/eaog-history';
+import {useHistory} from '../composables/use-eaog-history';
 
 const history = useHistory();
 

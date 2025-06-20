@@ -8,7 +8,7 @@ import {currentNode, EditableEaogNode} from '../models/editable-eaog-node';
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
 import {onMounted, onUnmounted, ref} from 'vue';
 
-import {useHistory} from '../composables/eaog-history';
+import {useHistory} from '../composables/use-eaog-history';
 
 const history = useHistory();
 

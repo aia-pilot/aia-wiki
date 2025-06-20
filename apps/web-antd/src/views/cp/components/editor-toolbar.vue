@@ -10,7 +10,7 @@ import {
   validateEaog,
   zogErrorToString
 } from '../models/editable-eaog-node';
-import {useHistory} from '../composables/eaog-history';
+import {useHistory} from '../composables/use-eaog-history';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted} from 'vue'; // 导入Vue的生命周期钩子
 
@@ -71,7 +71,6 @@ const handleExport = async (event: MouseEvent | KeyBoardEvent) => {
   }
 
   const data = JSON.stringify(currentEaog.value, null, 2);
-  localStorage.setItem('aia-editor-eaog', data); // 保存到本地存储，供后续使用
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 

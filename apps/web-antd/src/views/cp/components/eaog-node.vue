@@ -4,25 +4,26 @@
  * 递归组件，用于渲染EAOG树形结构中的节点
  *
  * ## CP(eaog)
- * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构��点说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
+ * Cognitive Program 是一种可执行的树结构(Executable And Or Graph），其叶子节点是 Action。非叶节点是结构节点，这些节点说明孩子节点的执行顺序（顺序、并行）与关系（条件）。
  * 本页面是CP（Eaog）的可视化展示，用树形图来展示CP的结构。
  *
  * ### 可视化策略
  * **时间隐喻**：垂直方向，由上到下，隐喻了时间的先后顺序。因此，顺序节点的孩子垂直排列，并行、条件节点的孩子水平排列。
  * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
- * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
 
-import {defineProps} from 'vue';
-import {Badge, Tooltip} from 'ant-design-vue';
-import {
-  type EditableEaogNode,
-  nodeTypeUIConfig
-} from "#/views/cp/models/editable-eaog-node";
-import Debug from 'debug';
+import {computed, defineProps} from 'vue';
+import {Badge, Tooltip, message} from 'ant-design-vue';
+import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import {nodeTypeUIConfig} from "#/views/cp/models/editable-eaog-node";
 import {VbenIcon} from "@vben-core/shadcn-ui";
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
+import Debug from 'debug';
+
+// 导入重构后的组合式函数
+import {useDraggable} from "../composables/use-draggable";
+import {useNodeInteraction} from "../composables/use-node-interaction";
 
 const debug = Debug('aia:eaog-node');
 
@@ -35,6 +36,14 @@ const props = defineProps<{
 // 默认层级为0
 const nodeLevel = props.level ?? 0;
 
+// 使用组合式函数获取拖拽状态和处理函数
+const {
+  isDragging, isDragOver, dropPosition, handleDragStart, handleDragEnd,
+  handleDragEnter, handleDragLeave, handleDragOver, handleDrop
+} = useDraggable(props.node);
+
+const {handleNodeClick, toggleCollapse, handleContextMenu} = useNodeInteraction(props.node);
+
 // 获取节点类型配置
 const getNodeTypeConfig = (type: string) => {
   return nodeTypeUIConfig[type as keyof typeof nodeTypeUIConfig] || {
@@ -44,49 +53,55 @@ const getNodeTypeConfig = (type: string) => {
   };
 };
 
-// 处理节点点击
-const handleNodeClick = (event: MouseEvent) => {
-  debug(`Node clicked: ${props.node.name}`);
-  // 使用EditableEaogNode的click方法，直接更新节点状态
-  props.node.click(true, event.shiftKey);
-};
-
-// 处理折叠/展开按钮点击
-const toggleCollapse = (event: Event) => {
-  event.stopPropagation(); // 阻止事件冒泡，避免触发节点的点击事件
-  props.node.toggleCollapse(); // 使用EditableEaogNode的toggleCollapse方法
-  debug(`Node ${props.node.name} ${props.node.isCollapsed ? 'collapsed' : 'expanded'}`);
-};
-
-// 处理系统右键菜单事件，附加当前node
-const handleContextMenu = (event: MouseEvent) => {
-  debug(`Context menu for node: ${props.node.name}`);
-  // 设置node为当前点击的节点
-  props.node.click(false); // 只设置为点击状态，不改变选中状态
-  // @ts-ignore 将当前节点附加到事件对象上，以便在右键菜单中使用
-  event.eaogNode = props.node;
-};
+// 计算节点头部的类名
+const headerClasses = computed(() => {
+  return {
+    [`border-${getNodeTypeConfig(props.node.type).color}-500`]: true,
+    'bg-gray-50': nodeLevel === 0,
+    'bg-blue-100 border-2': props.node.isSelected,
+    'border border-blue-200': props.node.isFramework && props.node.isCollapsed,
+    'hover:bg-gray-50': !props.node.isSelected,
+    'cursor-move': !props.node.isRoot
+  };
+});
 </script>
 
 <template>
-  <!-- 使用 node.childrenDirection 来动态设置 class -->
-  <div class="eaog-node" :class="[node.childrenDirection, { 'newly-added': node.isNewlyModified, 'framework': node.isFramework }]">
+  <!-- 使用 node.childrenDirection 来动态设置 class，并添加data-node-path用于DOM选择器 -->
+  <div class="eaog-node"
+       :data-node-path="node.path"
+       :class="[
+         node.childrenDirection,
+         {
+           'newly-added': node.isNewlyModified,
+           'framework': node.isFramework,
+           'is-dragging': isDragging,
+           'drag-over': isDragOver,
+           'drop-before': isDragOver && dropPosition === 'before',
+           'drop-child': isDragOver && dropPosition === 'child',
+           'drop-after': isDragOver && dropPosition === 'after',
+           'parent-horizontal': node.parent?.childrenDirection === 'horizontal',
+           'parent-vertical': node.parent?.childrenDirection === 'vertical' || !node.parent?.childrenDirection
+         }
+       ]">
     <!-- 节点头部 -->
     <div class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
-         :class="{
-          [`border-${getNodeTypeConfig(node.type).color}-500`]: true,
-          'bg-gray-50': nodeLevel === 0,
-          'bg-blue-100 border-2': node.isSelected,
-          'border border-blue-200': node.isFramework && node.isCollapsed, // 框架节点折叠时显示双线边框
-          'hover:bg-gray-50': !node.isSelected // 非选中状态时，hover效果
-        }"
+         :class="headerClasses"
+         draggable="true"
          @click.prevent="handleNodeClick"
          @dblclick.stop="eaogNodeForm?.editNode()"
          @contextmenu="handleContextMenu"
+         @dragstart="handleDragStart"
+         @dragend="handleDragEnd"
+         @dragenter="handleDragEnter"
+         @dragleave="handleDragLeave"
+         @dragover="handleDragOver"
+         @drop="handleDrop"
     >
 
       <!-- 条件分支 -->
-      <div v-if="node.parent?.type === 'cor'" class="cor-children-chioce absolute left-11 -top-3 transform text-xs text-gray-400">
+      <div v-if="node.parent?.type === 'cor'"
+           class="cor-children-chioce absolute left-11 -top-3 transform text-xs text-gray-400">
         {{ node.choice }}
       </div>
 
@@ -100,8 +115,12 @@ const handleContextMenu = (event: MouseEvent) => {
 
       <div class="flex-grow eaog-node-info">
         <!--   框架节点，折叠时，显示其挂载的节点名称与描述，更容易为用户理解。    -->
-        <div class="font-medium">{{ node.isFramework && node.isCollapsed ? `框架：<${ node.mountedNode.name }>` : node.name }}</div>
-        <div v-if="node.description" class="text-xs text-gray-500">{{ node.isFramework ? node.mountedNode.description : node.description }}</div>
+        <div class="font-medium">
+          {{ node.isFramework && node.isCollapsed ? `框架：<${node.mountedNode?.name}>` : node.name }}
+        </div>
+        <div v-if="node.description" class="text-xs text-gray-500">
+          {{ node.isFramework && node.mountedNode ? node.mountedNode.description : node.description }}
+        </div>
       </div>
 
       <div v-if="node.ref" class="ml-2 px-2 py-1 text-xs text-gray-400">
@@ -111,7 +130,7 @@ const handleContextMenu = (event: MouseEvent) => {
       <!-- 折叠/展开 子节点（子树） -->
       <VbenIcon
         v-if="node.children && node.children.length > 0"
-        :icon="node.isFramework ? node.meta.icon : 'ant-design:down-outlined'"
+        :icon="node.isFramework && node.meta?.icon ? node.meta.icon : 'ant-design:down-outlined'"
         class="size-4 shrink-0 transition-all duration-300 ease-in-out ml-2 text-gray-800"
         :class="{
           'text-blue-500': node.isFramework,
@@ -139,7 +158,7 @@ const handleContextMenu = (event: MouseEvent) => {
   @apply flex flex-col;
 }
 
-/** 节点容器 垂直布局，孩子节点宽度100% */
+/** 节点容器 垂直布局，子节点宽度100% */
 .eaog-node.vertical > .eaog-node-children > div {
   @apply w-full;
 }
@@ -155,11 +174,11 @@ const handleContextMenu = (event: MouseEvent) => {
 
 /** 垂直孩子节点，最后一个孩子。
     连接线只画到子节点header的中点，和其icon中点高度一致。
-    这样可以避免最后一个孩子的连接线过长，影响��觉效果。
+    这样可以避免最后一个孩子的连接线过长，影响视觉效果。
 */
 .eaog-node.vertical > .eaog-node-children > div:last-child > .eaog-node > .eaog-node-header::before {
   content: "";
-  height: 50%; /* 连接���高度为子节点header的中点 */
+  height: 50%; /* 连接线高度为子节点header的中点 */
   @apply absolute -ml-2 -mt-8 border-l border-gray-300
 }
 
@@ -174,7 +193,7 @@ const handleContextMenu = (event: MouseEvent) => {
   @apply flex flex-wrap gap-4 border-b border-gray-300 pb-2;
 }
 
-/** 水平孩���节点。展示上连接线，连接到容器的下边线。TODO：media-query，布局变化，不再水平排布时，不显示上连接线 */
+/** 水平孩子节点。展示上连接线，连接到容器的下边线。TODO：media-query，布局变化，不再水平排布时，不显示上连接线 */
 .eaog-node.horizontal > .eaog-node-children > div > .eaog-node::before {
   content: "";
   @apply absolute h-6 -mt-4 ml-10 border-r border-gray-300
@@ -188,7 +207,7 @@ const handleContextMenu = (event: MouseEvent) => {
 }
 
 
-/** 节点为framework（根）时，且折叠式，和节点容器水平布局一样，展示下边线。 TODO: media-query，布局变化，不再水平排布时，header显示下边线 */
+/** 节点为framework（根）时且折叠式，和节点容器水平布局一样，展示下边线。 TODO: media-query，布局变化，不再水平排布时，header显示下边线 */
 /**
 .eaog-node.framework > div.eaog-node-header > div.eaog-node-info {
   @apply border-b border-gray-300 pb-2;
@@ -229,4 +248,72 @@ const handleContextMenu = (event: MouseEvent) => {
   }
 }
 
+/* 拖拽相关样式 - 应用于整个节点 */
+.eaog-node.is-dragging {
+  @apply opacity-50;
+}
+
+.eaog-node.drag-over > .eaog-node-header {
+  @apply outline-dashed outline-2 outline-blue-400;
+}
+
+/* 拖拽放置位置指示器 - 垂直布局的父节点（默认，上下指示线） */
+.eaog-node.parent-vertical.drop-before {
+  @apply relative;
+}
+
+.eaog-node.parent-vertical.drop-before::before {
+  content: "";
+  @apply absolute top-0 left-0 right-0 h-1 bg-blue-500;
+  z-index: 10;
+}
+
+.eaog-node.parent-vertical.drop-after {
+  @apply relative;
+}
+
+.eaog-node.parent-vertical.drop-after::after {
+  content: "";
+  @apply absolute bottom-0 left-0 right-0 h-1 bg-blue-500;
+  z-index: 10;
+}
+
+/* 拖拽放置位置指示器 - 水平布局的父节点（左右指示线） */
+.eaog-node.parent-horizontal.drop-before {
+  @apply relative;
+}
+
+.eaog-node.parent-horizontal.drop-before::before {
+  content: "";
+  @apply absolute top-0 left-0 bottom-0 w-1 bg-blue-500;
+  z-index: 10;
+}
+
+.eaog-node.parent-horizontal.drop-after {
+  @apply relative;
+}
+
+.eaog-node.parent-horizontal.drop-after::after {
+  content: "";
+  @apply absolute top-0 right-0 bottom-0 w-1 bg-blue-500;
+  z-index: 10;
+}
+
+/* 拖拽内部指示器，适用于所有布局类型 */
+.eaog-node.drop-child > .eaog-node-header {
+  @apply bg-blue-50;
+}
+
+.eaog-node.drop-child {
+  @apply bg-blue-50/30;
+}
+
+/* 阻止根节点被拖拽 */
+.eaog-node:first-child:has(> .eaog-node-header:only-child) {
+  @apply cursor-default;
+}
+
+.cursor-move {
+  cursor: move;
+}
 </style>

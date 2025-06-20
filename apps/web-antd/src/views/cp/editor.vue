@@ -31,7 +31,7 @@ import { JsonViewer } from '@vben/common-ui';
 import Debug from 'debug';
 const debug = Debug('aia:cp-editor');
 
-import {useHistory} from './composables/eaog-history';
+import {useHistory} from './composables/use-eaog-history';
 const history = useHistory();
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();

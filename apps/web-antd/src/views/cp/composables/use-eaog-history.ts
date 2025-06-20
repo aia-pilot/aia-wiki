@@ -31,10 +31,11 @@ export function useHistory() {
     historyData.splice(currentIndex.value + 1);
 
     // 检查是否与最后一个历史记录相同
-    if (historyData.length > 0 && eaog.equals(historyData[historyData.length - 1])) {
+    if (historyData.length > 0 && eaog.equals(historyData[historyData.length - 1]!)) {
       return;
     }
 
+    localStorage.setItem('aia-editor-eaog', JSON.stringify(eaog)); // 保存到本地存储，供后续使用
     historyData.push(eaog.cloneDeep());
     currentIndex.value = historyData.length - 1; // 更新当前索引
   };
