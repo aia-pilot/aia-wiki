@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import EditorToolbarButton from './editor-toolbar-button.vue';
+import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
 import {
   convertToEaogRoot,
   currentEaog,
-  currentNode,
   EditableEaogNode,
   updateCurrentEaog,
   validateEaog,
@@ -63,7 +63,7 @@ const handleImport = async () => {
 /**
  * 导出当前EAOG数据为JSON文本到系���剪贴板，当Shift键按下时，导出为文件（下载）
  */
-const handleExport = async (event: MouseEvent | KeyBoardEvent) => {
+const handleExport = async (event: MouseEvent | KeyboardEvent) => {
   debug('导出当前EAOG');
   if (!currentEaog.value) {
     message.warning('当前没有可导出的数据');
@@ -74,7 +74,7 @@ const handleExport = async (event: MouseEvent | KeyBoardEvent) => {
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 
-  if (event.shiftKey) {
+  if (event.shiftKey && currentEaog.value) {
     downloadToFile(data);
   }
 };
@@ -202,7 +202,7 @@ const copyToClipboard = async (data: any) => {
 
 const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
   const href = 'data:text/json;charset=utf-8,' + encodeURIComponent(data);
-  triggerDownload(href, 'eaog-export.json');
+  triggerDownload(href, `${ currentEaog.value.name }.eaog.json`);
 };
 
 // 添加和移除键盘事件监听器

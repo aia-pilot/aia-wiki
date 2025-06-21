@@ -4,6 +4,7 @@ import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {currentNode, currentEaog, EditableEaogNode, zogErrorToString} from '../models/editable-eaog-node';
+import {projectManager} from '../models/project';
 
 import {useHistory} from '../composables/use-eaog-history';
 

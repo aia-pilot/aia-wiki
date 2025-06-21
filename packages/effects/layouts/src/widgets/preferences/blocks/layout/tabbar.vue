@@ -16,6 +16,7 @@ defineOptions({
 defineProps<{ disabled?: boolean }>();
 
 const tabbarEnable = defineModel<boolean>('tabbarEnable');
+
 const tabbarShowIcon = defineModel<boolean>('tabbarShowIcon');
 const tabbarPersist = defineModel<boolean>('tabbarPersist');
 const tabbarDraggable = defineModel<boolean>('tabbarDraggable');

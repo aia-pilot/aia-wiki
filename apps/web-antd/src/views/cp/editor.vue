@@ -7,6 +7,7 @@
  * 3. 新建、粘贴时，可选择插入位置：前（兄弟节点、前）、后（兄弟节点、后）、子（作为子节点，仅对容器节点）、父（仅当添加、粘贴的节点为容器节点时）
  * 4. 复制时，可选择是否复制子树
  * 5. 删除时，可选择是否删除子树，如不删除子树，将孩子节点提升为当前节点的兄弟节点
+ * 6. 项目管理：在右侧面板提供项目文件浏览器
  *
  * ## 开发惯例
  * 1. 尽量使用tailwindcss的类名来控制样式，保持一致性和可维护性。
@@ -16,32 +17,47 @@
 import EaogNodeComponent from './components/eaog-node.vue';
 import EaogContextMenu from './components/editor-context-menu.vue';
 import EditorToolbar from './components/editor-toolbar.vue';
+import EditorSidebar from './components/editor-sidebar.vue';
 import {
   convertToEaogRoot,
   currentEaog,
-  currentNode,
   updateCurrentEaog,
 } from './models/editable-eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {onMounted, ref} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
-import { JsonViewer } from '@vben/common-ui';
+import {projectManager} from './models/project';
 
 import Debug from 'debug';
+
 const debug = Debug('aia:cp-editor');
 
 import {useHistory} from './composables/use-eaog-history';
+
 const history = useHistory();
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 
-onMounted(() => {
+// 处理从项目面板加载文件的事件
+const handleLoadFile = (fileContent) => {
+  const data = JSON.parse(fileContent);
+  const eaogData = convertToEaogRoot(data);
+  updateCurrentEaog(eaogData);
+  history.initHistory(eaogData);
+};
+
+onMounted(async () => {
   // 初始化时设置eaogData
   const initialEaog = convertToEaogRoot(complexFlow); // 使用示例流程并转换为EditableEaogNode
   updateCurrentEaog(initialEaog);
   history.initHistory(initialEaog);
   debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
+
+// 初始化项目数据
+  await projectManager.initDB();
+  await projectManager.createDefaultProject();
+  await projectManager.loadProjectFiles();
 });
 </script>
 
@@ -62,35 +78,9 @@ onMounted(() => {
         </div>
       </EaogContextMenu>
 
-      <!-- 节点详情区域 -->
-      <div class="w-1/3 ml-4 p-4 border rounded-md">
-        <h2 class="text-lg font-semibold mb-2">节点详情</h2>
-        <div v-if="currentNode" class="node-details">
-          <div class="mb-4">
-            <div class="mb-2">
-              <span class="font-medium">名称：</span>
-              <span>{{ currentNode.name }}</span>
-            </div>
-            <div class="mb-2">
-              <span class="font-medium">类型：</span>
-              <span>{{ currentNode.type }}</span>
-            </div>
-          </div>
-
-          <!-- 使用JsonViewer展示完整节点信息 -->
-          <div>
-            <div class="font-medium mb-2">完整JSON数据：</div>
-            <JsonViewer
-              :value="currentNode"
-              :expand-depth="2"
-              copyable
-              boxed
-            />
-          </div>
-        </div>
-        <div v-else class="text-gray-500">
-          请点击左侧节点查看详情
-        </div>
+      <!-- 右侧栏组件 -->
+      <div class="w-1/3 ml-4">
+        <EditorSidebar :eaog-node-form="eaogNodeForm" @load-file="handleLoadFile"/>
       </div>
     </div>
 
@@ -103,11 +93,5 @@ onMounted(() => {
 .eaog-container {
   overflow: auto;
   max-height: 80vh;
-}
-
-.node-details {
-  padding: 1rem;
-  background-color: #f9f9f9;
-  border-radius: 0.25rem;
 }
 </style>
