@@ -52,8 +52,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       currentNode.value?.markAsNewlyModifiedForAWhile();
     } else if (formMode === 'create-eaog') {
       const newNode = createNodeFromForm(formValues);
-      currentEaog.value = newNode;
-      currentNode.value = undefined;
+      await projectManager.updateOrCreateFile(newNode, true); // 创建新文件
     } else { // 'add-node' 模式
       const newNode = createNodeFromForm(formValues);
       currentNode.value?.insert(newNode, insertPosition);

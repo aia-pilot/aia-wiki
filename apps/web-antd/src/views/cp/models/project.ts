@@ -1,7 +1,8 @@
 // filepath: /Users/wangqing/IdeaProjects/abc-study-copilot/packages/aia-wiki-new/apps/web-antd/src/views/cp/models/project.ts
-import {ref, type Ref} from 'vue';
+import {ref, type Ref, toRaw} from 'vue';
 import {type IDBPDatabase, openDB} from 'idb';
 import Debug from 'debug';
+import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 
 const debug = Debug('aia:cp:project');
 
@@ -9,7 +10,6 @@ const debug = Debug('aia:cp:project');
 export interface ProjectFile {
   id: string;
   name: string;
-  path: string;
   type: 'file' | 'directory';
   projectId: string; // 添加projectId字段，确保文件和项目关联
   parentId?: string;
@@ -87,10 +87,10 @@ export class Project {
     if (!name || !content) {
       throw new Error('文件名和内容不能为空');
     }
-    await projectManager.addFile({
+    const file = await projectManager.addFile({
       name, content, type: 'file', projectId: this.id, parentId: currentFolder.value?.id || null, isEaog: true
     })
-    await projectManager.loadProjectFiles(); // 重新加载文件树
+    return file
   }
 
   async updateFileContent(fileId: string, content: any): Promise<void> {
@@ -268,14 +268,42 @@ export class ProjectManager {
     }
 
     debug('文件添加成功:', newFile);
-    return newFile.id;
+    return newFile;
+  }
+
+  // 重命名文件或文件夹
+  async renameFile(fileId: string, newName: string): Promise<void> {
+    if (!this.db) await this.initDB();
+
+    // 获取要重命名的文件
+    const file = await this.getFileById(fileId);
+    if (!file) {
+      debug(`未找到要重命名的文件: ${fileId}`);
+      return;
+    }
+
+    // 更新文件名
+    file.name = newName;
+    file.updatedAt = new Date();
+
+    // 保存到数据库
+    await this.db!.put('files',toRaw(file));
+
+    // 重新加载文件树
+    await this.loadProjectFiles();
   }
 
   // 更新文件
   async updateFile(file: ProjectFile): Promise<void> {
     if (!this.db) await this.initDB();
     file.updatedAt = new Date(); // 更新文件的更新时间
-    await this.db!.put('files', file);
+
+    // 检查是否是EAOG文件，如果是则确保文件名与根节点name保持一致
+    if (file.isEaog) {
+      file.name = this._getEaogFilename(file.content as EditableEaogNode);
+    }
+
+    await this.db!.put('files', toRaw(file));
     await this.loadProjectFiles(); // 重新加载文件树
   }
 
@@ -321,10 +349,22 @@ export class ProjectManager {
     await this.loadProjectFiles(); // 重新加载文件树
   }
 
-  // 选择文件
-  selectFile(file: ProjectFile): void {
-    currentFile.value = file;
-    debug('选择文件:', file);
+  // 设置当前选中的文件
+  setCurrentFile(fileKey: string | null): void {
+    const file: ProjectFile = currentProject.value?.getFileById(fileKey || '') || null;
+    if (file.type === 'file') {
+      currentFile.value = file;
+      debug('设置当前文件:', file);
+    }
+  }
+
+  // 设置当前选中的文件夹
+  setCurrentFolder(fileKey: string | null): void {
+    const file: ProjectFile = currentProject.value?.getFileById(fileKey || '') || null;
+    currentFolder.value = file?.type === 'directory' ? file :
+      // 是文件，当前目录是其父，即其所在目录
+      currentProject.value?.getFileById(file?.parentId || '') || null;
+    debug('设置当前文件夹:', currentFolder.value);
   }
 
   // 获取适配Tree组件的数据结构
@@ -382,26 +422,24 @@ export class ProjectManager {
     return await index.getAll(projectId);
   }
 
-  // 设置当前选中的文件夹
-  setCurrentFolder(fileKey: string | null): void {
-    const file: ProjectFile = currentProject.value?.getFileById(fileKey || '') || null;
-    currentFolder.value = file?.type === 'directory' ? file :
-      // 是文件，当前目录是其父，即其所在目录
-      currentProject.value?.getFileById(file?.parentId || '') || null;
-    debug('设置当前文件夹:', currentFolder.value);
-  }
-
-  async updateOrCreateFile(name: string, content: string): void {
+  async updateOrCreateFile(eaog: EditableEaogNode, isNewFile=false): void {
+    const content = eaog.toJSON();
+    const name = this._getEaogFilename(eaog)
     if (!currentProject.value) {
       debug('当前项目未加载，无法更新或创建文件');
       return;
     }
 
-    if (!currentFile.value) {
-      await currentProject.value.createFileByContent(name, content);
+    if (isNewFile) {
+      currentFile.value = await currentProject.value.createFileByContent(name, content); // 创建新文件
+      await projectManager.loadProjectFiles(); // 重新加载文件树
     } else {
       await currentProject.value.updateFileContent(currentFile.value.id, content);
     }
+  }
+
+  _getEaogFilename(eaog: EditableEaogNode): string {
+    return `${eaog.name}.eaog.json`
   }
 }
 

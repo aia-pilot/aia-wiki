@@ -152,6 +152,7 @@ function collapseAll() {
 function onToggle(item: FlattenedItem<Recordable<any>>) {
   emits('expand', item);
 }
+
 function onSelect(item: FlattenedItem<Recordable<any>>, isSelected: boolean) {
   if (
     !props.checkStrictly &&
@@ -246,6 +247,16 @@ defineExpose({
               event.preventDefault();
             }
             !disabled && onToggle(item);
+          }
+        "
+        @dblclick="
+          (event) => {
+            if (event.type === 'dblclick') {
+              event.__item__ = item; // 将当前item存储到event中，方便后续使用。 这一方法相较下面阻止原生冒泡的方法，侵入性更小
+              // event.preventDefault();
+              // event.stopPropagation(); // 避免原生事件冒泡，造成Tree的dblclick事件触发with原生event
+            }
+            // !disabled && emits('dblclick', item); // 触发自定义的双击事件
           }
         "
         class="tree-node focus:ring-grass8 my-0.5 flex items-center rounded px-2 py-1 outline-none focus:ring-2"

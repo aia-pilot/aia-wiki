@@ -6,21 +6,22 @@ import {
 import {currentNode, EditableEaogNode} from '../models/editable-eaog-node';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
-import {onMounted, onUnmounted, ref} from 'vue';
+import {onMounted, onUnmounted, ref, inject} from 'vue';
 
 import {useHistory} from '../composables/use-eaog-history';
 
 const history = useHistory();
 
 import Debug from 'debug';
-import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
 
 const debug = Debug('aia:cp-context-menu');
 
 // 组件属性
 const props = defineProps<{
-  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // EaogNodeForm实例，用于新建/编辑节点
+  shortCutDisabled?: boolean; // 是否禁用快捷键
 }>();
+
+const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
 // 组件内部状态
 const clipboardNode = ref<EditableEaogNode | null>(null);
@@ -86,6 +87,8 @@ const canDeleteNodeButKeepChildren = () => {
 }
 
 const onKeyDown = (event: KeyboardEvent) => {
+  if (props.shortCutDisabled) return; // 如果禁用快捷键，则不处理
+
   const isModifier = event.ctrlKey || event.metaKey; // 同时支持 Ctrl 和 Command(⌘)
 
   if (event.key === 'Delete' || event.key === 'Backspace') {

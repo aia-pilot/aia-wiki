@@ -12,7 +12,7 @@ import {eaogFrameworks as eaogFrameworkDefs} from "../../../../../../../aia-se-c
  * 1. Mount Point（mount-point）：与使用Eaog的装配对接点。1..* 个。可以出现在Eaog Framework Tree的任何位置。
  * 2. ……
  */
-class EaogFramework extends EditableEaogNode {
+export class EaogFramework extends EditableEaogNode {
   constructor(root: EaogNode) {
     super(root);
     if (!this.isRoot && !this.isLeaf) throw new Error("Root node is required to create an EaogFramework");
@@ -61,7 +61,7 @@ class EaogFramework extends EditableEaogNode {
     return this.descendants.filter(node => node.meta?.mountBy?.framework === this.name);
   }
 
-  get mountedNode(): EditableEaogNode | null {
+  get mountedNode(): EditableEaogNode | undefined {
     const mountedNodes = this.mountedNodes;
     if (mountedNodes.length !== 1)  {
       throw new Error(`Expected exactly one mounted node, but found ${mountedNodes.length}.`);
@@ -85,7 +85,7 @@ class EaogFramework extends EditableEaogNode {
 
   private isMountPointsMatch(mountPointMap: any) {
     return mountPointMap.size !== this.mountPoints.length &&
-            !this.mountPoints.every(mp => mountPointMap.has(mp.name));
+      !this.mountPoints.every(mp => mountPointMap.has(mp.name));
   }
 
   private mountNode(node: EditableEaogNode, mountPoint: EditableEaogNode) {
@@ -114,6 +114,6 @@ class EaogFramework extends EditableEaogNode {
 }
 
 
-export const eaogFrameworks = eaogFrameworkDefs.map(def => new EaogFramework(def));
+export const eaogFrameworks = eaogFrameworkDefs.map((def: EaogNode) => new EaogFramework(def));
 
 

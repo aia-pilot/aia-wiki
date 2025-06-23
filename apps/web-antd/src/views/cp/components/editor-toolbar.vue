@@ -12,21 +12,20 @@ import {
 } from '../models/editable-eaog-node';
 import {useHistory} from '../composables/use-eaog-history';
 import {message} from 'ant-design-vue';
-import {onMounted, onUnmounted} from 'vue'; // 导入Vue的生命周期钩子
+import {onMounted, onUnmounted, inject} from 'vue'; // 添加 inject 导入
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
 import {eaogFrameworks} from "../models/eaog-framework";
+import {projectManager} from "#/views/cp/models/project";
 
 const debug = Debug('aia:cp-toolbar');
 
 const history = useHistory();
 
-// 组件属性
-const props = defineProps<{
-  eaogNodeForm: InstanceType<typeof EaogNodeForm> | undefined; // EaogNodeForm实例，用于新建Eaog
-}>();
+// 通过 inject 注入 eaogNodeForm
+const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
 const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   let json;
@@ -34,7 +33,7 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   try {
     json = JSON.parse(eaogTxt);
   } catch (err) {
-    console.warn('导入失败，文件格式错误:', err);
+    console.warn('导入失败��文件格式错误:', err);
     // 或者，evaluate as JavaScript object
     try {
       // eslint-disable-next-line no-eval
@@ -55,8 +54,7 @@ const handleImport = async () => {
   const eaog = (IS_DEV && await importEaogFromClipboard() || loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
   if (eaog) {
     debug('导入成功:', eaog);
-    updateCurrentEaog(eaog); // 更新当前EAOG
-    history.addToHistory(); // 添加当前EAOG到历史记录
+    projectManager.updateOrCreateFile(eaog, true)
   }
 };
 
@@ -86,7 +84,6 @@ const applyFramework = (framework) => {
   if (selectedNodes?.length > 0) {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
-
       framework.isCollapsed = true; // 默认折叠，除非用户展开。
       framework.markAsNewlyModifiedForAWhile();
     });
@@ -105,7 +102,7 @@ const handleOpen = () => {
     debug('打开本地EAOG文件');
     message.warning('功能尚未实现，敬请期待！');
   }
-  // 打开文件的逻辑
+  // 打开���件的逻辑
 };
 
 const handleSave = () => {
@@ -212,7 +209,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   // Ctrl/⌘+N 新建
   if (isModifier && event.key === 'n') {
     event.preventDefault();
-    props.eaogNodeForm?.createEaog();
+    eaogNodeForm.value?.createEaog();
   }
   // Ctrl/⌘+O 打开
   else if (isModifier && event.key === 'o') {

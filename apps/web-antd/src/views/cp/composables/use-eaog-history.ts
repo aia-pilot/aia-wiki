@@ -1,5 +1,5 @@
 import {reactive, ref} from 'vue';
-import {EditableEaogNode, convertToEaogRoot, currentEaog} from '../models/editable-eaog-node';
+import {EditableEaogNode, currentEaog} from '../models/editable-eaog-node';
 import {projectManager} from '../models/project';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作
@@ -38,7 +38,7 @@ export function useHistory() {
 
     // localStorage.setItem('aia-editor-eaog', JSON.stringify(eaog)); // 保存到本地存储，供后续使用
     // 保存到IndexDB
-    await projectManager.updateOrCreateFile(`${eaog.name}.eaog.json`, JSON.stringify(eaog))
+    await projectManager.updateOrCreateFile(eaog)
 
     historyData.push(eaog.cloneDeep());
     currentIndex.value = historyData.length - 1; // 更新当前索引
@@ -50,7 +50,7 @@ export function useHistory() {
   const undo = () => {
     if (currentIndex.value <= 0) return;
     currentIndex.value--;
-    return historyData[currentIndex.value].cloneDeep();
+    return historyData[currentIndex.value]?.cloneDeep();
   };
 
   /**
@@ -59,7 +59,7 @@ export function useHistory() {
   const redo = () => {
     if (currentIndex.value >= historyData.length - 1) return;
     currentIndex.value++;
-    return historyData[currentIndex.value].cloneDeep();
+    return historyData[currentIndex.value]?.cloneDeep();
   };
 
   /**

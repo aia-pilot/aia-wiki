@@ -24,10 +24,10 @@ import {
   updateCurrentEaog,
 } from './models/editable-eaog-node';
 import {complexFlow, simpleSequentialFlow} from './eaog-samples';
-import {onMounted, ref} from 'vue';
+import {onMounted, ref, watch, provide, type Ref} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
-import {projectManager} from './models/project';
+import {projectManager, currentFile} from './models/project';
 
 import Debug from 'debug';
 
@@ -38,14 +38,25 @@ import {useHistory} from './composables/use-eaog-history';
 const history = useHistory();
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
+provide<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm', eaogNodeForm);
 
-// 处理从项目面板加载文件的事件
-const handleLoadFile = (fileContent) => {
-  const data = JSON.parse(fileContent);
+const currentWorkPanel = ref('eaog-tree'); // 当前工作面板，默认为节点详情
+const changeCurrentWorkPanel = (panel: string) => {
+  currentWorkPanel.value = panel;
+  debug('切换工作面板:', panel);
+};
+
+watch(currentFile, (file) => {
+  if (!file) {
+    debug('当前文件为空，无法加载EAOG数据');
+    return;
+  }
+  const content = file.content
+  const data = typeof content === 'string' ? JSON.parse(content) : content;
   const eaogData = convertToEaogRoot(data);
   updateCurrentEaog(eaogData);
   history.initHistory(eaogData);
-};
+})
 
 onMounted(async () => {
   // 初始化时设置eaogData
@@ -64,23 +75,23 @@ onMounted(async () => {
 <template>
   <div class="cp-editor">
     <!-- 工具栏 -->
-    <EditorToolbar :eaog-node-form="eaogNodeForm"/>
+    <EditorToolbar />
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
     <div class="flex p-4">
       <!-- 上下文菜单组件 -->
-      <EaogContextMenu :eaog-node-form="eaogNodeForm">
+      <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
         <!-- EAOG可视化区域 -->
         <div class="w-2/3 p-4 border rounded-md">
-          <div v-if="currentEaog" class="eaog-container">
-            <EaogNodeComponent :node="currentEaog" :eaog-node-form="eaogNodeForm"/>
+          <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
+            <EaogNodeComponent :node="currentEaog" />
           </div>
         </div>
       </EaogContextMenu>
 
       <!-- 右侧栏组件 -->
-      <div class="w-1/3 ml-4">
-        <EditorSidebar :eaog-node-form="eaogNodeForm" @load-file="handleLoadFile"/>
+      <div class="w-1/3 ml-4 editor-sidebar" @click="changeCurrentWorkPanel('editor-sidebar')">
+        <EditorSidebar />
       </div>
     </div>
 
@@ -90,7 +101,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.eaog-container {
+.eaog-tree {
   overflow: auto;
   max-height: 80vh;
 }

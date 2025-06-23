@@ -224,13 +224,15 @@ export class EditableEaogNode implements EaogNode {
    * 深度克隆当前节点及其所有子节点
    * omit parent reference to avoid circular references
    */
-  cloneDeep(): EditableEaogNode {
-    // 使用类型断言告诉 TypeScript this.constructor 是一个可构造的类型
-    const clone = new (this.constructor as new (data: EaogNode) => EditableEaogNode)(omit(this.toJSON(), ['children']));
-    clone.children = this.children.map(child => child.cloneDeep());
-    clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
-    return clone;
-  }
+cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
+  // 使用泛型和this类型确保返回类型与调用者类型一致
+  const Constructor = this.constructor as new (data: EaogNode) => T;
+  const clone = new Constructor(omit(this.toJSON(), ['children']));
+  // 确保子节点也是使用正确的类型克隆
+  clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
+  clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
+  return clone;
+}
 
 
   toJSON(): object {
@@ -499,7 +501,7 @@ export class EditableEaogNode implements EaogNode {
   }
 }
 
-// 当前EAOG数据作为��局共享状态
+// 当前EAOG数据作为全局共享状态
 export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
 
 // 当前被点击的节点
@@ -566,20 +568,31 @@ export const createPlaceHolderNode = (name: string) => {
 
 // 节点类型对应的颜色和图标
 export const nodeTypeUIConfig = {
-  sand:        { color: 'blue',    icon: '↓',  description: '顺序节点：子节点按顺序执行' },
-  for:         { color: 'blue',    icon: '⟳',  description: '循环节点：对列表元素依次执行' },
-  pand:        { color: 'green',   icon: '⇊',  description: '并行与节点：子节点并行执行，全部完成才继续' },
+  // 非叶（结构）节点，执行时不扩展
+  sand:        { color: 'blue',    icon: '↓',  description: '顺序节点：子节点按顺序执行' }, // 改为 seq sequence？
+  pand:        { color: 'green',   icon: '⇊',  description: '并行与节点：子节点并行执行，全部完成才继续' }, // 改为 par parallel
+  cor:         { color: 'orange',  icon: '?',  description: '条件节点：根据条件选择一个子节点执行' }, //
+
+  for:         { color: 'blue',    icon: '↴',  description: '循环节点：对列表元素依次执行' },
   pfor:        { color: 'green',   icon: '⇓',  description: '并行循环：对列表中的元素并行执行' },
   por:         { color: 'orange',  icon: '⤓',  description: '并行或节点：子节点中任意一个完成即可继续' },
-  cor:         { color: 'orange',  icon: '?',  description: '条件节点：根据条件选择一个子节点执行' },
-  sitr:        { color: 'cyan',    icon: '↺',  description: '顺序迭代：重复执行子节点' },
+  sitr:        { color: 'cyan',    icon: '⟳',  description: '顺序迭代：重复执行子节点' },
   pitr:        { color: 'cyan',    icon: '⤨',  description: '并行迭代：对列表元素并行执行' },
-  recursion:   { color: 'magenta', icon: '⟲',  description: '递归：调用其他节点' },
-  ref:         { color: 'magenta', icon: '⤽',  description: '引用节点：引用其他节点的结果' },
- instruction:  { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' },
+
+  // 叶（结构）节点，执行时动态扩展
+  recursion:   { color: 'magenta', icon: '⟲',  description: '递归：调用其他节点（自身祖先）' },
+  ref:         { color: 'magenta', icon: '↗︎',  description: '引用节点：引用执行其他节点（子树，非自身祖先）' },
+
+  // 叶（行为）节点，执行时不扩展
   empty:       { color: 'gray',    icon: '◎',  description: '空节点：没有行为，仅用于占位，保持结构完整' },
-  end:         { color: 'red',     icon: '⏹',  description: '结束节点：流程结束' },
-  gen:         { color: 'yellow',  icon: '✶',  description: '生成节点：将生成新的子树，替换当前节点' },
+  end:         { color: 'gray',     icon: '◉',  description: '结束节点：流程结束' },
+  instruction:  { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' },
+  gen:         { color: 'green',  icon: '▷▷',  description: '生成节点：将生成新的子树，替换当前节点' },
+
+  // gen, hook, wait, ctx
+
+
+  _default:    { color: 'gray', icon: '◆', description: '未知节点类型' } // 未知节点，缺省配置
 };
 
 
