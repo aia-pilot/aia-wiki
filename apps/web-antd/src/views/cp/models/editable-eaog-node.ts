@@ -242,9 +242,6 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   }
 
   equals(other: EditableEaogNode): boolean {
-    if (!(other instanceof EditableEaogNode)) {
-      return false; // 如果其他对象不是 EditableEaogNode 实例，返回 false
-    }
     return JSON.stringify(this.toJSON()) === JSON.stringify(other.toJSON()); // 比较两个节点的 JSON 表示是否相等
   }
 
@@ -578,6 +575,9 @@ export const nodeTypeUIConfig = {
   por:         { color: 'orange',  icon: '⤓',  description: '并行或节点：子节点中任意一个完成即可继续' },
   sitr:        { color: 'cyan',    icon: '⟳',  description: '顺序迭代：重复执行子节点' },
   pitr:        { color: 'cyan',    icon: '⤨',  description: '并行迭代：对列表元素并行执行' },
+
+  // 叶（结构）节点，开发时扩展（Framework）
+  'mount-point':   { color: 'magenta', icon: '↦⊐',  description: '框架上的挂载点' },
 
   // 叶（结构）节点，执行时动态扩展
   recursion:   { color: 'magenta', icon: '⟲',  description: '递归：调用其他节点（自身祖先）' },

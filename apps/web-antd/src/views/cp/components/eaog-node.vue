@@ -76,7 +76,8 @@ const headerClasses = computed(() => {
     'bg-blue-100 border-2': props.node.isSelected,
     'border border-blue-200': props.node.isFramework && props.node.isCollapsed,
     'hover:bg-gray-50': !props.node.isSelected,
-    'cursor-move': !props.node.isRoot
+    'cursor-move': !props.node.isRoot,
+    'text-gray-400': props.node.type === 'mount-point',
   };
 });
 </script>
@@ -132,7 +133,7 @@ const headerClasses = computed(() => {
         <div class="font-medium">
           {{ node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name }}
         </div>
-        <div v-if="node.description" class="text-xs text-gray-500">
+        <div v-if="node.description" class="text-xs text-gray-500" :class="{'text-gray-300': node.type === 'mount-point'}">
           {{ node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode.description : node.description }}
         </div>
       </div>

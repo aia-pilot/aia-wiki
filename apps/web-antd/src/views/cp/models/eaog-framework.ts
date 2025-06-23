@@ -78,7 +78,7 @@ export class EaogFramework extends EditableEaogNode {
   applyToEaog(eaog: EditableEaogNode) {
     const framework = this.cloneDeep(); // 克隆一个新的EaogFramework实例，避免修改原始实例。Framework总是一次性消费的。
     const placeholder = eaog.replaceWithPlaceHolder(); // 替换下来，记住位置
-    framework.mountEaog(eaog)
+    (framework as EaogFramework).mountEaog(eaog)
     placeholder.replaceWith(framework)
     return framework;
   }
