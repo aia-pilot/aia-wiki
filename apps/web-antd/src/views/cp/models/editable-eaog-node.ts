@@ -4,6 +4,8 @@ import {getCleanObj} from "../utils/clean-obj";
 import {ref, type Ref} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore 忽略导入的类型
 import {cpEaogSchema, cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+// @ts-ignore 忽略导入的类型
+import {uniqNameWithSequenceSuffix} from "../../../../../../../aia-infra/src/uniq-name.js";
 // @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
@@ -270,7 +272,8 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
    * 保障子节点������一。如果已经有同名子节点，则在名称后添加数字后缀（依次递增）。
    */
   _ensureChildWithUniqueName(child: EditableEaogNode): void {
-    child.name = this._getUniqueName(child.name, this.children.map(c => c.name));
+    child.name = uniqNameWithSequenceSuffix(child.name, this.children.map(c => c.name)); // 确保子节点名称唯一
+    // child.name = this._getUniqueName(child.name, this.children.map(c => c.name));
   }
 
   /**
@@ -310,7 +313,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
         this.children.splice(index + 1, 0, child);
       }
     } else {
-      // 如果没有指定锚点，则直接添加到子节点��表末尾
+      // 如果没有指定锚点，则直接添加到子节点列表末尾
       this.children.push(child);
     }
     child.parent = this; // 设置子节点的父节点为当前节点
@@ -331,7 +334,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
 
       this.parent.addChild(newNode, this, position); // 使用父节点的 addChild 方法插入新节点
     } else if (position === 'child') {
-      this.addChild(newNode); // 直接添加为当前节点的子节点的最���一个
+      this.addChild(newNode); // 直接添加为当前节点的子节点的最后一个
     } else if (position === 'parent') { // 新节点作为当前节点的父节点，插入当前节点的位置
       if (!Eaog.isCompositeType(newNode.type)) {
         throw new Error('Cannot promote non-composite node to parent');
