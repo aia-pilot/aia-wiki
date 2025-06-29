@@ -12,7 +12,7 @@ import {
 } from '../models/editable-eaog-node';
 import {useHistory} from '../composables/use-eaog-history';
 import {message} from 'ant-design-vue';
-import {onMounted, onUnmounted, inject} from 'vue'; // 添加 inject 导入
+import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
@@ -33,7 +33,7 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
   try {
     json = JSON.parse(eaogTxt);
   } catch (err) {
-    console.warn('导入失败��文件格式错误:', err);
+    console.warn('导入失败，文件格式错误:', err);
     // 或者，evaluate as JavaScript object
     try {
       // eslint-disable-next-line no-eval

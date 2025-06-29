@@ -239,6 +239,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
 
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
+    // const action = typeof this.action === 'function' ? this.action.toString() : this.action; // 将函数转换为字符串 TODO: 如何恢复？需要更好的处理函数
     const res = {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
     return getCleanObj(res) as any; // 确保返回的对象没有 undefined 属性
   }
@@ -543,11 +544,15 @@ export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any,
  */
 export const convertToEaogRoot = (node: any) => {
   node = IS_DEV ? convertBriefEaog(node) : node // @DEV，有时候导入的json是简写格式，我们需要转换为完整格式
+  console.time('---- zod safeParse'); // 开始计时
   const res = cpEaogSchema.safeParse(node); // 验证节点数据是否符合 EaogNode Schema
   if (!res.success) {
-    throw new Error(`Invalid EaogNode data: ${zogErrorToString(res.error)}`);
+    const message = zogErrorToString(res.error); // 将ZodError转换为字符串
+    console.timeEnd('---- zod safeParse'); // 结束计时
+    throw new Error(`Invalid EaogNode data: ${message}`);
   }
-  return new EditableEaogNode(res.data); // 返回一个���的 EditableEaogNode 实例
+  console.timeEnd('---- zod safeParse'); // 结束计时
+  return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
 }
 
 export const zogErrorToString = (error: z.ZodError): string => {

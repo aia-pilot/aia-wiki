@@ -88,7 +88,7 @@ export class Project {
       throw new Error('文件名和内容不能为空');
     }
     const file = await projectManager.addFile({
-      name, content, type: 'file', projectId: this.id, parentId: currentFolder.value?.id || null, isEaog: true
+      name, content, type: 'file', projectId: this.id, parentId: currentFolder.value?.id, isEaog: true
     })
     return file
   }
@@ -221,7 +221,7 @@ export class ProjectManager {
   }
 
   // 添加文件
-  async addFile(file: Omit<ProjectFile, 'id' | 'createdAt' | 'updatedAt'> & { projectId: string }): Promise<string> {
+  async addFile(file: Omit<ProjectFile, 'id' | 'createdAt' | 'updatedAt'> & { projectId: string }): Promise<ProjectFile> {
     if (!this.db) await this.initDB();
 
     const now = new Date();
@@ -351,8 +351,8 @@ export class ProjectManager {
 
   // 设置当前选中的文件
   setCurrentFile(fileKey: string | null): void {
-    const file: ProjectFile = currentProject.value?.getFileById(fileKey || '') || null;
-    if (file.type === 'file') {
+    const file: ProjectFile | undefined = currentProject.value!.getFileById(fileKey || '');
+    if (file?.type === 'file') {
       currentFile.value = file;
       debug('设置当前文件:', file);
     }
@@ -360,7 +360,7 @@ export class ProjectManager {
 
   // 设置当前选中的文件夹
   setCurrentFolder(fileKey: string | null): void {
-    const file: ProjectFile = currentProject.value?.getFileById(fileKey || '') || null;
+    const file: ProjectFile | undefined = currentProject.value!.getFileById(fileKey || '');
     currentFolder.value = file?.type === 'directory' ? file :
       // 是文件，当前目录是其父，即其所在目录
       currentProject.value?.getFileById(file?.parentId || '') || null;
@@ -422,7 +422,7 @@ export class ProjectManager {
     return await index.getAll(projectId);
   }
 
-  async updateOrCreateFile(eaog: EditableEaogNode, isNewFile=false): void {
+  async updateOrCreateFile(eaog: EditableEaogNode, isNewFile=false): Promise<void> {
     const content = eaog.toJSON();
     const name = this._getEaogFilename(eaog)
     if (!currentProject.value) {
@@ -434,7 +434,7 @@ export class ProjectManager {
       currentFile.value = await currentProject.value.createFileByContent(name, content); // 创建新文件
       await projectManager.loadProjectFiles(); // 重新加载文件树
     } else {
-      await currentProject.value.updateFileContent(currentFile.value.id, content);
+      currentFile.value && await currentProject.value.updateFileContent(currentFile.value?.id, content);
     }
   }
 
