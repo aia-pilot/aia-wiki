@@ -13,7 +13,7 @@ const history = useHistory();
 // 导入您的Schema定义
 // @formatter:off
 // @ts-ignore
-import {cpNodeSchema, cpInstructionSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
 // @formatter:on
 
@@ -114,9 +114,9 @@ const [Form, formApi] = useVbenForm({
       },
       dependencies: {
         triggerFields: ['type'],
-        if: (values) => values.type === 'instruction',
+        if: (values) => values.type === 'instruction' || values.type === 'action',
       },
-        rules: cpInstructionSchema.shape.action,
+        rules: cpActionSchema.shape.action,
     },
 
     // 指令节点特有字段 - params

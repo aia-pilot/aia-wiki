@@ -508,6 +508,10 @@ export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
 // 当前被点击的节点
 export const currentNode: Ref<EditableEaogNode | undefined> = ref();
 
+// 剪贴板中的节点，用于复制粘贴操作, 以及剪贴板新建
+export const clipboardNode = ref<EditableEaogNode | null>(null);
+
+
 /**
  * 更新当前EAOG数据
  * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
@@ -552,7 +556,7 @@ export const convertToEaogRoot = (node: any) => {
     throw new Error(`Invalid EaogNode data: ${message}`);
   }
   console.timeEnd('---- zod safeParse'); // 结束计时
-  return new EditableEaogNode(res.data); // 返回一个新的 EditableEaogNode 实例
+  return new EditableEaogNode(node); // 返回一个新的 EditableEaogNode 实例
 }
 
 export const zogErrorToString = (error: z.ZodError): string => {
@@ -571,7 +575,7 @@ export const createPlaceHolderNode = (name: string) => {
   });
 }
 
-// 节点类型对应的颜色和图标
+/** 节点类型对应的颜色和图标 {@link allNodeTypes} */
 export const nodeTypeUIConfig = {
   // 非叶（结构）节点，执行时不扩展
   sand:        { color: 'blue',    icon: '↓',  description: '顺序节点：子节点按顺序执行' }, // 改为 seq sequence？
@@ -594,7 +598,8 @@ export const nodeTypeUIConfig = {
   // 叶（行为）节点，执行时不扩展
   empty:       { color: 'gray',    icon: '◎',  description: '空节点：没有行为，仅用于占位，保持结构完整' },
   end:         { color: 'gray',     icon: '◉',  description: '结束节点：流程结束' },
-  instruction:  { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' },
+  instruction: { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' }, // @deprecated
+  action:      { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' },
   gen:         { color: 'green',  icon: '▷▷',  description: '生成节点：将生成新的子树，替换当前节点' },
 
   // gen, hook, wait, ctx

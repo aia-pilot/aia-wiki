@@ -3,7 +3,7 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {currentNode, EditableEaogNode} from '../models/editable-eaog-node';
+import {currentNode, clipboardNode, EditableEaogNode} from '../models/editable-eaog-node';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
 import {onMounted, onUnmounted, ref, inject} from 'vue';
@@ -24,7 +24,6 @@ const props = defineProps<{
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
 // 组件内部状态
-const clipboardNode = ref<EditableEaogNode | null>(null);
 const clipboardWithChildren = ref<boolean>(false);
 
 const handleCopyNode = (withChildren: boolean) => {

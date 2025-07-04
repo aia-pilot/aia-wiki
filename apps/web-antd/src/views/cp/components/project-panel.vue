@@ -3,7 +3,7 @@
  * 项目面板
  * 显示项目文件结构，支持文件���文件夹的创建、重命名和删除
  */
-import {computed, inject} from 'vue';
+import {computed, inject, type Ref} from 'vue';
 import {prompt, confirm} from '@vben/common-ui';
 import {message} from 'ant-design-vue';
 import {VbenTree} from '@vben-core/shadcn-ui';
@@ -11,9 +11,11 @@ import {IconifyIcon} from '@vben/icons';
 import type {FlattenedItem} from 'radix-vue';
 import type {Recordable} from '@vben/types';
 
-import {projectManager, currentFolder} from '../models/project';
+import EaogNodeForm from './eaog-node-form.vue';
+import {projectManager, currentFolder, currentFile} from '../models/project';
 
 import Debug from 'debug';
+import {clipboardNode} from "#/views/cp/models/editable-eaog-node";
 
 const debug = Debug('aia:cp:project-panel');
 
@@ -34,6 +36,15 @@ const setCurrentFolderAndLoadFile = (item: FlattenedItem<Recordable<any>>) => {
     }
   }
 };
+
+// 创建新文件
+const createFile = async () => {
+  if (clipboardNode.value) {
+    await projectManager.updateOrCreateFile(clipboardNode.value, true)
+  } else {
+    eaogNodeForm?.createEaog()
+  }
+}
 
 // 重命名文件或文件夹
 const renameFile = async (event: any) => {
@@ -57,9 +68,7 @@ const renameFile = async (event: any) => {
   }
 };
 
-// 处理双击事件
-const handleDblClick = (item: any) => {
-};
+
 
 // 删除文件或文件夹
 const deleteFile = async (item: any) => {
@@ -100,6 +109,11 @@ const createFolder = async () => {
   }
 };
 
+const getNodeClass = (treeNodeItem: FlattenedItem<Recordable<any>>) => {
+  const file = treeNodeItem.value;
+  return `group relative flex items-center cursor-pointer text-sm text-gray-700 ${(file.id === currentFile.value?.id ? '!bg-blue-100' : '')} hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2`;
+};
+
 </script>
 
 <template>
@@ -115,7 +129,7 @@ const createFolder = async () => {
         <button @click="createFolder" class="text-sm px-2 py-1 border rounded hover:bg-gray-100">
           新建文件夹
         </button>
-        <button @click="eaogNodeForm?.createEaog()" class="text-sm px-2 py-1 border rounded hover:bg-gray-100">
+        <button @click="createFile" class="text-sm px-2 py-1 border rounded hover:bg-gray-100">
           新建文件
         </button>
       </div>
@@ -127,7 +141,7 @@ const createFolder = async () => {
       :multiple="false"
       :bordered="true"
       :default-expanded-level="2"
-      :get-node-class="() => 'group relative flex items-center cursor-pointer text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2'"
+      :get-node-class="getNodeClass"
       :children-field="'children'"
       value-field="key"
       label-field="meta.title"
