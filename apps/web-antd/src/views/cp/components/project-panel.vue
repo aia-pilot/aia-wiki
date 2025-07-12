@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 项目面板
- * 显示项目文件结构，支持文件���文件夹的创建、重命名和删除
+ * 显示项目文件结构，支持文件、文件夹的创建、重命名和删除
  */
 import {computed, inject, type Ref} from 'vue';
 import {prompt, confirm} from '@vben/common-ui';
@@ -42,7 +42,7 @@ const createFile = async () => {
   if (clipboardNode.value) {
     await projectManager.updateOrCreateFile(clipboardNode.value, true)
   } else {
-    eaogNodeForm?.createEaog()
+    eaogNodeForm!.value.createEaog()
   }
 }
 
@@ -60,7 +60,7 @@ const renameFile = async (event: any) => {
     title: '重命名',
     content: '请输入新名称:',
     defaultValue: fileToRename.meta.title
-  }).catch(e => null);
+  }).catch(() => null);
 
   if (newName && newName !== fileToRename.meta.title) {
     await projectManager.renameFile(fileToRename.id, newName);
@@ -85,7 +85,7 @@ const deleteFile = async (item: any) => {
     })
     await projectManager.deleteFile(fileToDelete.id);
   } catch (e) {
-    debug('删除操作已取���');
+    debug('删除操作已取消');
     return;
   }
   message.success(`${isDirectory ? '文件夹' : '文件'}"${fileToDelete.meta.title}"已删除`);
@@ -93,10 +93,10 @@ const deleteFile = async (item: any) => {
 
 // 创建新文件夹
 const createFolder = async () => {
-  const folderName = await prompt({content: '请输入���件夹名称:'}).catch(e => null)
+  const folderName = await prompt({content: '请输入文件夹名称:'}).catch(() => null)
   if (folderName) {
     const parentId = currentFolder.value?.id;
-    const parentPath = currentFolder.value?.path || '';
+    const parentPath = currentFolder.value!.path || '';
     const path = parentPath ? `${parentPath}/${folderName}` : `/${folderName}`;
 
     await projectManager.addFile({

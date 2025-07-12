@@ -14,7 +14,6 @@ import {AiaClient} from "../../../../../../aia-se-comp/src/aia-server-client/aia
 import {useUserStore} from "@vben/stores";
 // @ts-ignore
 import {文本流内容, 流内容库} from "../../../../../../aia-infra/src/流内容";
-import {aiaSocket} from '#/utils/aia-socket';
 
 const debug = Debug('aia:wiki-progress-server');
 
@@ -189,8 +188,8 @@ function handleConfirm(args: any) {
   const confirmData = args?.data as ConfirmData | undefined;
   const confirmId = confirmData?.id || `confirm_${Date.now()}`;
 
-  // 设置超时时间，默认1分钟(60000毫秒) 和 MCP协议默认值相同，@see @modelcontextprotocol/sdk/dist/esm/shared/protocol.js
-  const DEFAULT_REQUEST_TIMEOUT_MSEC = 60000;
+  // 设置超时时间，默认50000毫秒，略短于MCP协议默认值1分钟(60000毫秒)相同，@see @modelcontextprotocol/sdk/dist/esm/shared/protocol.js
+  const DEFAULT_REQUEST_TIMEOUT_MSEC = 50000;
 
   const timeoutDuration = confirmData?.timeout || DEFAULT_REQUEST_TIMEOUT_MSEC;
   const endTime = Date.now() + timeoutDuration;
@@ -347,7 +346,7 @@ export const start = async (): Promise<void> => {
   if (!isConnected.value) {
     const userStore = useUserStore();
     await aiaClient.connect(aiaSvcBaseUrl, userStore.userInfo?.id, userStore.userInfo?.aiaClientBindToken)
-      .then(_ => {
+      .then((_: any) => {
         debug("连接Aia Server成功")
         return _
       })

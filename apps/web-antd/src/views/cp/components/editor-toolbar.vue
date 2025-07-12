@@ -17,7 +17,7 @@ import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject �
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
-import {eaogFrameworks} from "../models/eaog-framework";
+import {EaogFramework, eaogFrameworks} from "../models/eaog-framework";
 import {projectManager} from "#/views/cp/models/project";
 
 const debug = Debug('aia:cp-toolbar');
@@ -77,11 +77,11 @@ const handleExport = async (event: MouseEvent | KeyboardEvent) => {
   }
 };
 
-const applyFramework = (framework) => {
+const applyFramework = (framework: EaogFramework) => {
   debug(`添加'${framework.meta.name}' Framework`);
   // 直接获取选中节点并调用相���函数
   const selectedNodes = currentEaog.value?.getSelectedNodes();
-  if (selectedNodes?.length > 0) {
+  if (selectedNodes!.length > 0) {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
       framework.isCollapsed = true; // 默认折叠，除非用户展开。
@@ -199,7 +199,7 @@ const copyToClipboard = async (data: any) => {
 
 const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
   const href = 'data:text/json;charset=utf-8,' + encodeURIComponent(data);
-  triggerDownload(href, `${ currentEaog.value.name }.eaog.json`);
+  triggerDownload(href, `${ currentEaog?.value.name }.eaog.json`);
 };
 
 // 添加和移除键盘事件监听器
@@ -209,7 +209,7 @@ const onKeyDown = (event: KeyboardEvent) => {
   // Ctrl/⌘+N 新建
   if (isModifier && event.key === 'n') {
     event.preventDefault();
-    eaogNodeForm.value?.createEaog();
+    eaogNodeForm!.value.createEaog();
   }
   // Ctrl/⌘+O 打开
   else if (isModifier && event.key === 'o') {

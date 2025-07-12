@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { Card, Input, Select, Button, Pagination, Modal, Form, message, Tag } from 'ant-design-vue';
 import { VbenIcon } from '@vben-core/shadcn-ui';
 import { getAppList, createApp, type 智能应用VM } from '#/api/app/app';
-import FileDirSelector from '#/components/FileDirSelector.vue';
+import FileDirSelector from '#/components/file-dir-selector.vue';
 import type { ElectronDragAndDropOptions } from '#/directives/electron-drag-and-drop';
 
 const router = useRouter();

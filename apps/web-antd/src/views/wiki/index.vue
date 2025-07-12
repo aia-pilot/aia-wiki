@@ -5,7 +5,7 @@ import {Card, Input, Select, Button, Pagination, Modal, Form, message} from 'ant
 import {VbenIcon} from '@vben-core/shadcn-ui';
 import {getWikiList, createWiki, type 知识库VM} from '#/api/wiki/wiki';
 import {useUserStore} from "@vben/stores";
-import FileDirSelector from '#/components/FileDirSelector.vue';
+import FileDirSelector from '#/components/file-dir-selector.vue';
 import {start} from './wiki-progress-mcp';
 // 导入 Electron 拖拽指令相关类型
 import type { ElectronDragAndDropOptions } from '#/directives/electron-drag-and-drop';
