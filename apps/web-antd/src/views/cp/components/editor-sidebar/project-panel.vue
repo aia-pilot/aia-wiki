@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
  * 项目面板
- * 显示项目文件结构，支持文件、文件夹的创建、重命名和删除
+ * 显示项目文件结构，支持文件���文件夹的创建、重命名和删除
  */
-import {computed, inject, type Ref} from 'vue';
+import {computed, inject, type Ref, onMounted} from 'vue';
 import {prompt, confirm} from '@vben/common-ui';
 import {message} from 'ant-design-vue';
 import {VbenTree} from '@vben-core/shadcn-ui';
@@ -11,11 +11,11 @@ import {IconifyIcon} from '@vben/icons';
 import type {FlattenedItem} from 'radix-vue';
 import type {Recordable} from '@vben/types';
 
-import EaogNodeForm from './eaog-node-form.vue';
-import {projectManager, currentFolder, currentFile} from '../models/project';
+import EaogNodeForm from '../editor/eaog-node-form.vue';
+import {projectManager, currentFolder, currentFile} from '../../models/project';
 
 import Debug from 'debug';
-import {clipboardNode} from "#/views/cp/models/editable-eaog-node";
+import {clipboardNode, loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
 
 const debug = Debug('aia:cp:project-panel');
 
@@ -40,9 +40,9 @@ const setCurrentFolderAndLoadFile = (item: FlattenedItem<Recordable<any>>) => {
 // 创建新文件
 const createFile = async () => {
   if (clipboardNode.value) {
-    await projectManager.updateOrCreateFile(clipboardNode.value, true)
+    await loadCurrentEaog(clipboardNode.value, true);
   } else {
-    eaogNodeForm!.value.createEaog()
+    eaogNodeForm!.value!.createEaog()
   }
 }
 
@@ -113,6 +113,13 @@ const getNodeClass = (treeNodeItem: FlattenedItem<Recordable<any>>) => {
   const file = treeNodeItem.value;
   return `group relative flex items-center cursor-pointer text-sm text-gray-700 ${(file.id === currentFile.value?.id ? '!bg-blue-100' : '')} hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2`;
 };
+
+// 初始化项目数据
+onMounted(async () => {
+  await projectManager.initDB();
+  await projectManager.createDefaultProject();
+  await projectManager.loadProjectFiles();
+});
 
 </script>
 

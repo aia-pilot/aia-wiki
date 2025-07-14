@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useVbenForm, z } from '#/adapter/form';
-import DynamicRecordInput from './components/dynamic-record-input.vue';
+import DynamicRecordInput from './dynamic-record-input.vue';
 import { markRaw } from 'vue';
 
 const [Form, formApi] = useVbenForm({

@@ -34,7 +34,7 @@ const routes: RouteRecordRaw[] = [
         // https://deepwiki.com/search/usevbenformzrecordzstring-zuni_aa8f1434-b1b3-4536-933c-6b33d74c13cd
         path: 'dynamic',
         name: '动态表单',
-        component: () => import('#/views/cp/dynamic-record-form-example.vue'),
+        component: () => import('#/views/cp/@dev-dynamic-example/dynamic-record-form-example.vue'),
         meta: {
           icon: 'lucide:file-plus',
           title: '动态表单',

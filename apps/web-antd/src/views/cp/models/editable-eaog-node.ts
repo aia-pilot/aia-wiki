@@ -516,7 +516,7 @@ export const clipboardNode = ref<EditableEaogNode | null>(null);
  * 更新当前EAOG数据
  * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
  */
-export const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
+const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
   if (newCurrentEaog) {
     currentEaog.value = newCurrentEaog;
     // 当更新EAOG对象时重置currentNode
@@ -608,20 +608,33 @@ export const nodeTypeUIConfig = {
   _default:    { color: 'gray', icon: '◆', description: '未知节点类型' } // 未知节点，缺省配置
 };
 
+/**
+ * 从外部（file、store、API等）加载当前Eaog数据
+ * 1. 改变Editor中的Eaog
+ * 2. 初始化历史记录，便于撤销/重做
+ * @param eaog
+ * @param needSave 是否需要保存为新创建的Eaog，默认为false
+ * @param isNew 是否为新创建的Eaog，默认为false
+ */
+export const loadCurrentEaog = async (eaog: EditableEaogNode | EaogNode | string, needSave=false, isNew=false) => {
+  const data = eaog instanceof EditableEaogNode ? eaog : typeof eaog === 'string' ? JSON.parse(eaog) : eaog;
+  const eaogData = eaog instanceof EditableEaogNode ? data : convertToEaogRoot(data);
 
-// export const nodeTypeUIConfig = {
-//   sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'},
-//   for: {color: 'blue', icon: '↻', description: '循环节点：对列表元素依次执行'},
-//   pand: {color: 'green', icon: '⇉', description: '并行与节点：子节点并行执行，全部完成才继续'},
-//   pfor: {color: 'green', icon: '⇉', description: '并行循环：对列表元素并行执行'},
-//   cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'},
-//   por: {color: 'orange', icon: '⇉', description: '并行或节点：子节点中任意一个完成即可继续'},
-//   sitr: {color: 'cyan', icon: '↻', description: '顺序迭代：重复执行子节点'},
-//   pitr: {color: 'cyan', icon: '⇉', description: '并行迭代：对列表元素并行执行'},
-//   recursion: {color: 'magenta', icon: '↺', description: '递归：调用其他节点'},
-//   ref: {color: 'magenta', icon: '↺', description: '引用节点：引用其他节点的结果'},
-//   instruction: {color: 'purple', icon: '◉', description: '指令节点：执行具体操作'},
-//   empty: {color: 'gray', icon: '⦿', description: '空节点，没有行为，仅用于占位，保持结构完整'},
-//   end: {color: 'red', icon: '■', description: '结束节点：流程结束'},
-//   gen: {color: 'yellow', icon: '★', description: '生成节点：将生成新的子树，替换当前节点'},
-// };
+  updateCurrentEaog(eaogData);
+  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
+  useHistory().initHistory(eaogData); // 初始化历史记录
+  if (needSave) {
+    await saveCurrentEaog(isNew); // 如果需要保存，则保存为新创建的Eaog
+  }
+}
+
+export const eaogSaver = ref<((eaog: EaogNode, isNew: boolean) => Promise<void>) | null>(null); // 用于保存当前Eaog数据的函数，可能是file、store、API等
+/**
+ * 将当前Eaog数据保存到历史记录和外部（file、store、API等）
+ * @param isNew 是否为新创建的Eaog，默认为false
+ */
+export const saveCurrentEaog = async (isNew=false) => {
+  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
+  useHistory().addToHistory(); // 添加到历史记录
+  await eaogSaver.value?.(currentEaog.value, isNew)
+}

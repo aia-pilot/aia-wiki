@@ -14,28 +14,19 @@
  */
 
 // 导入EaogNode组件和相关类型
-import EaogNodeComponent from './components/eaog-node.vue';
-import EaogContextMenu from './components/editor-context-menu.vue';
-import EditorToolbar from './components/editor-toolbar.vue';
-import EditorSidebar from './components/editor-sidebar.vue';
-import {
-  convertToEaogRoot,
-  currentEaog,
-  updateCurrentEaog,
-} from './models/editable-eaog-node';
-import {complexFlow, simpleSequentialFlow} from './eaog-samples';
-import {onMounted, ref, watch, provide, type Ref} from 'vue';
+import EaogNodeComponent from './components/editor/eaog-node.vue';
+import EaogContextMenu from './components/editor/editor-context-menu.vue';
+import EditorToolbar from './components/editor/editor-toolbar.vue';
+import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
+import {currentEaog, loadCurrentEaog} from './models/editable-eaog-node';
+import {complexFlow} from './eaog-samples';
+import {onMounted, ref, provide, type Ref} from 'vue';
 
-import EaogNodeForm from "#/views/cp/components/eaog-node-form.vue";
-import {projectManager, currentFile} from './models/project';
+import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
 import Debug from 'debug';
 
 const debug = Debug('aia:cp-editor');
-
-import {useHistory} from './composables/use-eaog-history';
-
-const history = useHistory();
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 provide<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm', eaogNodeForm);
@@ -46,29 +37,9 @@ const changeCurrentWorkPanel = (panel: string) => {
   debug('切换工作面板:', panel);
 };
 
-watch(currentFile, (file) => {
-  if (!file) {
-    debug('当前文件为空，无法加载EAOG数据');
-    return;
-  }
-  const content = file.content
-  const data = typeof content === 'string' ? JSON.parse(content) : content;
-  const eaogData = convertToEaogRoot(data);
-  updateCurrentEaog(eaogData);
-  history.initHistory(eaogData);
-})
-
 onMounted(async () => {
-  // 初始化时设置eaogData
-  const initialEaog = convertToEaogRoot(complexFlow); // 使用示例流程并转换为EditableEaogNode
-  updateCurrentEaog(initialEaog);
-  history.initHistory(initialEaog);
+  await loadCurrentEaog(complexFlow); // 加载示例流程数据
   debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
-
-// 初始化项目数据
-  await projectManager.initDB();
-  await projectManager.createDefaultProject();
-  await projectManager.loadProjectFiles();
 });
 </script>
 

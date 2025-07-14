@@ -1,6 +1,6 @@
 import {reactive, ref} from 'vue';
 import {EditableEaogNode, currentEaog} from '../models/editable-eaog-node';
-import {projectManager} from '../models/project';
+// import {projectManager} from '../models/project';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作
 const historyData = reactive<EditableEaogNode[]>([]);
@@ -24,7 +24,7 @@ export function useHistory() {
   /**
    * 添加当前状态到历史记录，不再需要传递节点参数，直接使用共享的currentEaog
    */
-  const addToHistory = async () => {
+  const addToHistory = () => {
     const eaog = currentEaog.value;
     if (!eaog) return;
 
@@ -38,7 +38,7 @@ export function useHistory() {
 
     // localStorage.setItem('aia-editor-eaog', JSON.stringify(eaog)); // 保存到本地存储，供后续使用
     // 保存到IndexDB
-    await projectManager.updateOrCreateFile(eaog)
+    // await projectManager.updateOrCreateFile(eaog) // TODO: 架构不合理，不能在组合函数中直接调用项目管理器，要反过来。
 
     historyData.push(eaog.cloneDeep());
     currentIndex.value = historyData.length - 1; // 更新当前索引

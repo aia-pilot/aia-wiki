@@ -3,12 +3,13 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {currentNode, clipboardNode, EditableEaogNode} from '../models/editable-eaog-node';
+import {currentNode, clipboardNode, saveCurrentEaog,} from '../../models/editable-eaog-node';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
-import {onMounted, onUnmounted, ref, inject} from 'vue';
+import {onMounted, onUnmounted, ref, inject, type Ref} from 'vue';
+import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
-import {useHistory} from '../composables/use-eaog-history';
+import {useHistory} from '../../composables/use-eaog-history';
 
 const history = useHistory();
 
@@ -40,7 +41,7 @@ const handleCopyNode = (withChildren: boolean) => {
   }
 };
 
-const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
+const handlePasteNode = async (position: 'before' | 'after' | 'child' | 'parent') => {
   // 在这里实现粘贴节点的逻辑
   debug('粘贴节点', position, clipboardNode.value);
   if (!clipboardNode.value || !currentNode.value) return;
@@ -52,10 +53,11 @@ const handlePasteNode = (position: 'before' | 'after' | 'child' | 'parent') => {
     currentNode.value = pastedNode;
   }
   pastedNode.markAsNewlyModifiedForAWhile()
-  history.addToHistory();
+  await saveCurrentEaog(); // 保存当前EAOG
+  // history.addToHistory();
 };
 
-const handleDeleteNode = (deleteSubtree: boolean) => {
+const handleDeleteNode = async (deleteSubtree: boolean) => {
   debug('删除节点', deleteSubtree ? '包含子树' : '仅节点', currentNode.value);
   const node = currentNode.value;
   if (!node) return;
@@ -74,7 +76,8 @@ const handleDeleteNode = (deleteSubtree: boolean) => {
       node.remove(false);
     }
   }
-  history.addToHistory();
+  await saveCurrentEaog(); // 保存当前EAOG
+  // history.addToHistory();
 };
 
 /**

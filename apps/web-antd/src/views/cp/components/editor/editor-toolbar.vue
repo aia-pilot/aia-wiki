@@ -2,23 +2,17 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {
-  convertToEaogRoot,
-  currentEaog,
-  EditableEaogNode,
-  updateCurrentEaog,
-  validateEaog,
-  zogErrorToString
-} from '../models/editable-eaog-node';
-import {useHistory} from '../composables/use-eaog-history';
+import {convertToEaogRoot, currentEaog, EditableEaogNode, validateEaog, zogErrorToString,
+  saveCurrentEaog, loadCurrentEaog
+} from '../../models/editable-eaog-node';
+import {useHistory} from '../../composables/use-eaog-history';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
-import {EaogFramework, eaogFrameworks} from "../models/eaog-framework";
-import {projectManager} from "#/views/cp/models/project";
+import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
 
 const debug = Debug('aia:cp-toolbar');
 
@@ -54,12 +48,13 @@ const handleImport = async () => {
   const eaog = (IS_DEV && await importEaogFromClipboard() || loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
   if (eaog) {
     debug('导入成功:', eaog);
-    projectManager.updateOrCreateFile(eaog, true)
+    await loadCurrentEaog(eaog, true, true); // 加载EAOG数据到编辑器
+    // projectManager.updateOrCreateFile(eaog, true)
   }
 };
 
 /**
- * 导出当前EAOG数据为JSON文本到系���剪贴板，当Shift键按下时，导出为文件（下载）
+ * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
  */
 const handleExport = async (event: MouseEvent | KeyboardEvent) => {
   debug('导出当前EAOG');
@@ -77,9 +72,9 @@ const handleExport = async (event: MouseEvent | KeyboardEvent) => {
   }
 };
 
-const applyFramework = (framework: EaogFramework) => {
+const applyFramework = async (framework: EaogFramework) => {
   debug(`添加'${framework.meta.name}' Framework`);
-  // 直接获取选中节点并调用相���函数
+  // 直接获取选中节点并调用相应函数
   const selectedNodes = currentEaog.value?.getSelectedNodes();
   if (selectedNodes!.length > 0) {
     selectedNodes.forEach(node => {
@@ -87,7 +82,8 @@ const applyFramework = (framework: EaogFramework) => {
       framework.isCollapsed = true; // 默认折叠，除非用户展开。
       framework.markAsNewlyModifiedForAWhile();
     });
-    history.addToHistory(); // 添加当前EAOG（已变更）到历史记录
+    await saveCurrentEaog(); // 保存当前EAOG
+    // history.addToHistory(); // 添加当前EAOG（已变更）到历史记录
   } else {
     message.warning('请先选择至少一个节点');
   }
@@ -102,7 +98,6 @@ const handleOpen = () => {
     debug('打开本地EAOG文件');
     message.warning('功能尚未实现，敬请期待！');
   }
-  // 打开���件的逻辑
 };
 
 const handleSave = () => {
@@ -115,13 +110,13 @@ const handleSave = () => {
 const handleUndo = () => {
   const prevEaog = history.undo();
   debug('撤销操作，当前EAOG:', prevEaog);
-  if (prevEaog) updateCurrentEaog(prevEaog);
+  if (prevEaog) loadCurrentEaog(prevEaog, true, false);
 };
 
 const handleRedo = () => {
   const nextEaog = history.redo();
   debug('重做操作，当前EAOG:', nextEaog);
-  if (nextEaog) updateCurrentEaog(nextEaog);
+  if (nextEaog) loadCurrentEaog(nextEaog, true, false);
 };
 
 const handleValidate = () => {
@@ -270,10 +265,10 @@ onUnmounted(() => {
     <!-- 分组间隔竖线  -->
     <div class="w-px h-6 bg-border mx-1"></div>
 
-    <!-- Frameworks：通知、报告、控制组 通知（事前）、报告��事前），报告（事后）-->
+    <!-- Frameworks：通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
     <EditorToolbarButton v-for="framework in eaogFrameworks"
                          :icon="framework.meta.icon" :tooltip="framework.meta.name"
-                         :disabled="!(currentEaog?.getSelectedNodes().length > 0)"
+                         :disabled="!(currentEaog && currentEaog.getSelectedNodes().length > 0)"
                          @click="applyFramework(framework)"/>
 
     <!-- 分组间隔竖线  -->

@@ -20,7 +20,7 @@ import {VbenIcon} from "@vben-core/shadcn-ui";
 import Debug from 'debug';
 
 // 导入重构后的组合式函数
-import {useDraggable} from "../composables/use-draggable";
+import {useDraggable} from "../../composables/use-draggable";
 import {EaogFramework} from "#/views/cp/models/eaog-framework";
 
 const debug = Debug('aia:eaog-node');

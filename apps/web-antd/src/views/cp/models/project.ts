@@ -2,7 +2,7 @@
 import {ref, type Ref, toRaw} from 'vue';
 import {type IDBPDatabase, openDB} from 'idb';
 import Debug from 'debug';
-import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import {EditableEaogNode, loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
 
 const debug = Debug('aia:cp:project');
 
@@ -184,7 +184,7 @@ export class ProjectManager {
     const index = tx.store.index('projectId');
     const files = await index.getAll(currentProject.value!.id);
 
-    // 构建文件��
+    // 构建文件树结构
     const fileMap = new Map<string, ProjectFile>();
     const rootFiles: ProjectFile[] = [];
 
@@ -350,10 +350,11 @@ export class ProjectManager {
   }
 
   // 设置当前选中的文件
-  setCurrentFile(fileKey: string | null): void {
+  async setCurrentFile(fileKey: string | null) {
     const file: ProjectFile | undefined = currentProject.value!.getFileById(fileKey || '');
     if (file?.type === 'file') {
       currentFile.value = file;
+      await loadCurrentEaog(file.content); // 加载到Editor的当前EAOG
       debug('设置当前文件:', file);
     }
   }
