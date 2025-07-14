@@ -36,6 +36,8 @@ import EditorToolbarButton from "#/views/cp/components/editor/editor-toolbar-but
 import {prompt, confirm} from '@vben/common-ui';
 
 import Debug from 'debug';
+import {loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
+import {loadEaogModule} from "#/views/cp/models/eaog-loader";
 const debug = Debug('aia-wiki-new:dir-tree-sidebar');
 
 const fileTree = ref<FileNode[]>([]);
@@ -113,9 +115,13 @@ function normalizeFileTree(node: FileNode) {
   }
 }
 
-function handleFileClick(file: FileNode) {
+async function handleFileClick(file: FileNode) {
   selected.value = file;
   debug('Selected file:', file);
+  if (file.path.endsWith('.eaog.js')) {
+    const { eaog } = await loadEaogModule(file.path);
+    await loadCurrentEaog(eaog)
+  }
 }
 
 async function handleFileRename(file: FileNode) {
@@ -173,6 +179,8 @@ async function handleRefresh() {
     message.error('刷新目录失败');
   }
 }
+
+
 </script>
 
 <style scoped>
