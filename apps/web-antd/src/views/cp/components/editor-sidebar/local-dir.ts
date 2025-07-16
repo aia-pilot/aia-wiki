@@ -2,7 +2,7 @@ import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree-item.vue";
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
-import {loadCpModule, currentCP} from "#/views/cp/models/cp-loader";
+import {loadCpModuleFromFilePath, currentCP} from "#/views/cp/models/cp-loader";
 import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {prompt} from '@vben/common-ui';
 
@@ -19,7 +19,7 @@ export const isCpFile = (file: FileNode) => {
 
 export const loadCpToEditor = async () => {
   if (isCpFile(selected.value!)) {
-    await loadCpModule(selected.value!.path);
+    await loadCpModuleFromFilePath(selected.value!.path);
   }
 }
 

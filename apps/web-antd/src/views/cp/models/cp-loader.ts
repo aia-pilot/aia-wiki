@@ -1,17 +1,20 @@
 import { ref } from 'vue';
+// @ts-ignore
+import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";
 
 // CPE中正在操作的CP模块
 export const currentCP= ref<{ filePath: string, cp: any } | null>(null);
 
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
-const eaogsDir = import.meta.env.VITE_EAOGS_PATH!.replace(/\\/g, '/');
+const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
 
-export async function loadCpModule(filePath: string) {
+
+export async function loadCpModuleFromFilePath(filePath: string) {
   const normalized = filePath.replace(/\\/g, '/');
   const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
 
   if (!normalized.startsWith(base)) {
-    throw new Error(`文件路径 ${filePath} 不在 VITE_EAOGS_PATH 范围内`);
+    throw new Error(`文件路径 ${filePath} 不在 VITE_CP_STORE_PATH 范围内`);
   }
 
   const relativePath = normalized.slice(base.length);
@@ -19,3 +22,11 @@ export async function loadCpModule(filePath: string) {
   const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${relativePath}`);
   currentCP.value = { filePath: normalized, cp };
 }
+
+export async function loadCpModuleFromCpStr(cpStr: string) {
+  const innerModulePath = parseCpModuleLocateStr(cpStr);
+  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}`);
+  const filePath = `${eaogsDir}/${innerModulePath}`;
+  currentCP.value = { filePath, cp }
+}
+

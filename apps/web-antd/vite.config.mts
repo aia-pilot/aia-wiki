@@ -12,8 +12,8 @@ const __dirname = dirname(__filename);
 
 export default defineConfig(async ({mode}) => {
   const env = loadEnv(mode, process.cwd());
-  const eaogsDir = env.VITE_EAOGS_PATH;
-  if (!eaogsDir) throw new Error('VITE_EAOGS_PATH is not set');
+  const eaogsDir = env.VITE_CP_STORE_PATH;
+  if (!eaogsDir) throw new Error('VITE_CP_STORE_PATH is not set');
   const outputFile = resolve(__dirname, 'src/eaog-modules.ts');
 
   return {
