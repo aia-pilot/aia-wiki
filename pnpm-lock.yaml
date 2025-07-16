@@ -747,6 +747,9 @@ importers:
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
+      chokidar:
+        specifier: ^4.0.3
+        version: 4.0.3
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3

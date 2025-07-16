@@ -10,14 +10,14 @@
     <div class="p-2">
       <ul class="text-sm">
         <DirTreeItem
-          v-for="item in fileTree"
+          v-for="item in localDirs"
           :key="item.path"
           :item="item"
           :expanded="true"
           :level="0"
           :selected="selected"
           :get-item-icon="(item) => item.isDirectory ? '📁' : '📄'"
-          :get-item-class="(item) => item.path.endsWith('.eaog.js') ? 'text-green-600' : ''"
+          :get-item-class="(item) => isCpFile(item) ? 'text-green-600' : ''"
           @file-item-clicked="handleFileClick"
           @file-item-rename="handleFileRename"
           @file-item-delete="handleFileDelete"
@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted} from 'vue';
+import {onMounted} from 'vue';
 import DirTreeItem from './local-dir-tree-item.vue';
 import type {FileNode} from './local-dir-tree-item.vue';
 import {message} from "ant-design-vue";
@@ -36,12 +36,9 @@ import EditorToolbarButton from "#/views/cp/components/editor/editor-toolbar-but
 import {prompt, confirm} from '@vben/common-ui';
 
 import Debug from 'debug';
-import {loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
-import {loadEaogModule} from "#/views/cp/models/eaog-loader";
 const debug = Debug('aia-wiki-new:dir-tree-sidebar');
 
-const fileTree = ref<FileNode[]>([]);
-const selected = ref<FileNode | undefined>(undefined);
+import {localDirs, selected, isCpFile, loadEaogFileToEditor} from './local-dir';
 
 onMounted(async () => {
   // 尝试从localStorage恢复上次打开的目录
@@ -56,8 +53,8 @@ onMounted(async () => {
 function addFileTrees(fileTrees: any) {
   // 遍历fileTrees，给每个节点加上expanded = false
   fileTrees.forEach(normalizeFileTree);
-  fileTree.value = fileTrees || [];
-  selected.value = fileTree.value[0];
+  localDirs.value = fileTrees || [];
+  selected.value = localDirs.value[0];
   selected.value!.expanded = true; // 默认选中第一个目录并展开
 }
 
@@ -68,7 +65,7 @@ async function openFolder() {
       title: '选择文件夹',
     });
     addFileTrees(fileTrees);
-    localStorage.setItem('aia-cp-editor-last-selected-dir', selected.value.path); // 保存最后打开的目录，下次浏览器打开时可以恢复
+    localStorage.setItem('aia-cp-editor-last-selected-dir', selected.value!.path); // 保存最后打开的目录，下次浏览器打开时可以恢复
   } catch (error) {
     console.error('打开目录树对话框失败:', error);
     message.error('打开目录树对话框失败');
@@ -118,10 +115,7 @@ function normalizeFileTree(node: FileNode) {
 async function handleFileClick(file: FileNode) {
   selected.value = file;
   debug('Selected file:', file);
-  if (file.path.endsWith('.eaog.js')) {
-    const { eaog } = await loadEaogModule(file.path);
-    await loadCurrentEaog(eaog)
-  }
+  loadEaogFileToEditor();
 }
 
 async function handleFileRename(file: FileNode) {
@@ -171,7 +165,7 @@ async function handleFileDelete(file: FileNode) {
 async function handleRefresh() {
   try {
     // @ts-ignore
-    const refreshedTree = await window.electronAPI.invokeMain('use-sys-get-dir-tree', {path: fileTree.value[0].path});
+    const refreshedTree = await window.electronAPI.invokeMain('use-sys-get-dir-tree', {path: localDirs.value[0].path});
     addFileTrees(refreshedTree);
     message.success('目录刷新成功');
   } catch (error) {

@@ -11,23 +11,20 @@ import LocalDirPanel from '#/views/cp/components/editor-sidebar/local-dir-panel.
 
 import Debug from 'debug';
 import {onMounted, ref, watch} from "vue";
-import {type EaogNode, eaogSaver, loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
-import {projectManager} from "#/views/cp/models/project";
-// import {projectManager} from "#/views/cp/models/project";
-
+import {eaogSaver} from "#/views/cp/models/editable-eaog-node";
+import {projectManager} from "#/views/cp/components/editor-sidebar/project";
+import {saveEaogToFile} from "#/views/cp/components/editor-sidebar/local-dir";
+// @ts-ignore
 const debug = Debug('aia:cp:editor-sidebar');
 
 // 当前标签页
-const currentTab = ref<string | null>(null);
+const currentTab = ref<string | undefined>();
 
 watch(currentTab, (newTab) => {
   debug('切换标签页:', newTab);
-  if (newTab === 'project-panel') {
-    eaogSaver.value = async (eaog: EaogNode, isNew: boolean) => {
-      debug('保存EAOG到项目面板:', eaog, isNew);
-      await projectManager.updateOrCreateFile(eaog, isNew);
-    };
-  }
+  eaogSaver.value = newTab === 'project-panel'    ?   projectManager.updateOrCreateFile.bind(projectManager)
+                  : newTab === 'local-dir-panel'  ?   saveEaogToFile
+                  : null; // 清除保存函数
 });
 
 onMounted(() => {

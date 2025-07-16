@@ -12,7 +12,7 @@ import type {FlattenedItem} from 'radix-vue';
 import type {Recordable} from '@vben/types';
 
 import EaogNodeForm from '../editor/eaog-node-form.vue';
-import {projectManager, currentFolder, currentFile} from '../../models/project';
+import {projectManager, currentFolder, currentFile} from './project';
 
 import Debug from 'debug';
 import {clipboardNode, loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
