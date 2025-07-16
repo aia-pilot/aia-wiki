@@ -2,8 +2,8 @@ import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree-item.vue";
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
-import {loadCpModule} from "#/views/cp/models/eaog-loader";
-import {type EditableEaogNode, loadCurrentEaog} from "#/views/cp/models/editable-eaog-node";
+import {loadCpModule, currentCP} from "#/views/cp/models/cp-loader";
+import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {prompt} from '@vben/common-ui';
 
 import Debug from 'debug';
@@ -12,24 +12,20 @@ const debug = Debug('aia-wiki:local-dir');
 
 export const localDirs = ref<FileNode[]>([]);
 export const selected = ref<FileNode | undefined>(undefined);
-let currentEaogFilePath = ''
 
 export const isCpFile = (file: FileNode) => {
   return !file.isDirectory && file.path.endsWith('.cp.js');
 }
 
-export const loadEaogFileToEditor = async () => {
+export const loadCpToEditor = async () => {
   if (isCpFile(selected.value!)) {
-    const cp = await loadCpModule(selected.value!.path);
-    const eaog = (cp as any).eaog;
-    await loadCurrentEaog(eaog)
-    currentEaogFilePath = selected.value!.path;
+    await loadCpModule(selected.value!.path);
   }
 }
 
 export const saveEaogToFile = async (eaog: EditableEaogNode, isNew: boolean) => {
-  const filePath = isNew ? await getNewFilePath() : currentEaogFilePath;
-  const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...(await loadCpModule(filePath)), eaog};
+  const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...currentCP.value!.cp, eaog};
+  const filePath = isNew ? await getNewFilePath() : currentCP.value!.filePath;
   await saveCpToFile(cp, filePath);
 }
 
@@ -49,7 +45,7 @@ export const sideCPs = ${sideCPs};\n`;
 
 
 async function getNewFilePath() {
-  return getCurrentDirPath() + '/' + (await prompt({content: '请输入新EAOG文件名（将自动附加.eaog.js后缀）'})) + '.eaog.js';
+  return getCurrentDirPath() + '/' + (await prompt({content: '请输入新EAOG文件名（将自动附加.cp.js后缀）'})) + '.cp.js';
 }
 
 function getCurrentDirPath() {

@@ -28,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import {onMounted} from 'vue';
+import {ref, onMounted} from 'vue';
 import DirTreeItem from './local-dir-tree-item.vue';
 import type {FileNode} from './local-dir-tree-item.vue';
 import {message} from "ant-design-vue";
@@ -38,7 +38,7 @@ import {prompt, confirm} from '@vben/common-ui';
 import Debug from 'debug';
 const debug = Debug('aia-wiki-new:dir-tree-sidebar');
 
-import {localDirs, selected, isCpFile, loadEaogFileToEditor} from './local-dir';
+import {localDirs, selected, isCpFile, loadCpToEditor} from './local-dir';
 
 onMounted(async () => {
   // 尝试从localStorage恢复上次打开的目录
@@ -115,7 +115,7 @@ function normalizeFileTree(node: FileNode) {
 async function handleFileClick(file: FileNode) {
   selected.value = file;
   debug('Selected file:', file);
-  loadEaogFileToEditor();
+  loadCpToEditor();
 }
 
 async function handleFileRename(file: FileNode) {

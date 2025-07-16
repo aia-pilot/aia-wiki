@@ -1,7 +1,7 @@
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
-import {ref, type Ref} from 'vue'; // 添加Vue的ref引入
+import {ref, type Ref, watch} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore 忽略导入的类型
 import {cpEaogSchema, cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
@@ -12,6 +12,7 @@ import {omit} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 
 import Debug from 'debug';
+import {currentCP} from "#/views/cp/models/cp-loader";
 
 const debug = Debug("aia:cp:eaog-node");
 
@@ -504,6 +505,11 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
 
 // 当前EAOG数据作为全局共享状态
 export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
+
+// 当CP模块变化时，更新当前EAOG
+watch(currentCP, (newCP) => {
+  currentEaog.value = newCP?.cp?.eaog ? convertToEaogRoot(newCP.cp.eaog) : undefined;
+})
 
 // 当前被点击的节点
 export const currentNode: Ref<EditableEaogNode | undefined> = ref();
