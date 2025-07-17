@@ -39,6 +39,36 @@ const routes: RouteRecordRaw[] = [
           icon: 'lucide:file-plus',
           title: '动态表单',
         },
+      },
+      { // @DEV
+        // OrthogonalLinkLayer 简单示例
+        path: 'orthogonal-link-layer-simple',
+        name: 'OrthogonalLinkLayerSimple',
+        component: () => import('#/views/cp/components/link-layer/simple-example.vue'),
+        meta: {
+          icon: 'lucide:zap',
+          title: '正交线简单示例',
+        },
+      },
+      { // @DEV
+        // OrthogonalLinkLayer 演示页面
+        path: 'orthogonal-link-layer-demo',
+        name: 'OrthogonalLinkLayerDemo',
+        component: () => import('#/views/cp/components/link-layer/orthogonal-link-layer-demo.vue'),
+        meta: {
+          icon: 'lucide:share-2',
+          title: '正交线演示',
+        },
+      },
+      { // @DEV
+        // OrthogonalLinkLayer 组件测试 - 用于在已有 DOM 布局中绘制避障正交折线连接
+        path: 'orthogonal-link-layer',
+        name: 'OrthogonalLinkLayer',
+        component: () => import('#/views/cp/components/link-layer/test-page.vue'),
+        meta: {
+          icon: 'lucide:git-fork',
+          title: '正交线测试',
+        },
       }
     ]
   }

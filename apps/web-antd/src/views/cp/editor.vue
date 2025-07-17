@@ -23,6 +23,8 @@ import {complexFlow} from './eaog-samples';
 import {onMounted, ref, provide, type Ref} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
+import {Splitpanes, Pane} from "splitpanes"
+import 'splitpanes/dist/splitpanes.css'
 
 import Debug from 'debug';
 
@@ -46,25 +48,40 @@ onMounted(async () => {
 <template>
   <div class="cp-editor">
     <!-- 工具栏 -->
-    <EditorToolbar />
+    <EditorToolbar/>
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
-    <div class="flex p-4">
+    <Splitpanes class="flex p-4 w-full h-full default-theme" :gutter-size="5" :min-pane-size="100">
       <!-- 上下文菜单组件 -->
-      <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
-        <!-- EAOG可视化区域 -->
-        <div class="w-2/3 p-4 border rounded-md">
-          <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
-            <EaogNodeComponent :node="currentEaog" />
+      <Pane :size="40">
+        <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
+          <!-- EAOG可视化区域 -->
+          <div class="w-full p-4 border rounded-md">
+            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
+              <EaogNodeComponent :node="currentEaog"/>
+            </div>
           </div>
-        </div>
-      </EaogContextMenu>
+        </EaogContextMenu>
+      </Pane>
+
+      <Pane :size="40">
+        <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
+          <!-- EAOG可视化区域 -->
+          <div class="w-full p-4 border rounded-md">
+            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
+              <EaogNodeComponent :node="currentEaog"/>
+            </div>
+          </div>
+        </EaogContextMenu>
+      </Pane>
 
       <!-- 右侧栏组件 -->
-      <div class="w-1/3 ml-4 editor-sidebar" @click="changeCurrentWorkPanel('editor-sidebar')">
-        <EditorSidebar />
-      </div>
-    </div>
+      <Pane :size="20">
+        <div class="w-full editor-sidebar" @click="changeCurrentWorkPanel('editor-sidebar')">
+          <EditorSidebar/>
+        </div>
+      </Pane>
+    </Splitpanes>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

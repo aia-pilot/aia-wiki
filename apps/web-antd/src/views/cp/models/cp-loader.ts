@@ -9,6 +9,7 @@ const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // �
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
 
 
+
 export async function loadCpModuleFromFilePath(filePath: string) {
   const normalized = filePath.replace(/\\/g, '/');
   const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
@@ -18,15 +19,20 @@ export async function loadCpModuleFromFilePath(filePath: string) {
   }
 
   const relativePath = normalized.slice(base.length);
-  // aia-svc/public/cp-store symbol link到了eaogsDir目录。 注意：ONLY FOR @DEV @POC
-  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${relativePath}`);
+  const cp = await loadCpModule(relativePath);
   currentCP.value = { filePath: normalized, cp };
 }
 
 export async function loadCpModuleFromCpStr(cpStr: string) {
   const innerModulePath = parseCpModuleLocateStr(cpStr);
-  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}`);
+  const cp = await loadCpModule(innerModulePath);
   const filePath = `${eaogsDir}/${innerModulePath}`;
   currentCP.value = { filePath, cp }
+}
+
+async function loadCpModule(innerModulePath: string) {
+  // aia-svc/public/cp-store symbol link到了eaogsDir目录。 注意：ONLY FOR @DEV @POC
+  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
+  return cp;
 }
 
