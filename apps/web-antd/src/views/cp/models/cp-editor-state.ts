@@ -53,8 +53,9 @@ export const loadCurrentEaog = async (eaog: EditableEaogNode | EaogNode | string
   const eaogData = eaog instanceof EditableEaogNode ? data : convertToEaogRoot(data);
 
   currentEaog.value = eaogData;
-  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
-  useHistory().initHistory(eaogData); // 初始化历史记录
+  // 直接初始化EAOG历史记录
+  eaogData.initHistory();
+
   if (needSave) {
     await saveCurrentEaog(isNew); // 如果需要保存，则保存为新创建的Eaog
   }
@@ -65,8 +66,8 @@ export const loadCurrentEaog = async (eaog: EditableEaogNode | EaogNode | string
  * @param isNew 是否为新创建的Eaog，默认为false
  */
 export const saveCurrentEaog = async (isNew = false) => {
-  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
-  useHistory().addToHistory(); // 添加到历史记录
+  // 直接使用EAOG的addToHistory方法
+  currentEaog.value?.addToHistory();
   await eaogSaver.value?.(currentEaog.value, isNew)
 }
 
@@ -89,4 +90,3 @@ export const convertToEaogRoot = (node: any): EditableEaogNode => {
  * 用于在不同组件间共享保存逻辑
  */
 export const eaogSaver = ref<((eaog: any, isNew: boolean) => Promise<void>) | null>(null);
-

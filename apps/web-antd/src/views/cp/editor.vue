@@ -55,7 +55,7 @@ onMounted(async () => {
       <!-- 上下文菜单组件 -->
       <Pane :size="40">
         <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-          <!-- EAOG可视化区域 -->
+          <!-- 主EAOG -->
           <div class="w-full p-4 border rounded-md">
             <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPane('eaog-tree')">
               <EaogNodeComponent :node="currentEaog"/>
@@ -75,7 +75,7 @@ onMounted(async () => {
         </EaogContextMenu>
       </Pane>
 
-      <!-- 右侧栏组件 -->
+      <!-- 辅EAOG -->
       <Pane :size="20">
         <div class="w-full editor-sidebar" @click="changeCurrentWorkPane('editor-sidebar')">
           <EditorSidebar/>

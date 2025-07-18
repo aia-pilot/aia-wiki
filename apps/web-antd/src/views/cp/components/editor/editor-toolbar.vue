@@ -3,7 +3,6 @@ import EditorToolbarButton from './editor-toolbar-button.vue';
 import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
 import {EditableEaogNode, validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
-import {useHistory} from '../../composables/use-eaog-history';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
@@ -14,8 +13,6 @@ import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
 import {currentEaog, convertToEaogRoot, loadCurrentEaog, saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp-toolbar');
-
-const history = useHistory();
 
 // 通过 inject 注入 eaogNodeForm
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
@@ -82,7 +79,6 @@ const applyFramework = async (framework: EaogFramework) => {
       framework.markAsNewlyModifiedForAWhile();
     });
     await saveCurrentEaog(); // 保存当前EAOG
-    // history.addToHistory(); // 添加当前EAOG（已变更）到历史记录
   } else {
     message.warning('请先选择至少一个节点');
   }
@@ -107,15 +103,31 @@ const handleSave = () => {
 };
 
 const handleUndo = () => {
+  const history = currentEaog.value?.getHistory();
+  if (!history) return;
+
   const prevEaog = history.undo();
   debug('撤销操作，当前EAOG:', prevEaog);
   if (prevEaog) loadCurrentEaog(prevEaog, true, false);
 };
 
 const handleRedo = () => {
+  const history = currentEaog.value?.getHistory();
+  if (!history) return;
+
   const nextEaog = history.redo();
   debug('重做操作，当前EAOG:', nextEaog);
   if (nextEaog) loadCurrentEaog(nextEaog, true, false);
+};
+
+const canUndo = () => {
+  const history = currentEaog.value?.getHistory();
+  return history ? history.canUndo() : false;
+};
+
+const canRedo = () => {
+  const history = currentEaog.value?.getHistory();
+  return history ? history.canRedo() : false;
 };
 
 const handleValidate = () => {
@@ -276,7 +288,7 @@ onUnmounted(() => {
     <!-- 刷新、撤销、重做组 -->
     <EditorToolbarButton icon="lucide:refresh-cw" tooltip="刷新" @click="handleRefresh"/>
     <EditorToolbarButton icon="mdi:check-circle-outline" tooltip="校验" @click="handleValidate"/>
-    <EditorToolbarButton icon="lucide:undo" tooltip="撤销 Ctrl+Z" :disabled="!history.canUndo()" @click="handleUndo"/>
-    <EditorToolbarButton icon="lucide:redo" tooltip="重做 Ctrl+Y" :disabled="!history.canRedo()" @click="handleRedo"/>
+    <EditorToolbarButton icon="lucide:undo" tooltip="撤销 Ctrl+Z" :disabled="!canUndo()" @click="handleUndo"/>
+    <EditorToolbarButton icon="lucide:redo" tooltip="重做 Ctrl+Y" :disabled="!canRedo()" @click="handleRedo"/>
   </div>
 </template>

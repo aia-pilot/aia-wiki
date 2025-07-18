@@ -1,83 +1,106 @@
-import {reactive, ref} from 'vue';
 import {type EditableEaogNode} from '../models/editable-eaog-node';
 import {currentEaog} from '../models/cp-editor-state'; // 引入当前EAOG状态
-// import {projectManager} from '../models/project';
+import Debug from 'debug';
 
-// 历史记录，保存EAOG的状态，用于撤销和重做操作
-const historyData = reactive<EditableEaogNode[]>([]);
-// 当前历史记录索引
-const currentIndex = ref(-1);
+const debug = Debug('aia:cp:eaog-history');
 
 /**
  * 历史记录管理的可组合函数
+ * @param eaog 可选的EAOG节点，如果不提供则使用当前活动的EAOG
  * @returns 历史记录相关的状态和方法
  */
-export function useHistory() {
+export function useHistory(eaog?: EditableEaogNode) {
+  // 获取当前使用的EAOG，如果没有传递参数则使用全局当前EAOG
+  const getEaog = () => eaog || currentEaog.value;
+
   /**
    * 初始化历史记录
    */
   const initHistory = (node: EditableEaogNode) => {
-    historyData.length = 0;
-    historyData.push(node.cloneDeep());
-    currentIndex.value = 0;
+    node.initHistory();
+    debug('初始化EAOG历史记录', node.name);
   };
 
   /**
-   * 添加当前状态到历史记录，不再需要传递节点参数，直接使用共享的currentEaog
+   * 添加当前状态到历史记录
    */
   const addToHistory = () => {
-    const eaog = currentEaog.value;
-    if (!eaog) return;
-
-    // 清除当前索引之后的历史记录
-    historyData.splice(currentIndex.value + 1);
-
-    // 检查是否与最后一个历史记录相同
-    if (historyData.length > 0 && eaog.equals(historyData[historyData.length - 1]!)) {
+    const activeEaog = getEaog();
+    if (!activeEaog) {
+      debug('没有活动的EAOG，无法添加到历史记录');
       return;
     }
 
-    // localStorage.setItem('aia-editor-eaog', JSON.stringify(eaog)); // 保存到本地存储，供后续使用
-    // 保存到IndexDB
-    // await projectManager.updateOrCreateFile(eaog) // TODO: 架构不合理，不能在组合函数中直接调用项目管理器，要反过来。
-
-    historyData.push(eaog.cloneDeep());
-    currentIndex.value = historyData.length - 1; // 更新当前索引
+    activeEaog.addToHistory();
+    debug('添加EAOG状态到历史记录', activeEaog.name);
   };
 
   /**
    * 撤销操作
    */
   const undo = () => {
-    if (currentIndex.value <= 0) return;
-    currentIndex.value--;
-    return historyData[currentIndex.value]?.cloneDeep();
+    const activeEaog = getEaog();
+    if (!activeEaog) return;
+
+    const history = activeEaog.getHistory();
+    if (!history) {
+      debug('EAOG没有历史记录，无法撤销操作', activeEaog.name);
+      return;
+    }
+
+    return history.undo();
   };
 
   /**
    * 重做操作
    */
   const redo = () => {
-    if (currentIndex.value >= historyData.length - 1) return;
-    currentIndex.value++;
-    return historyData[currentIndex.value]?.cloneDeep();
+    const activeEaog = getEaog();
+    if (!activeEaog) return;
+
+    const history = activeEaog.getHistory();
+    if (!history) {
+      debug('EAOG没有历史记录，无法重做操作', activeEaog.name);
+      return;
+    }
+
+    return history.redo();
   };
 
   /**
    * 检查是否可以撤销
    */
-  const canUndo = () => currentIndex.value > 0;
+  const canUndo = () => {
+    const activeEaog = getEaog();
+    if (!activeEaog) return false;
+
+    const history = activeEaog.getHistory();
+    return history ? history.canUndo() : false;
+  };
 
   /**
    * 检查是否可以重做
    */
-  const canRedo = () => currentIndex.value < historyData.length - 1;
+  const canRedo = () => {
+    const activeEaog = getEaog();
+    if (!activeEaog) return false;
 
-  const getLast = () => historyData[historyData.length - 1];
+    const history = activeEaog.getHistory();
+    return history ? history.canRedo() : false;
+  };
+
+  /**
+   * 获取最后一个历史记录
+   */
+  const getLast = () => {
+    const activeEaog = getEaog();
+    if (!activeEaog) return;
+
+    const history = activeEaog.getHistory();
+    return history ? history.getLast() : undefined;
+  };
 
   return {
-    historyData,
-    currentIndex,
     addToHistory,
     undo,
     redo,

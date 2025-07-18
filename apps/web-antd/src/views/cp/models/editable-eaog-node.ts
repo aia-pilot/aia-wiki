@@ -11,6 +11,7 @@ import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentEaog, currentNode} from "./cp-editor-state";
+import {EaogHistory} from "./eaog-history";
 
 const debug = Debug("aia:cp:eaog-node");
 
@@ -18,7 +19,7 @@ const debug = Debug("aia:cp:eaog-node");
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'history'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -52,6 +53,9 @@ export class EditableEaogNode implements EaogNode {
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   // isClicked 属性已移除
   isCollapsed = false; // 标记节点是否折叠子节点
+
+  // 历史记录
+  history?: EaogHistory; // 新增历史记录属性，只在根节点使用
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -498,6 +502,34 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
     this.remove();
     targetNode.insert(this, position);
     return true; // 成功移动
+  }
+
+  /**
+   * 初始化历史记录，只在根节点使用
+   */
+  initHistory(): void {
+    if (!this.isRoot) {
+      debug('只有根节点可以初始化历史记录');
+      return;
+    }
+    this.history = new EaogHistory(this);
+  }
+
+  /**
+   * 获取历史记录，如果当前节点不是根节点，则返回根节点的历史记录
+   */
+  getHistory(): EaogHistory | undefined {
+    return this.isRoot ? this.history : this.root.history;
+  }
+
+  /**
+   * 添加当前状态到历史记录
+   */
+  addToHistory(): void {
+    const history = this.getHistory();
+    if (history) {
+      history.addToHistory(this.root);
+    }
   }
 }
 
