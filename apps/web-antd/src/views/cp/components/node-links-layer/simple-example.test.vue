@@ -1,6 +1,6 @@
 <template>
   <div class="simple-example">
-    <h2>OrthogonalLinkLayer 基础示例</h2>
+    <h2>OrthogonalLinkLayer 验证</h2>
 
     <!-- 控制面板 -->
     <div class="control-panel">
@@ -46,7 +46,7 @@
         <!-- 障碍区域可视化 -->
         <div
           v-if="showObstacleArea && containerRef"
-          v-for="(bounds, idx) in obstacleBounds"
+          v-for="(bounds, idx) in obstacles"
           :key="`obstacle-area-${idx}`"
           class="obstacle-area"
           :style="{
@@ -122,7 +122,7 @@
       </div>
     </div>
 
-    <!-- ���件日志 -->
+    <!-- 事件日志 -->
     <div class="event-log">
       <h3>事件日志</h3>
       <div class="log-items">
@@ -142,7 +142,7 @@
 </template>
 
 <script setup lang="ts">
-import {ref, computed, watch, onMounted, nextTick} from 'vue'
+import {ref, computed, watch, onMounted, nextTick, reactive} from 'vue'
 import OrthogonalLinkLayer from './orthogonal-link-layer.vue'
 
 // 类型定义
@@ -201,15 +201,15 @@ const dragData = ref<{node: Node | null, offsetX: number, offsetY: number}>({
 })
 
 // 调试选项
-const showDebugGrid = ref(false)
+const showDebugGrid = ref(true)
 const showObstacleArea = ref(false)
 const showPathfinding = ref(false)
-const gridSize = ref(12)
+const gridSize = ref(8)
 const obstaclePadding = ref(8)
 const pathDebugPoints = ref<Point[]>([])
 
-// 节点数据
-const nodes = ref<Node[]>([
+// 节点数据 - 改为reactive，以便观察位置变化
+const nodes = reactive<Node[]>([
   {id: 'start', label: '开始', x: 50, y: 50, color: '#28a745'},
   {id: 'process', label: '处理', x: 250, y: 100, color: '#007bff'},
   {id: 'decision', label: '决策', x: 450, y: 80, color: '#ffc107'},
@@ -217,21 +217,26 @@ const nodes = ref<Node[]>([
   {id: 'obstacle', label: '障碍', x: 200, y: 180, color: '#6c757d'}
 ])
 
-// 计算障碍物边界
-const obstacleBounds = computed<ObstacleBound[]>(() => {
+// 响应式障碍物边界 - 基于nodes数据，通过node.id找到DOM元素
+const obstacles = computed<ObstacleBound[]>(() => {
   if (!containerRef.value || !nodeRefs.value) return []
 
   const containerRect = containerRef.value.getBoundingClientRect()
   const bounds: ObstacleBound[] = []
 
-  nodeRefs.value.forEach(node => {
-    const rect = node.getBoundingClientRect()
-    bounds.push({
-      left: rect.left - containerRect.left - obstaclePadding.value,
-      top: rect.top - containerRect.top - obstaclePadding.value,
-      width: rect.width + (obstaclePadding.value * 2),
-      height: rect.height + (obstaclePadding.value * 2)
-    })
+  // 基于nodes数据，通过node.id找到对应的DOM元素
+  nodes.forEach((node, index) => {
+    node.x | node.y // 确保x、y被计算，变化时触发重新计算
+    const nodeElement = nodeRefs.value?.[index]
+    if (nodeElement) {
+      const rect = nodeElement.getBoundingClientRect()
+      bounds.push({
+        left: rect.left - containerRect.left - obstaclePadding.value,
+        top: rect.top - containerRect.top - obstaclePadding.value,
+        width: rect.width + (obstaclePadding.value * 2),
+        height: rect.height + (obstaclePadding.value * 2)
+      })
+    }
   })
 
   return bounds
@@ -329,7 +334,7 @@ const handleDrag = (event: DragEvent, node: Node) => {
   node.y = Math.round(newY)
 }
 
-const handleDragEnd = (event: DragEvent, node: Node) => {
+const handleDragEnd = (_: DragEvent, node: Node) => {
   dragData.value = { node: null, offsetX: 0, offsetY: 0 }
 
   // 重新初始化连线（确保位置更新）
@@ -340,11 +345,8 @@ const handleDragEnd = (event: DragEvent, node: Node) => {
 
 // 路径调试
 const capturePathDebugPoints = (points: Point[]) => {
-  if (points.length === 0) {
-    // 如果收到空数组，则清空现有点
-    pathDebugPoints.value = []
-    return
-  }
+  // 清空现有点
+  pathDebugPoints.value.length = 0;
 
   // 将新的路径点添加到现有点集合中
   // 使用 Map 确保点的唯一性 (基于坐标)
@@ -392,7 +394,7 @@ const initializeLinks = () => {
 
 // 监听参数变化
 watch([gridSize, obstaclePadding], () => {
-  // ��新计算连线
+  // 重新计算连线
   nextTick(initializeLinks)
 })
 
