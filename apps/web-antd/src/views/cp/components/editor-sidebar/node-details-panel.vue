@@ -4,7 +4,7 @@
  * 显示当前选中节点的详细信息
  */
 import {JsonViewer} from '@vben/common-ui';
-import {currentNode} from '../../models/editable-eaog-node';
+import {currentNode} from '../../models/cp-editor-state';
 </script>
 
 <template>

@@ -1,7 +1,4 @@
-//@ts-ignore
-import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
-import {getCleanObj} from "../utils/clean-obj";
-import {ref, type Ref, watch} from 'vue'; // 添加Vue的ref引入
+import {ref} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore 忽略导入的类型
 import {cpEaogSchema, cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
@@ -9,10 +6,11 @@ import {uniqNameWithSequenceSuffix} from "../../../../../../../aia-infra/src/uni
 // @ts-ignore
 import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
-import {IS_DEV} from "#/utils/aia-constants";
-
+//@ts-ignore
+import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
+import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
-import {currentCP} from "#/views/cp/models/cp-loader";
+import {currentEaog, currentNode} from "./cp-editor-state";
 
 const debug = Debug("aia:cp:eaog-node");
 
@@ -418,24 +416,24 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       return this;
     }
 
-    let currentNode: EditableEaogNode = this;
+    let _currentNode: EditableEaogNode = this;
 
     // 遍历路径节点名称
     for (let i = 0; i < pathNodes.length; i++) {
       const nodeName = pathNodes[i];
 
       // 在当前层次查找匹配名称的子节点
-      const childNode = currentNode.children.find(child => child.name === nodeName);
+      const childNode = _currentNode.children.find(child => child.name === nodeName);
 
       if (!childNode) {
-        debug(`找不到名为 ${nodeName} 的子节点，在路径 ${path} 中，当前节点是 ${currentNode.name}`);
+        debug(`找不到名为 ${nodeName} 的子节点，在路径 ${path} 中，当前节点是 ${_currentNode.name}`);
         return null;
       }
 
-      currentNode = childNode;
+      _currentNode = childNode;
     }
 
-    return currentNode;
+    return _currentNode;
   }
 
   /**
@@ -463,22 +461,22 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       return null;
     }
 
-    // 从根节点开始，顺着���径查找
-    let currentNode: EditableEaogNode = rootNode;
+    // 从根节点开始，顺着路径查找
+    let _currentNode: EditableEaogNode = rootNode;
 
     for (let i = 1; i < pathParts.length; i++) {
       const childName = pathParts[i];
-      const childNode = currentNode.children.find(child => child.name === childName);
+      const childNode = _currentNode.children.find(child => child.name === childName);
 
       if (!childNode) {
         debug(`在路径 ${path} 中找不到子节点 ${childName}`);
         return null;
       }
 
-      currentNode = childNode;
+      _currentNode = childNode;
     }
 
-    return currentNode;
+    return _currentNode;
   }
 
   /**
@@ -503,33 +501,10 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   }
 }
 
-// 当前EAOG数据作为全局共享状态
-export const currentEaog: Ref<EditableEaogNode | undefined> = ref();
-
-// 当CP模块变化时，更新当前EAOG
-watch(currentCP, (newCP) => {
-  currentEaog.value = newCP?.cp?.eaog ? convertToEaogRoot(newCP.cp.eaog) : undefined;
-})
-
-// 当前被点击的节点
-export const currentNode: Ref<EditableEaogNode | undefined> = ref();
+// 当前EAOG数据作为全局共享状态、当前被点击节点以及剪贴板节点等全局状态已移至cp-editor-state.ts
 
 // 剪贴板中的节点，用于复制粘贴操作, 以及剪贴板新建
 export const clipboardNode = ref<EditableEaogNode | null>(null);
-
-
-/**
- * 更新当前EAOG数据
- * @param newCurrentEaog - 新的当前Eaog节点, 为undefined时表示不改动当前Eaog对象，但其属性（含子节点）已被修改。
- */
-const updateCurrentEaog = (newCurrentEaog: EditableEaogNode | undefined) => {
-  if (newCurrentEaog) {
-    currentEaog.value = newCurrentEaog;
-    // 当更新EAOG对象时重置currentNode
-    currentNode.value = undefined; // 清除当前选中节点
-  }
-  debug('更新Eaog:', newCurrentEaog);
-};
 
 export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any, any> => {
   for (const n of eaog.nodes) {
@@ -549,28 +524,11 @@ export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any,
   return cpEaogSchema.safeParse(eaog.toJSON()); // 验证整个Eaog对象是否符合cpEaogSchema
 };
 
-/**
- * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象
- */
-export const convertToEaogRoot = (node: any) => {
-  node = IS_DEV ? convertBriefEaog(node) : node // @DEV，有时候导入的json是简写格式，我们需要转换为完整格式
-  console.time('---- zod safeParse'); // 开始计时
-  const res = cpEaogSchema.safeParse(node); // 验证节点数据是否符合 EaogNode Schema
-  if (!res.success) {
-    const message = zogErrorToString(res.error); // 将ZodError转换为字符串
-    console.timeEnd('---- zod safeParse'); // 结束计时
-    throw new Error(`Invalid EaogNode data: ${message}`);
-  }
-  console.timeEnd('---- zod safeParse'); // 结束计时
-  return new EditableEaogNode(node); // 返回一个新的 EditableEaogNode 实例
-}
-
 export const zogErrorToString = (error: z.ZodError): string => {
   return error.errors.map((err: z.ZodIssue) => {
     return `${err.path.join('.')} - ${err.message}`;
   }).join('\n');
 }
-
 
 // 创建一个占位符节点，常用于替换节点时占住原有节点位置
 export const createPlaceHolderNode = (name: string) => {
@@ -614,33 +572,3 @@ export const nodeTypeUIConfig = {
   _default:    { color: 'gray', icon: '◆', description: '未知节点类型' } // 未知节点，缺省配置
 };
 
-/**
- * 从外部（file、store、API等）加载当前Eaog数据
- * 1. 改变Editor中的Eaog
- * 2. 初始化历史记录，便于撤销/重做
- * @param eaog
- * @param needSave 是否需要保存为新创建的Eaog，默认为false
- * @param isNew 是否为新创建的Eaog，默认为false
- */
-export const loadCurrentEaog = async (eaog: EditableEaogNode | EaogNode | string, needSave=false, isNew=false) => {
-  const data = eaog instanceof EditableEaogNode ? eaog : typeof eaog === 'string' ? JSON.parse(eaog) : eaog;
-  const eaogData = eaog instanceof EditableEaogNode ? data : convertToEaogRoot(data);
-
-  updateCurrentEaog(eaogData);
-  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
-  useHistory().initHistory(eaogData); // 初始化历史记录
-  if (needSave) {
-    await saveCurrentEaog(isNew); // 如果需要保存，则保存为新创建的Eaog
-  }
-}
-
-export const eaogSaver = ref<((eaog: EaogNode, isNew: boolean) => Promise<void>) | null>(null); // 用于保存当前Eaog数据的函数，可能是file、store、API等
-/**
- * 将当前Eaog数据保存到历史记录和外部（file、store、API等）
- * @param isNew 是否为新创建的Eaog，默认为false
- */
-export const saveCurrentEaog = async (isNew=false) => {
-  const {useHistory} = await import('../composables/use-eaog-history'); // 动态导入，避免循环依赖
-  useHistory().addToHistory(); // 添加到历史记录
-  await eaogSaver.value?.(currentEaog.value, isNew)
-}

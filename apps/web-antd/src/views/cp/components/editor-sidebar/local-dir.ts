@@ -2,7 +2,8 @@ import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree-item.vue";
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
-import {loadCpModuleFromFilePath, currentCP} from "#/views/cp/models/cp-loader";
+import {loadCpModuleFromFilePath} from "#/views/cp/models/cp-loader";
+import {currentCP} from "#/views/cp/models/cp-editor-state";
 import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {prompt} from '@vben/common-ui';
 

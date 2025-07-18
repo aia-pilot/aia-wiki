@@ -1,5 +1,6 @@
 import {reactive, ref} from 'vue';
-import {EditableEaogNode, currentEaog} from '../models/editable-eaog-node';
+import {type EditableEaogNode} from '../models/editable-eaog-node';
+import {currentEaog} from '../models/cp-editor-state'; // 引入当前EAOG状态
 // import {projectManager} from '../models/project';
 
 // 历史记录，保存EAOG的状态，用于撤销和重做操作

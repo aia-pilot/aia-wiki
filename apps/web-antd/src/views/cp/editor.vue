@@ -14,11 +14,11 @@
  */
 
 // 导入EaogNode组件和相关类型
+import {loadCurrentEaog, currentPane, currentEaog} from "#/views/cp/models/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
-import {currentEaog, loadCurrentEaog} from './models/editable-eaog-node';
 import {complexFlow} from './eaog-samples';
 import {onMounted, ref, provide, type Ref} from 'vue';
 
@@ -33,10 +33,10 @@ const debug = Debug('aia:cp-editor');
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 provide<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm', eaogNodeForm);
 
-const currentWorkPanel = ref('eaog-tree'); // 当前工作面板，默认为节点详情
-const changeCurrentWorkPanel = (panel: string) => {
-  currentWorkPanel.value = panel;
-  debug('切换工作面板:', panel);
+currentPane.value = 'eaog-tree'; // 当前工作面板，默认为节点详情
+const changeCurrentWorkPane = (pane: string) => {
+  currentPane.value = pane;
+  debug('切换工作面板:', pane);
 };
 
 onMounted(async () => {
@@ -54,10 +54,10 @@ onMounted(async () => {
     <Splitpanes class="flex p-4 w-full h-full default-theme" :gutter-size="5" :min-pane-size="100">
       <!-- 上下文菜单组件 -->
       <Pane :size="40">
-        <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
+        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
           <!-- EAOG可视化区域 -->
           <div class="w-full p-4 border rounded-md">
-            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
+            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPane('eaog-tree')">
               <EaogNodeComponent :node="currentEaog"/>
             </div>
           </div>
@@ -65,10 +65,10 @@ onMounted(async () => {
       </Pane>
 
       <Pane :size="40">
-        <EaogContextMenu :shortCutDisabled="currentWorkPanel !== 'eaog-tree'">
+        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
           <!-- EAOG可视化区域 -->
           <div class="w-full p-4 border rounded-md">
-            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPanel('eaog-tree')">
+            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPane('eaog-tree')">
               <EaogNodeComponent :node="currentEaog"/>
             </div>
           </div>
@@ -77,7 +77,7 @@ onMounted(async () => {
 
       <!-- 右侧栏组件 -->
       <Pane :size="20">
-        <div class="w-full editor-sidebar" @click="changeCurrentWorkPanel('editor-sidebar')">
+        <div class="w-full editor-sidebar" @click="changeCurrentWorkPane('editor-sidebar')">
           <EditorSidebar/>
         </div>
       </Pane>

@@ -1,14 +1,9 @@
-import { ref } from 'vue';
+import { currentCP } from './cp-editor-state';
 // @ts-ignore
 import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";
 
-// CPE中正在操作的CP模块
-export const currentCP= ref<{ filePath: string, cp: any } | null>(null);
-
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
-
-
 
 export async function loadCpModuleFromFilePath(filePath: string) {
   const normalized = filePath.replace(/\\/g, '/');
@@ -35,4 +30,3 @@ async function loadCpModule(innerModulePath: string) {
   const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
   return cp;
 }
-

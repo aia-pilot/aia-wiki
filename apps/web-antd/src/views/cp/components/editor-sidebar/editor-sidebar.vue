@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * CP编辑器右侧栏组件
- * 包含节点详情、项��面板、本地目录 3个标签页
+ * 包含节点详情、项目面板、本地目录 3个标签页
  */
 import {Tabs, TabsList, TabsTrigger, TabsContent} from '@vben-core/shadcn-ui';
 import {IS_STANDALONE_APP} from "#/utils/aia-constants";
@@ -11,15 +11,12 @@ import LocalDirPanel from '#/views/cp/components/editor-sidebar/local-dir-panel.
 import CpPanel from './cp-panel.vue';
 
 import Debug from 'debug';
-import {onMounted, ref, watch} from "vue";
-import {eaogSaver} from "#/views/cp/models/editable-eaog-node";
+import {onMounted, watch} from "vue";
 import {projectManager} from "#/views/cp/components/editor-sidebar/project";
 import {saveEaogToFile} from "#/views/cp/components/editor-sidebar/local-dir";
+import {currentTab, eaogSaver} from "#/views/cp/models/cp-editor-state";
 // @ts-ignore
 const debug = Debug('aia:cp:editor-sidebar');
-
-// 当前标签页
-const currentTab = ref<string | undefined>();
 
 watch(currentTab, (newTab) => {
   debug('切换标签页:', newTab);

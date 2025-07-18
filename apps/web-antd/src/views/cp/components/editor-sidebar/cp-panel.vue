@@ -4,7 +4,8 @@
  * 显示当前CP的hooks和sideCPs数据
  */
 import {JsonViewer} from '@vben/common-ui';
-import {currentCP, loadCpModuleFromCpStr} from '#/views/cp/models/cp-loader';
+import {loadCpModuleFromCpStr} from '#/views/cp/models/cp-loader';
+import {currentCP} from '#/views/cp/models/cp-editor-state';
 import {computed} from 'vue';
 
 // 计算hooks和sideCPs数据

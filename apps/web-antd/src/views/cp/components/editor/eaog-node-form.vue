@@ -3,17 +3,16 @@ import {omit} from 'lodash-es';
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
-import {currentNode, EditableEaogNode, saveCurrentEaog, zogErrorToString} from '../../models/editable-eaog-node';
+import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
+import {currentNode} from '../../models/cp-editor-state';
 
-import {useHistory} from '../../composables/use-eaog-history';
-
-const history = useHistory();
 
 // 导入您的Schema定义
 // @formatter:off
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
+import {saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
 // @formatter:on
 
 // 节点类型选项
@@ -52,7 +51,6 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     } else if (formMode === 'create-eaog') {
       const newNode = createNodeFromForm(formValues);
       currentNode.value = newNode; // 设置当前节点为新创建的节点
-      // await projectManager.updateOrCreateFile(newNode, true); // 创建新文件
     } else { // 'add-node' 模式
       const newNode = createNodeFromForm(formValues);
       currentNode.value?.insert(newNode, insertPosition);
@@ -60,7 +58,6 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     }
 
     await saveCurrentEaog(formMode === 'create-eaog'); // 保存当前EAOG
-    // history.addToHistory();
     modalApi.close(); // 提交成功后关闭模态框
   } catch (error) {
     if (error instanceof z.ZodError) {

@@ -3,7 +3,8 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {currentNode, clipboardNode, saveCurrentEaog,} from '../../models/editable-eaog-node';
+import {clipboardNode, } from '../../models/editable-eaog-node';
+import {currentNode, } from '../../models/cp-editor-state';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
 import {onMounted, onUnmounted, ref, inject, type Ref} from 'vue';
@@ -14,6 +15,7 @@ import {useHistory} from '../../composables/use-eaog-history';
 const history = useHistory();
 
 import Debug from 'debug';
+import {saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp-context-menu');
 
