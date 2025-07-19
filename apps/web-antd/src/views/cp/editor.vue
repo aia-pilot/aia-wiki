@@ -14,7 +14,7 @@
  */
 
 // 导入EaogNode组件和相关类型
-import {loadCurrentEaog, currentPane, currentEaog} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentEaog, currentPane, currentEaog, mainEaog, sideEaog} from "#/views/cp/models/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
@@ -51,36 +51,39 @@ onMounted(async () => {
     <EditorToolbar/>
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
+    <!-- 上下文菜单组件 -->
     <Splitpanes class="flex p-4 w-full h-full default-theme" :gutter-size="5" :min-pane-size="100">
-      <!-- 上下文菜单组件 -->
-      <Pane :size="40">
-        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-          <!-- 主EAOG -->
-          <div class="w-full p-4 border rounded-md">
-            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPane('eaog-tree')">
-              <EaogNodeComponent :node="currentEaog"/>
+      <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
+        <!-- 主EAOG -->
+        <template #main-eaog>
+          <Pane :size="sideEaog ? 40 : 80">
+            <div class="w-full p-4 border rounded-md">
+              <div v-if="mainEaog" class="eaog-tree" @click="currentPane = 'main-eaog'">
+                <EaogNodeComponent :node="mainEaog"/>
+              </div>
             </div>
-          </div>
-        </EaogContextMenu>
-      </Pane>
+          </Pane>
+        </template>
 
-      <Pane :size="40">
-        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-          <!-- EAOG可视化区域 -->
-          <div class="w-full p-4 border rounded-md">
-            <div v-if="currentEaog" class="eaog-tree" @click="changeCurrentWorkPane('eaog-tree')">
-              <EaogNodeComponent :node="currentEaog"/>
+        <!-- 辅EAOG -->
+        <template v-if="sideEaog"  #side-eaog>
+          <Pane :size="40">
+            <div class="w-full p-4 border rounded-md">
+              <div class="eaog-tree" @click="currentPane = 'side-eaog'">
+                <EaogNodeComponent :node="sideEaog"/>
+              </div>
             </div>
-          </div>
-        </EaogContextMenu>
-      </Pane>
+          </Pane>
+        </template>
+      </EaogContextMenu>
 
-      <!-- 辅EAOG -->
+      <!-- 右侧栏组件 -->
       <Pane :size="20">
-        <div class="w-full editor-sidebar" @click="changeCurrentWorkPane('editor-sidebar')">
+        <div class="w-full editor-sidebar" @click="currentPane = 'editor-sidebar'">
           <EditorSidebar/>
         </div>
       </Pane>
+
     </Splitpanes>
 
     <!-- 节点属性编辑器弹窗 -->

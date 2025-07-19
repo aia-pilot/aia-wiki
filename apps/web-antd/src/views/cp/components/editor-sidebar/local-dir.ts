@@ -3,7 +3,7 @@ import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
 import {loadCpModuleFromFilePath} from "#/views/cp/models/cp-loader";
-import {currentCP} from "#/views/cp/models/cp-editor-state";
+import {mainCPModule} from "#/views/cp/models/cp-editor-state";
 import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {prompt} from '@vben/common-ui';
 
@@ -26,8 +26,8 @@ export const loadCpToEditor = async () => {
 
 // TODO: 直接用saveCpToFile
 export const saveEaogToFile = async (eaog: EditableEaogNode, isNew: boolean) => {
-  const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...currentCP.value!.cp, eaog};
-  const filePath = isNew ? await getNewFilePath() : currentCP.value!.filePath;
+  const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...mainCPModule.value!.cp, eaog};
+  const filePath = isNew ? await getNewFilePath() : mainCPModule.value!.filePath;
   await saveCpToFile(cp, filePath);
 }
 

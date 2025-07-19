@@ -1,4 +1,4 @@
-import { currentCP } from './cp-editor-state';
+import { mainCPModule } from './cp-editor-state';
 // @ts-ignore
 import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";
 
@@ -19,22 +19,22 @@ export async function loadCpModuleFromFilePath(filePath: string) {
   }
 
   const relativePath = normalized.slice(base.length);
-  const cp = await loadCpModule(relativePath);
-  currentCP.value = { filePath: normalized, cp };
+  const cp = await loadCp(relativePath);
+  mainCPModule.value = { filePath: normalized, cp };
 }
 
 /**
  * 从 CP 模块定位字符串加载 CP 模块。从内部CP-store（npm pkg repo）中加载 CP 模块。
  * @param cpLocateStr
  */
-export async function loadCpModuleFromCpStr(cpLocateStr: string) {
+export async function loadCpFromCpStr(cpLocateStr: string) {
   const innerModulePath = parseCpModuleLocateStr(cpLocateStr);
-  const cp = await loadCpModule(innerModulePath);
-  const filePath = `${eaogsDir}/${innerModulePath}`;
-  currentCP.value = { filePath, cp }
+  return await loadCp(innerModulePath);
+  // const filePath = `${eaogsDir}/${innerModulePath}`;
+  // return { filePath, cp }
 }
 
-async function loadCpModule(innerModulePath: string) {
+async function loadCp(innerModulePath: string) {
   // aia-svc/public/cp-store symbol link到了eaogsDir目录。 注意：ONLY FOR @DEV @POC
   const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
   return cp;

@@ -217,11 +217,21 @@ export class EditableEaogNode implements EaogNode {
       return undefined; // 如果没有父节点，则没有下一个兄弟节点
     }
     const index = this.indexInParent;
-    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // ���回下一个兄弟节点或 null
+    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 下一个兄弟节点或 null
   }
 
   get indexInParent(): number {
     return this.parent ? this.parent.children.indexOf(this) : -1; // 获取当前节点在父节点子节点数组中的索引
+  }
+
+  get sideCP():string | undefined {
+    // TODO: 现在是tech spike，后继要改进
+    const cp = this.root.cp?.sideCPs?.find(({syncPoints, cp, launchPoint}) => {
+      return launchPoint === this.name /** 注意：这个是hack，实际上重构 {@link Hook#findMatchedNode} 的算法 */
+    })
+    return cp?.cp; // 返回与当前节点匹配的辅助CP
+    // const sideCPs = this.root.cp?.sideCPs || [];
+    // return sideCPs.find(cp => cp.id === this.cp?.id); // 查找与当前节点相同ID的侧CP
   }
 
   /**

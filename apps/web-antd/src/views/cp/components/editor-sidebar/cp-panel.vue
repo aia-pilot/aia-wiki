@@ -4,8 +4,7 @@
  * 显示当前CP的hooks和sideCPs数据
  */
 import {JsonViewer} from '@vben/common-ui';
-import {loadCpModuleFromCpStr} from '#/views/cp/models/cp-loader';
-import {currentEaog} from '#/views/cp/models/cp-editor-state';
+import {currentEaog, loadSideCpEaog} from '#/views/cp/models/cp-editor-state';
 import {computed} from 'vue';
 
 // 计算hooks和sideCPs数据
@@ -55,7 +54,7 @@ const hasCP = computed(() => {
         <div v-else>
           <ul v-if="sideCPsData.length > 0" class="text-gray-500 text-sm mb-2">
             <li v-for="(sideCP, index) in sideCPsData" :key="index">
-              <a href="#" class="text-blue-500 hover:underline" @click.prevent="loadCpModuleFromCpStr(sideCP.cp)">
+              <a href="#" class="text-blue-500 hover:underline" @click.prevent="loadSideCpEaog(sideCP.cp)">
                 {{ sideCP.cp }}
               </a>
             </li>

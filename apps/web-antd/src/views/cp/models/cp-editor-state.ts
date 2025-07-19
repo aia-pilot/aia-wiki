@@ -1,6 +1,7 @@
-import {ref, type Ref, watch} from 'vue';
+import {ref, type Ref, watch, computed} from 'vue';
 import {createEaogFromCp, EditableEaogNode} from './editable-eaog-node';
 import type {CP, EaogNode} from "#/views/cp/models/index";
+import {loadCpFromCpStr} from "#/views/cp/models/cp-loader";
 // @ts-ignore 忽略导入的类型
 
 /**
@@ -9,10 +10,29 @@ import type {CP, EaogNode} from "#/views/cp/models/index";
  */
 
 // CP模块状态：当前加载的CP模块
-export const currentCP = ref<{ filePath: string, cp: CP } | undefined>(undefined);
+export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>(undefined);
 
-// EAOG状态：当前EAOG数据作为全局共享状态
-export const currentEaog: Ref<EditableEaogNode | undefined> = ref(undefined);
+// 主CP对应的EAOG
+export const mainEaog: Ref<EditableEaogNode | undefined> = ref(undefined);
+
+// 辅CP对应的EAOG
+export const sideEaog: Ref<EditableEaogNode | undefined> = ref(undefined);
+
+// 统一对外暴露一个 currentEaog，因为虽然有主CP和辅CP，但在编辑器中只有一个当前正在编辑（交互）的EAOG，toolbar、context-menu、node-form都是针对这个EAOG进行操作的
+export const currentEaog = computed({
+  get() {
+    // return currentPane.value
+    return mainEaog.value
+  },
+  set(val: EditableEaogNode) {
+    mainEaog.value = val as EditableEaogNode;
+    // if (currentEditor.value === 'main') {
+    //   mainContent.value = val
+    // } else {
+    //   sideContent.value = val
+    // }
+  }
+})
 
 // 节点状态：当前被选择的节点
 export const currentNode: Ref<EditableEaogNode | undefined> = ref(undefined);
@@ -23,16 +43,13 @@ export const currentPane: Ref<string | undefined> = ref(undefined);
 // 标签页状态：当前活动的标签页
 export const currentTab: Ref<string | undefined> = ref(undefined);
 
-/**
- * 状态间的约束关系处理
- */
 
-// 当CP模块变化时，更新当前EAOG
-watch(currentCP, (newCP) => {
-  if (newCP?.cp?.eaog) {
-    currentEaog.value = createEaogFromCp(newCP.cp)
+// 当CP模块变化时，更新当前EAOG。
+watch(mainCPModule, (newCPM) => {
+  if (newCPM?.cp?.eaog) {
+    mainEaog.value = createEaogFromCp(newCPM.cp)
   } else {
-    currentEaog.value = undefined;
+    mainEaog.value = undefined;
   }
 });
 
@@ -72,6 +89,11 @@ export const saveCurrentEaog = async (isNew = false) => {
   await eaogSaver.value?.(currentEaog.value, isNew)
 }
 
+export const loadSideCpEaog = async (modulePath: string) => {
+  modulePath = modulePath.replace(/^cp:\/\//, ''); // 去掉前缀cp://
+  const cp = await loadCpFromCpStr(modulePath)
+  sideEaog.value = createEaogFromCp(cp);
+}
 
 /**
  * 保存EAOG的函数引用

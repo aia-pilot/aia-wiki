@@ -3,7 +3,7 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {clipboardNode, } from '../../models/editable-eaog-node';
+import {clipboardNode,} from '../../models/editable-eaog-node';
 import {currentNode, currentEaog, saveCurrentEaog} from '../../models/cp-editor-state';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
@@ -115,9 +115,13 @@ onUnmounted(() => {
 
 <template>
   <ContextMenu>
+    <!-- 主EAOG触发区域 -->
     <ContextMenuTrigger as-child>
-      <!-- 触发区域 -->
-      <slot/>
+      <slot name="main-eaog"></slot>
+    </ContextMenuTrigger>
+    <!-- 侧边EAOG触发区域 -->
+    <ContextMenuTrigger as-child>
+      <slot name="side-eaog"></slot>
     </ContextMenuTrigger>
     <ContextMenuContent :class="$attrs.class">
       <!-- 新建节点 -->
@@ -180,19 +184,23 @@ onUnmounted(() => {
           粘贴
         </ContextMenuSubTrigger>
         <ContextMenuSubContent>
-          <ContextMenuItem @click.prevent="() => handlePasteNode('before')" :disabled="!clipboardNode || currentNode?.isRoot">
+          <ContextMenuItem @click.prevent="() => handlePasteNode('before')"
+                           :disabled="!clipboardNode || currentNode?.isRoot">
             <ArrowLeft class="mr-2 h-4 w-4 icon"/>
             粘贴到前面
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handlePasteNode('after')" :disabled="!clipboardNode || currentNode?.isRoot">
+          <ContextMenuItem @click.prevent="() => handlePasteNode('after')"
+                           :disabled="!clipboardNode || currentNode?.isRoot">
             <ChevronRight class="mr-2 h-4 w-4 icon"/>
             粘贴到后面
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handlePasteNode('child')" :disabled="!clipboardNode || !currentNode?.isContainer">
+          <ContextMenuItem @click.prevent="() => handlePasteNode('child')"
+                           :disabled="!clipboardNode || !currentNode?.isContainer">
             <ArrowDown class="mr-2 h-4 w-4 icon"/>
             粘贴为子节点
           </ContextMenuItem>
-          <ContextMenuItem @click.prevent="() => handlePasteNode('parent')" :disabled="!clipboardNode || !clipboardNode?.isContainer">
+          <ContextMenuItem @click.prevent="() => handlePasteNode('parent')"
+                           :disabled="!clipboardNode || !clipboardNode?.isContainer">
             <ArrowUp class="mr-2 h-4 w-4 icon"/>
             粘贴为父节点
           </ContextMenuItem>

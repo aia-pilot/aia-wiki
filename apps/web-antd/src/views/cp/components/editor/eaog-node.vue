@@ -22,6 +22,7 @@ import Debug from 'debug';
 // 导入重构后的组合式函数
 import {useDraggable} from "../../composables/use-draggable";
 import {EaogFramework} from "#/views/cp/models/eaog-framework";
+import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 
 const debug = Debug('aia:eaog-node');
 
@@ -115,11 +116,13 @@ const headerClasses = computed(() => {
          @drop="handleDrop"
     >
 
-<!-- 条件分支 -->
-<div v-if="node.parent?.type === 'cor'"
-     class="cor-children-choice absolute left-11 -top-3 transform text-xs text-gray-400 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
-  {{ node.choice }}
-</div>
+      <!-- 条件分支 名称 -->
+      <div v-if="node.parent?.type === 'cor'"
+           class="cor-children-choice absolute left-11 -top-3 transform text-xs text-gray-400 max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">
+        {{ node.choice }}
+      </div>
+
+      <!-- 节点类型图标    -->
       <Tooltip :title="getNodeTypeConfig(node.type).description">
         <Badge
           :text="getNodeTypeConfig(node.type).icon"
@@ -133,8 +136,11 @@ const headerClasses = computed(() => {
         <div class="font-medium">
           {{ node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name }}
         </div>
-        <div v-if="node.description" class="text-xs text-gray-500" :class="{'text-gray-300': node.type === 'mount-point'}">
-          {{ node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode.description : node.description }}
+        <div v-if="node.description" class="text-xs text-gray-500"
+             :class="{'text-gray-300': node.type === 'mount-point'}">
+          {{
+            node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode.description : node.description
+          }}
         </div>
       </div>
 
@@ -142,18 +148,8 @@ const headerClasses = computed(() => {
         引用: {{ node.ref }}
       </div>
 
-      <!-- 折叠/展开 子节点（子树） -->
-      <VbenIcon
-        v-if="node.children && node.children.length > 0"
-        :icon="node.isFramework && node.meta?.icon ? node.meta.icon : 'ant-design:down-outlined'"
-        class="size-4 shrink-0 transition-all duration-300 ease-in-out ml-2 text-gray-800"
-        :class="{
-          'text-blue-500': node.isFramework,
-          'opacity-100': node.isCollapsed,
-          'transform rotate-180 opacity-0 group-hover:opacity-100': !node.isCollapsed
-        }"
-        @click.stop="toggleCollapse"
-      />
+      <!-- 节点尾部操作栏 -->
+      <eaog-node-tailbar v-if="!node.isRoot" :node="node" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->
