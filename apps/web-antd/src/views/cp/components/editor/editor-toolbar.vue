@@ -2,7 +2,7 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {EditableEaogNode, validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
+import {createEaogFromCp, EditableEaogNode, validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
@@ -10,7 +10,7 @@ import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
 import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
-import {currentEaog, convertToEaogRoot, loadCurrentEaog, saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
+import {currentEaog, loadCurrentEaog, saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp-toolbar');
 
@@ -33,7 +33,7 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
       return;
     }
   }
-  return convertToEaogRoot(json); // 转换为EditableEaogNode对象
+  return createEaogFromCp({eaog: json});
 }
 
 /**

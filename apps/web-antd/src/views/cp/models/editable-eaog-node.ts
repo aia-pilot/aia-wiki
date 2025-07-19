@@ -1,6 +1,6 @@
 import {ref} from 'vue'; // 添加Vue的ref引入
 // @ts-ignore 忽略导入的类型
-import {cpEaogSchema, cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {cpEaogSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
 import {uniqNameWithSequenceSuffix} from "../../../../../../../aia-infra/src/uniq-name.js";
 // @ts-ignore
@@ -12,11 +12,9 @@ import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentEaog, currentNode} from "./cp-editor-state";
 import {EaogHistory} from "./eaog-history";
+import type {EaogNode, CP} from "#/views/cp/models/index";
 
 const debug = Debug("aia:cp:eaog-node");
-
-// 定义 EaogNode 类型为 cpNodeSchema 的推断类型
-export type EaogNode = z.infer<typeof cpNodeSchema>;
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
 const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'history'];
@@ -54,8 +52,9 @@ export class EditableEaogNode implements EaogNode {
   // isClicked 属性已移除
   isCollapsed = false; // 标记节点是否折叠子节点
 
-  // 历史记录
-  history?: EaogHistory; // 新增历史记录属性，只在根节点使用
+  // 根节点特有属性（TRANSIENT）
+  cp?: CP; /** 当前Eaog的CP，{@link CP} */
+  history?: EaogHistory; /** 历史记录，由 {@link initRoot} 初始化 */
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -236,6 +235,10 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   // 确保子节点也是使用正确的类型克隆
   clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
   clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
+  if (this.isRoot) {
+    clone.cp = this.cp; // 浅Copy CP
+    clone.history = this.history; // 浅Copy 历史记录
+  }
   return clone;
 }
 
@@ -345,12 +348,17 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       }
       if (!this.parent) {
         debug('更换根节点', newNode, this);
-        currentEaog.value = newNode; // 如果当前节点是根节点，则更新当前Eaog
+        newNode.cp = this.cp;
+        newNode.history = this.history;
+        delete this.cp;
+        delete this.history;
+        currentEaog.value = newNode;
+        newNode.addChild(this);
       } else {
         this.parent.addChild(newNode, this, 'before'); // 在当前节点之前插入新节点
         this.remove(); // 从当前父节点中移除当前节点
+        newNode.addChild(this); // 将当前节点添加为新节点的子节点
       }
-      newNode.addChild(this); // 将当前节点添加为新节点的子节点
     }
     return newNode; // 返回新插入的节点
   }
@@ -505,13 +513,14 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   }
 
   /**
-   * 初始化历史记录，只在根节点使用
+   * 为根节点添加历史记录、CP等属性
    */
-  initHistory(): void {
+  initRoot(cp: CP): void {
     if (!this.isRoot) {
       debug('只有根节点可以初始化历史记录');
       return;
     }
+    this.cp = cp; // 设置当前Eaog的cp属性
     this.history = new EaogHistory(this);
   }
 
@@ -531,6 +540,13 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       history.addToHistory(this.root);
     }
   }
+}
+
+// 从CP中创建一个新的EditableEaogNode实例
+export function createEaogFromCp(cp: CP): EditableEaogNode {
+  const eaog = new EditableEaogNode(convertBriefEaog(cp.eaog));
+  eaog.initRoot(cp); // 初始化根节点的CP和历史记录
+  return eaog;
 }
 
 // 当前EAOG数据作为全局共享状态、当前被点击节点以及剪贴板节点等全局状态已移至cp-editor-state.ts

@@ -5,6 +5,11 @@ import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/actio
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
 
+/**
+ * 从指定的文件路径加载 CP 模块，用在本地项目面板中，读取本地文件系统中的 CP 模块。
+ * TODO：加上从云端用户云盘中读取
+ * @param filePath
+ */
 export async function loadCpModuleFromFilePath(filePath: string) {
   const normalized = filePath.replace(/\\/g, '/');
   const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
@@ -18,8 +23,12 @@ export async function loadCpModuleFromFilePath(filePath: string) {
   currentCP.value = { filePath: normalized, cp };
 }
 
-export async function loadCpModuleFromCpStr(cpStr: string) {
-  const innerModulePath = parseCpModuleLocateStr(cpStr);
+/**
+ * 从 CP 模块定位字符串加载 CP 模块。从内部CP-store（npm pkg repo）中加载 CP 模块。
+ * @param cpLocateStr
+ */
+export async function loadCpModuleFromCpStr(cpLocateStr: string) {
+  const innerModulePath = parseCpModuleLocateStr(cpLocateStr);
   const cp = await loadCpModule(innerModulePath);
   const filePath = `${eaogsDir}/${innerModulePath}`;
   currentCP.value = { filePath, cp }

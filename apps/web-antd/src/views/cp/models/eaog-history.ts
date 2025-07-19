@@ -19,17 +19,12 @@ export class EaogHistory {
    */
   constructor(rootNode?: EditableEaogNode) {
     if (rootNode) {
-      this.initHistory(rootNode);
+      this.historyData.length = 0;
+      this.historyData.push(rootNode.cloneDeep());
+      this.currentIndex = 0;
+    } else {
+      throw new Error("rootNode can't be undefined when creating EaogHistory");
     }
-  }
-
-  /**
-   * 初始化历史记录
-   */
-  initHistory(node: EditableEaogNode): void {
-    this.historyData.length = 0;
-    this.historyData.push(node.cloneDeep());
-    this.currentIndex = 0;
   }
 
   /**

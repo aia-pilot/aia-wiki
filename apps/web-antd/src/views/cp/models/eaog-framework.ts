@@ -1,6 +1,7 @@
-import {type EaogNode, EditableEaogNode} from "./editable-eaog-node";
+import {EditableEaogNode} from "./editable-eaog-node";
 // @ts-ignore 忽略导入的类型
 import {eaogFrameworks as eaogFrameworkDefs} from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
+import type {EaogNode} from "#/views/cp/models/index";
 
 /**
  * Eaog Framework预定义了一定的执行结构，可以包装、装饰、结构化组装已有的行为（lc、cp、mcp、……）。

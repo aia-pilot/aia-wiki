@@ -5,21 +5,21 @@
  */
 import {JsonViewer} from '@vben/common-ui';
 import {loadCpModuleFromCpStr} from '#/views/cp/models/cp-loader';
-import {currentCP} from '#/views/cp/models/cp-editor-state';
+import {currentEaog} from '#/views/cp/models/cp-editor-state';
 import {computed} from 'vue';
 
 // 计算hooks和sideCPs数据
 const hooksData = computed(() => {
-  return currentCP.value?.cp?.hooks || [];
+  return currentEaog.value?.cp?.hooks || [];
 });
 
 const sideCPsData = computed(() => {
-  return currentCP.value?.cp?.sideCPs || [];
+  return currentEaog.value?.cp?.sideCPs || [];
 });
 
-// 判断是否有CP数据
+// 判断是否有CP数据 TODO: 移除
 const hasCP = computed(() => {
-  return currentCP.value !== null;
+  return currentEaog.value.cp !== null;
 });
 </script>
 

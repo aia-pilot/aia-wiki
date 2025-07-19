@@ -24,12 +24,14 @@ export const loadCpToEditor = async () => {
   }
 }
 
+// TODO: 直接用saveCpToFile
 export const saveEaogToFile = async (eaog: EditableEaogNode, isNew: boolean) => {
   const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...currentCP.value!.cp, eaog};
   const filePath = isNew ? await getNewFilePath() : currentCP.value!.filePath;
   await saveCpToFile(cp, filePath);
 }
 
+// TODO: 参数cp改为EditableEaogNode（内含了cp）
 const saveCpToFile = async (cp: any, filePath: string) => {
   const [eaog, hooks, sideCPs] = [cp.eaog, cp.hooks, cp.sideCPs]
     .map((item: any) => item.toJSON ? item.toJSON() : item)

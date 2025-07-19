@@ -1,5 +1,6 @@
 import {ref, type Ref, watch} from 'vue';
-import {type EaogNode, EditableEaogNode} from './editable-eaog-node';
+import {createEaogFromCp, EditableEaogNode} from './editable-eaog-node';
+import type {CP, EaogNode} from "#/views/cp/models/index";
 // @ts-ignore 忽略导入的类型
 
 /**
@@ -8,7 +9,7 @@ import {type EaogNode, EditableEaogNode} from './editable-eaog-node';
  */
 
 // CP模块状态：当前加载的CP模块
-export const currentCP = ref<{ filePath: string, cp: any } | undefined>(undefined);
+export const currentCP = ref<{ filePath: string, cp: CP } | undefined>(undefined);
 
 // EAOG状态：当前EAOG数据作为全局共享状态
 export const currentEaog: Ref<EditableEaogNode | undefined> = ref(undefined);
@@ -29,7 +30,7 @@ export const currentTab: Ref<string | undefined> = ref(undefined);
 // 当CP模块变化时，更新当前EAOG
 watch(currentCP, (newCP) => {
   if (newCP?.cp?.eaog) {
-    currentEaog.value = convertToEaogRoot(newCP.cp.eaog);
+    currentEaog.value = createEaogFromCp(newCP.cp)
   } else {
     currentEaog.value = undefined;
   }
@@ -50,11 +51,11 @@ watch(currentEaog, (_) => {
  */
 export const loadCurrentEaog = async (eaog: EditableEaogNode | EaogNode | string, needSave = false, isNew = false) => {
   const data = eaog instanceof EditableEaogNode ? eaog : typeof eaog === 'string' ? JSON.parse(eaog) : eaog;
-  const eaogData = eaog instanceof EditableEaogNode ? data : convertToEaogRoot(data);
+  const eaogData = eaog instanceof EditableEaogNode ? data : createEaogFromCp({eaog: data});
 
   currentEaog.value = eaogData;
   // 直接初始化EAOG历史记录
-  eaogData.initHistory();
+  eaogData.initRoot();
 
   if (needSave) {
     await saveCurrentEaog(isNew); // 如果需要保存，则保存为新创建的Eaog
@@ -70,19 +71,6 @@ export const saveCurrentEaog = async (isNew = false) => {
   currentEaog.value?.addToHistory();
   await eaogSaver.value?.(currentEaog.value, isNew)
 }
-
-/**
- * 将符合 EaogNode Schema 的节点数据转换为 EditableEaogNode 对象
- */
-export const convertToEaogRoot = (node: any): EditableEaogNode => {
-  // 这里复用原有的convertToEaogRoot逻辑
-  try {
-    return new EditableEaogNode(node);
-  } catch (error) {
-    console.error('Failed to convert to EditableEaogNode:', error);
-    throw error;
-  }
-};
 
 
 /**

@@ -17,7 +17,8 @@ import {ref} from 'vue';
 import {advancedFlow, complexFlow, simpleSequentialFlow} from './eaog-samples';
 import {Badge, Card, Select, Tooltip} from 'ant-design-vue';
 import EaogNodeComponent from './components/editor/eaog-node.vue';
-import {type EaogNode, nodeTypeUIConfig} from "#/views/cp/models/editable-eaog-node";
+import {nodeTypeUIConfig} from "#/views/cp/models/editable-eaog-node";
+import type {EaogNode} from "#/views/cp/models";
 
 // 当前选中的流程
 const selectedFlow = ref<EaogNode>(complexFlow);
