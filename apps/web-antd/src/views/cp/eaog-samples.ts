@@ -3,7 +3,7 @@
  * 用于驱动CP可视化组件的开发
  */
 
-import type {EaogNode} from "#/views/cp/models";
+import type {EaogNode} from "#/views/cp/models/types";
 
 // 示例1: 简单的顺序执行流程
 export const simpleSequentialFlow: EaogNode = {

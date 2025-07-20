@@ -3,7 +3,7 @@ import {ref, type Ref, toRaw} from 'vue';
 import {type IDBPDatabase, openDB} from 'idb';
 import Debug from 'debug';
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
-import {loadCurrentEaog} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentCP} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp:project');
 
@@ -355,7 +355,7 @@ export class ProjectManager {
     const file: ProjectFile | undefined = currentProject.value!.getFileById(fileKey || '');
     if (file?.type === 'file') {
       currentFile.value = file;
-      await loadCurrentEaog(file.content); // 加载到Editor的当前EAOG
+      await loadCurrentCP({eaog: file.content}); // 加载到Editor的当前EAOG
       debug('设置当前文件:', file);
     }
   }

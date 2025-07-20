@@ -16,7 +16,7 @@ import {projectManager, currentFolder, currentFile} from './project';
 
 import Debug from 'debug';
 import {clipboardNode} from "#/views/cp/models/editable-eaog-node";
-import {loadCurrentEaog} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentCP} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp:project-panel');
 
@@ -41,7 +41,7 @@ const setCurrentFolderAndLoadFile = (item: FlattenedItem<Recordable<any>>) => {
 // 创建新文件
 const createFile = async () => {
   if (clipboardNode.value) {
-    await loadCurrentEaog(clipboardNode.value, true);
+    await loadCurrentCP({eaog: clipboardNode.value}, true);
   } else {
     eaogNodeForm!.value!.createEaog()
   }

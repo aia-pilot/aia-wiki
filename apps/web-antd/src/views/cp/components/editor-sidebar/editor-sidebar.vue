@@ -13,15 +13,15 @@ import CpPanel from './cp-panel.vue';
 import Debug from 'debug';
 import {onMounted, watch} from "vue";
 import {projectManager} from "#/views/cp/components/editor-sidebar/project";
-import {saveEaogToFile} from "#/views/cp/components/editor-sidebar/local-dir";
-import {currentTab, eaogSaver} from "#/views/cp/models/cp-editor-state";
+import {saveCpToFile} from "#/views/cp/components/editor-sidebar/local-dir";
+import {currentTab, cpSaver} from "#/views/cp/models/cp-editor-state";
 // @ts-ignore
 const debug = Debug('aia:cp:editor-sidebar');
 
 watch(currentTab, (newTab) => {
   debug('切换标签页:', newTab);
-  eaogSaver.value = newTab === 'project-panel'    ?   projectManager.updateOrCreateFile.bind(projectManager)
-                  : newTab === 'local-dir-panel'  ?   saveEaogToFile
+  cpSaver.value = newTab === 'project-panel'    ?   projectManager.updateOrCreateFile.bind(projectManager)
+                  : newTab === 'local-dir-panel'  ?   saveCpToFile
                   : null; // 清除保存函数
 });
 

@@ -11,13 +11,12 @@ import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentEaog, currentNode} from "./cp-editor-state";
-import {EaogHistory} from "./eaog-history";
-import type {EaogNode, CP} from "#/views/cp/models/index";
+import type {EaogNode, CP} from "#/views/cp/models/types";
 
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'history'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -47,14 +46,12 @@ export class EditableEaogNode implements EaogNode {
   items?: string | { contextName: string };
 
   // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
-  isNewlyModified = false; // 标记是否为新添加的节点
+  isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
-  // isClicked 属性已移除
   isCollapsed = false; // 标记节点是否折叠子节点
 
   // 根节点特有属性（TRANSIENT）
   cp?: CP; /** 当前Eaog的CP，{@link CP} */
-  history?: EaogHistory; /** 历史记录，由 {@link initRoot} 初始化 */
 
   constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -226,7 +223,8 @@ export class EditableEaogNode implements EaogNode {
 
   get sideCP():string | undefined {
     // TODO: 现在是tech spike，后继要改进
-    const cp = this.root.cp?.sideCPs?.find(({syncPoints, cp, launchPoint}) => {
+    const cp = this.root.cp?.sideCPs?.find(({launchPoint}) => {
+      // syncPoints, cp;
       return launchPoint === this.name /** 注意：这个是hack，实际上重构 {@link Hook#findMatchedNode} 的算法 */
     })
     return cp?.cp; // 返回与当前节点匹配的辅助CP
@@ -247,7 +245,6 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
   if (this.isRoot) {
     clone.cp = this.cp; // 浅Copy CP
-    clone.history = this.history; // 浅Copy 历史记录
   }
   return clone;
 }
@@ -359,9 +356,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       if (!this.parent) {
         debug('更换根节点', newNode, this);
         newNode.cp = this.cp;
-        newNode.history = this.history;
         delete this.cp;
-        delete this.history;
         currentEaog.value = newNode;
         newNode.addChild(this);
       } else {
@@ -525,39 +520,23 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   /**
    * 为根节点添加历史记录、CP等属性
    */
-  initRoot(cp: CP): void {
-    if (!this.isRoot) {
-      debug('只有根节点可以初始化历史记录');
-      return;
-    }
-    this.cp = cp; // 设置当前Eaog的cp属性
-    this.history = new EaogHistory(this);
-  }
-
-  /**
-   * 获取历史记录，如果当前节点不是根节点，则返回根节点的历史记录
-   */
-  getHistory(): EaogHistory | undefined {
-    return this.isRoot ? this.history : this.root.history;
-  }
-
-  /**
-   * 添加当前状态到历史记录
-   */
-  addToHistory(): void {
-    const history = this.getHistory();
-    if (history) {
-      history.addToHistory(this.root);
-    }
-  }
+  // initRoot(cp: CP): void {
+  //   if (!this.isRoot) {
+  //     debug('只有根节点可以初始化历史记录');
+  //     return;
+  //   }
+  //   this.cp = cp; // 设置当前Eaog的cp属性
+  //   this.history = new EaogHistory(this);
+  // }
 }
 
 // 从CP中创建一个新的EditableEaogNode实例
-export function createEaogFromCp(cp: CP): EditableEaogNode {
-  const eaog = new EditableEaogNode(convertBriefEaog(cp.eaog));
-  eaog.initRoot(cp); // 初始化根节点的CP和历史记录
-  return eaog;
-}
+// TODO: 改用EditableCP构造子
+// export function createEaogFromCp(cp: CP): EditableEaogNode {
+//   const eaog = new EditableEaogNode(convertBriefEaog(cp.eaog));
+//   eaog.cp = cp; // 设置当前Eaog的CP
+//   return eaog;
+// }
 
 // 当前EAOG数据作为全局共享状态、当前被点击节点以及剪贴板节点等全局状态已移至cp-editor-state.ts
 

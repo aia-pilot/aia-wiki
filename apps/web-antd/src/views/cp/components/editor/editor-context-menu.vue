@@ -4,7 +4,7 @@ import {
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
 import {clipboardNode,} from '../../models/editable-eaog-node';
-import {currentNode, currentEaog, saveCurrentEaog} from '../../models/cp-editor-state';
+import {currentNode, saveCurrentCP} from '../../models/cp-editor-state';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
 import {onMounted, onUnmounted, ref, inject, type Ref} from 'vue';
@@ -50,7 +50,7 @@ const handlePasteNode = async (position: 'before' | 'after' | 'child' | 'parent'
     currentNode.value = pastedNode;
   }
   pastedNode.markAsNewlyModifiedForAWhile()
-  await saveCurrentEaog(); // 保存当前EAOG
+  await saveCurrentCP(); // 保存当前CP
 };
 
 const handleDeleteNode = async (deleteSubtree: boolean) => {
@@ -72,7 +72,7 @@ const handleDeleteNode = async (deleteSubtree: boolean) => {
       node.remove(false);
     }
   }
-  await saveCurrentEaog(); // 保存当前EAOG
+  await saveCurrentCP(); // 保存当前CP
 };
 
 /**
@@ -115,13 +115,13 @@ onUnmounted(() => {
 
 <template>
   <ContextMenu>
-    <!-- 主EAOG触发区域 -->
+    <!-- 主CP EAOG 触发区域 -->
     <ContextMenuTrigger as-child>
       <slot name="main-eaog"></slot>
     </ContextMenuTrigger>
-    <!-- 侧边EAOG触发区域 -->
+    <!-- 并行CP EAOG 触发区域 -->
     <ContextMenuTrigger as-child>
-      <slot name="side-eaog"></slot>
+      <slot name="parallel-eaog"></slot>
     </ContextMenuTrigger>
     <ContextMenuContent :class="$attrs.class">
       <!-- 新建节点 -->

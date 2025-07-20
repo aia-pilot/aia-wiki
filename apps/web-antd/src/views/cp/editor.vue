@@ -14,12 +14,12 @@
  */
 
 // 导入EaogNode组件和相关类型
-import {loadCurrentEaog, currentPane, currentEaog, mainEaog, sideEaog} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCP} from "#/views/cp/models/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
-import MainSideEaogLinks from './components/main-side-eaog-links.vue'; // 导入主辅EAOG关联线层组件
+import MainSideEaogLinks from './components/main-parallel-eaog-links.vue'; // 导入主辅EAOG关联线层组件
 import {complexFlow} from './eaog-samples';
 import {onMounted, ref, provide, type Ref} from 'vue';
 
@@ -35,17 +35,13 @@ const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 provide<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm', eaogNodeForm);
 
 currentPane.value = 'eaog-tree'; // 当前工作面板，默认为节点详情
-const changeCurrentWorkPane = (pane: string) => {
-  currentPane.value = pane;
-  debug('切换工作面板:', pane);
-};
 
 // 编辑器容器引用
 const editorContainer = ref<HTMLDivElement>();
 
 onMounted(async () => {
-  await loadCurrentEaog(complexFlow); // 加载示例流程数据
-  debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
+  await loadCurrentCP({eaog: complexFlow}); // 加载示例流程数据
+  debug('CP编辑器已加载，初始EAOG数据:', currentCP.value);
 });
 </script>
 
@@ -58,23 +54,23 @@ onMounted(async () => {
     <!-- 上下文菜单组件 -->
     <Splitpanes class="flex p-4 w-full h-full default-theme" :gutter-size="5" :min-pane-size="100">
       <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-        <!-- 主EAOG -->
+        <!-- 主CP EAOG -->
         <template #main-eaog>
-          <Pane :size="sideEaog ? 40 : 80">
+          <Pane :size="parallelCP ? 40 : 80">
             <div class="w-full p-4 border rounded-md">
-              <div v-if="mainEaog" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
-                <EaogNodeComponent :node="mainEaog"/>
+              <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
+                <EaogNodeComponent :node="mainCP.eaog"/>
               </div>
             </div>
           </Pane>
         </template>
 
-        <!-- 辅EAOG -->
-        <template v-if="sideEaog"  #side-eaog>
+        <!-- 并行CP EAOG 展示将与主CP并行执行的某个CP -->
+        <template v-if="parallelCP"  #parallel-eaog>
           <Pane :size="40">
             <div class="w-full p-4 border rounded-md">
-              <div class="eaog-tree side-eaog" @click="currentPane = 'side-eaog'">
-                <EaogNodeComponent :node="sideEaog"/>
+              <div class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
+                <EaogNodeComponent :node="parallelCP.eaog"/>
               </div>
             </div>
           </Pane>
@@ -91,7 +87,7 @@ onMounted(async () => {
     </Splitpanes>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-    <MainSideEaogLinks v-if="mainEaog && sideEaog" :containerRef="editorContainer"/>
+    <MainSideEaogLinks v-if="currentCP && parallelCP" :containerRef="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

@@ -2,7 +2,8 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {createEaogFromCp, EditableEaogNode, validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
+import {validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
+import {createEditableCP, EditableCP} from '../../models/editable-cp';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
@@ -10,14 +11,14 @@ import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
 import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
-import {currentEaog, loadCurrentEaog, saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
+import {currentCP, loadCurrentCP } from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:cp-toolbar');
 
 // 通过 inject 注入 eaogNodeForm
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
-const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
+const parseTextToCP = (eaogTxt: any): EditableCP | undefined => {
   let json;
   // 解析JSON文本
   try {
@@ -33,7 +34,7 @@ const parseTextToEaog = (eaogTxt: any): EditableEaogNode | undefined => {
       return;
     }
   }
-  return createEaogFromCp({eaog: json});
+  return new createEditableCP({eaog: json});
 }
 
 /**
@@ -43,8 +44,8 @@ const handleImport = async () => {
   debug('导入EAOG数据');
   const eaog = (IS_DEV && await importEaogFromClipboard() || loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
   if (eaog) {
-    debug('导入成功:', eaog);
-    await loadCurrentEaog(eaog, true, true); // 加载EAOG数据到编辑器
+    debug('导入成功EAOG to CP:', eaog);
+    await loadCurrentCP({eaog}, true, true); // 加载EAOG数据到编辑器
     // projectManager.updateOrCreateFile(eaog, true)
   }
 };
@@ -53,17 +54,17 @@ const handleImport = async () => {
  * 导出当前EAOG数据为JSON文本到系统剪贴板，当Shift键按下时，导出为文件（下载）
  */
 const handleExport = async (event: MouseEvent | KeyboardEvent) => {
-  debug('导出当前EAOG');
-  if (!currentEaog.value) {
+  debug('导出当前CP EAOG');
+  if (!currentCP.value) {
     message.warning('当前没有可导出的数据');
     return;
   }
 
-  const data = JSON.stringify(currentEaog.value, null, 2);
+  const data = JSON.stringify(currentCP.value.eaog, null, 2);
   await copyToClipboard(data);
   message.success('EAOG数据已导出到剪贴板');
 
-  if (event.shiftKey && currentEaog.value) {
+  if (event.shiftKey && currentCP.value.eaog) {
     downloadToFile(data);
   }
 };
@@ -71,7 +72,7 @@ const handleExport = async (event: MouseEvent | KeyboardEvent) => {
 const applyFramework = async (framework: EaogFramework) => {
   debug(`添加'${framework.meta.name}' Framework`);
   // 直接获取选中节点并调用相应函数
-  const selectedNodes = currentEaog.value?.getSelectedNodes();
+  const selectedNodes = currentCP.value?.eaog.getSelectedNodes();
   if (selectedNodes!.length > 0) {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
@@ -103,40 +104,40 @@ const handleSave = () => {
 };
 
 const handleUndo = () => {
-  const history = currentEaog.value?.getHistory();
+  const history = currentCP.value?.history;
   if (!history) return;
 
-  const prevEaog = history.undo();
-  debug('撤销操作，当前EAOG:', prevEaog);
-  if (prevEaog) loadCurrentEaog(prevEaog, true, false);
+  const prevCP = history.undo();
+  debug('撤销操作，当前CP:', prevCP);
+  if (prevCP) loadCurrentCP(prevCP, true, false);
 };
 
 const handleRedo = () => {
-  const history = currentEaog.value?.getHistory();
+  const history = currentCP.value?.history;
   if (!history) return;
 
-  const nextEaog = history.redo();
-  debug('重做操作，当前EAOG:', nextEaog);
-  if (nextEaog) loadCurrentEaog(nextEaog, true, false);
+  const nextCP = history.redo();
+  debug('重做操作，当前CP:', nextCP);
+  if (nextCP) loadCurrentCP(nextCP, true, false);
 };
 
 const canUndo = () => {
-  const history = currentEaog.value?.getHistory();
+  const history = currentCP.value?.history;
   return history ? history.canUndo() : false;
 };
 
 const canRedo = () => {
-  const history = currentEaog.value?.getHistory();
+  const history = currentCP.value?.history;
   return history ? history.canRedo() : false;
 };
 
 const handleValidate = () => {
-  debug('校验EAOG数据');
-  if (!currentEaog.value) {
+  debug('校验CP EAOG数据');
+  if (!currentCP.value || !currentCP.value.eaog) {
     message.warning('当前没有可校验的数据');
     return;
   }
-  const res = validateEaog(currentEaog.value);
+  const res = validateEaog(currentCP.value.eaog);
   if (res.success) {
     message.success('EAOG数据校验通过，符合数格：CP Schema 0.0.1');
   } else {
@@ -144,28 +145,28 @@ const handleValidate = () => {
   }
 };
 
-const importEaogFromClipboard = async (): Promise<EditableEaogNode | undefined> => {
+const importEaogFromClipboard = async (): Promise<EditableCP | undefined> => {
   try {
     const text = await navigator.clipboard.readText();
     debug('从剪切板读取内容成功');
-    return parseTextToEaog(text);
+    return parseTextToCP(text);
   } catch (err) {
     console.warn('无法读取剪切板内容:', err);
     return undefined;
   }
 };
 
-const loadFromLocalStorage = (key: string): EditableEaogNode | undefined => {
+const loadFromLocalStorage = (key: string): EditableCP | undefined => {
   const data = localStorage.getItem(key);
   if (data) {
     debug('从本地存储读取内容成功');
-    return parseTextToEaog(data);
+    return parseTextToCP(data);
   }
   debug('本地存储中没有找到数据');
   return undefined;
 };
 
-const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
+const importEaogFromFile = (): Promise<EditableCP | undefined> => {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -181,7 +182,7 @@ const importEaogFromFile = (): Promise<EditableEaogNode | undefined> => {
       reader.onload = (event) => {
         const content = event.target?.result as string;
         debug('从文件读取内容成功');
-        resolve(parseTextToEaog(content));
+        resolve(parseTextToCP(content));
       };
       reader.onerror = () => {
         console.warn('读取文件失败');
@@ -205,7 +206,7 @@ const copyToClipboard = async (data: any) => {
 
 const downloadToFile = (data: any) => { // TODO: 用Vben的triggerDownload
   const href = 'data:text/json;charset=utf-8,' + encodeURIComponent(data);
-  triggerDownload(href, `${ currentEaog?.value.name }.eaog.json`);
+  triggerDownload(href, `${ currentCP.value?.eaog.name }.eaog.json`);
 };
 
 // 添加和移除键盘事件监听器
@@ -279,7 +280,7 @@ onUnmounted(() => {
     <!-- Frameworks：通知、报告、控制组 通知（事前）、报告（事前），报告（事后）-->
     <EditorToolbarButton v-for="framework in eaogFrameworks"
                          :icon="framework.meta.icon" :tooltip="framework.meta.name"
-                         :disabled="!(currentEaog && currentEaog.getSelectedNodes().length > 0)"
+                         :disabled="!(currentCP?.value?.eaog && currentCP.value.eaog.getSelectedNodes().length > 0)"
                          @click="applyFramework(framework)"/>
 
     <!-- 分组间隔竖线  -->

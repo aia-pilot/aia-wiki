@@ -1,5 +1,6 @@
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 import {cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod";
+import {type EaogFramework} from "#/views/cp/models/eaog-framework";
 
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
@@ -44,5 +45,6 @@ export type CP = {
   eaog: EaogNode; // CP 的 EAOG 数据
   hooks?: Hook[]; // CP 的 Hook 列表
   sideCPs?: SideCP[]; // CP 的侧边 CP 列表
+  frameworks?: EaogFramework[]; // CP 使用的 EAOG Framework 列表
 }
 

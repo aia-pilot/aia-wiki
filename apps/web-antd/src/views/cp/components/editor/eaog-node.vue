@@ -12,17 +12,17 @@
  * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
-import {computed, inject} from 'vue';
+import {computed, inject, type Ref} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
 import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {nodeTypeUIConfig} from "#/views/cp/models/editable-eaog-node";
-import {VbenIcon} from "@vben-core/shadcn-ui";
 import Debug from 'debug';
 
 // 导入重构后的组合式函数
 import {useDraggable} from "../../composables/use-draggable";
 import {EaogFramework} from "#/views/cp/models/eaog-framework";
 import EaogNodeTailbar from "./eaog-node-tailbar.vue";
+import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
 const debug = Debug('aia:eaog-node');
 
@@ -47,12 +47,6 @@ const handleNodeClick = (event: MouseEvent) => {
   debug(`Node clicked: ${props.node.name}`);
   // 使用EditableEaogNode的click方法，直接更新节点状态
   props.node.click(true, event.shiftKey);
-};
-
-// 处理折叠/展开按钮点击
-const toggleCollapse = () => {
-  props.node.toggleCollapse(); // 使用EditableEaogNode的toggleCollapse方法
-  debug(`Node ${props.node.name} ${props.node.isCollapsed ? 'collapsed' : 'expanded'}`);
 };
 
 // 处理系统右键菜单事件，附加当前node
@@ -139,7 +133,7 @@ const headerClasses = computed(() => {
         <div v-if="node.description" class="text-xs text-gray-500"
              :class="{'text-gray-300': node.type === 'mount-point'}">
           {{
-            node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode.description : node.description
+            node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode!.description : node.description
           }}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { mainCPModule } from './cp-editor-state';
+import type {CP} from "./types.d";
 // @ts-ignore
 import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";
 
@@ -34,7 +35,7 @@ export async function loadCpFromCpStr(cpLocateStr: string) {
   // return { filePath, cp }
 }
 
-async function loadCp(innerModulePath: string) {
+async function loadCp(innerModulePath: string): Promise<CP> {
   // aia-svc/public/cp-store symbol link到了eaogsDir目录。 注意：ONLY FOR @DEV @POC
   const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${innerModulePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
   return cp;

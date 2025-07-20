@@ -3,11 +3,10 @@ import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
 import {loadCpModuleFromFilePath} from "#/views/cp/models/cp-loader";
-import {mainCPModule} from "#/views/cp/models/cp-editor-state";
-import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {prompt} from '@vben/common-ui';
 
 import Debug from 'debug';
+import type {EditableCP} from "#/views/cp/models/editable-cp";
 
 const debug = Debug('aia-wiki:local-dir');
 
@@ -24,22 +23,18 @@ export const loadCpToEditor = async () => {
   }
 }
 
-// TODO: 直接用saveCpToFile
-export const saveEaogToFile = async (eaog: EditableEaogNode, isNew: boolean) => {
-  const cp = isNew ? {eaog, hooks: [], sideCPs: []} : {...mainCPModule.value!.cp, eaog};
-  const filePath = isNew ? await getNewFilePath() : mainCPModule.value!.filePath;
-  await saveCpToFile(cp, filePath);
-}
 
 // TODO: 参数cp改为EditableEaogNode（内含了cp）
-const saveCpToFile = async (cp: any, filePath: string) => {
-  const [eaog, hooks, sideCPs] = [cp.eaog, cp.hooks, cp.sideCPs]
-    .map((item: any) => item.toJSON ? item.toJSON() : item)
-    .map((item: any) => compactJson(item, {keyNoQuotation: true}));
+export const saveCpToFile = async (cp: EditableCP, filePath: string) => {
+//   const [eaog, hooks, sideCPs] = [cp.eaog, cp.hooks, cp.sideCPs]
+//     .map((item: any) => item.toJSON ? item.toJSON() : item)
+//     .map((item: any) => compactJson(item, {keyNoQuotation: true}));
+  const {eaog, hooks, sideCPs, frameworks} = cp.toJSON();
   const content = `// Auto-generated CP file
 export const eaog = ${eaog};\n
 export const hooks = ${hooks};\n
-export const sideCPs = ${sideCPs};\n`;
+export const sideCPs = ${sideCPs};\n
+export const frameWorks = ${frameworks};\n`;
 
   debug(`保存CP模块到本地目录, file path: ${filePath}`);
   // @ts-ignore

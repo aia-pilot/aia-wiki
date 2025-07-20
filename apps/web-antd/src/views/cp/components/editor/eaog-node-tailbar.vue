@@ -7,7 +7,7 @@ import EditorToolbarButton from './editor-toolbar-button.vue';
 import { EditableEaogNode } from '../../models/editable-eaog-node';
 import { EaogFramework } from '../../models/eaog-framework';
 import Debug from 'debug';
-import {loadSideCpEaog} from "#/views/cp/models/cp-editor-state";
+import {loadParallelCP} from "#/views/cp/models/cp-editor-state";
 
 const debug = Debug('aia:eaog-node-tailbar');
 
@@ -88,7 +88,7 @@ const shouldShowHookButton = () => {
       v-if="node.sideCP"
       icon="mdi:source-branch"
       tooltip="添加子CP"
-      @click.stop="loadSideCpEaog(node.sideCP)"
+      @click.stop="loadParallelCP(node.sideCP)"
       class="opacity-0 group-hover:opacity-100"
     />
   </div>

@@ -3,8 +3,9 @@ import {omit} from 'lodash-es';
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
-import {createEaogFromCp, EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
-import {currentNode} from '../../models/cp-editor-state';
+import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
+import {createEditableCP, EditableCP} from '../../models/editable-cp';
+import {currentNode, saveCurrentCP} from '../../models/cp-editor-state';
 
 
 // 导入您的Schema定义
@@ -12,7 +13,6 @@ import {currentNode} from '../../models/cp-editor-state';
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
-import {saveCurrentEaog} from "#/views/cp/models/cp-editor-state";
 // @formatter:on
 
 // 节点类型选项
@@ -21,7 +21,7 @@ const nodeTypeOptions = allNodeTypes.map((type: string) => ({label: type, value:
 const title = ref(); // 模态框标题，这个需要保持响应式以更新UI
 
 // 使用普通变量而非响应式变量
-type FormMode = 'create-eaog' | 'edit-node' | 'add-node';
+type FormMode = 'create-cp' | 'edit-node' | 'add-node';
 let formMode: FormMode = 'add-node';
 let insertPosition: 'before' | 'after' | 'child' | 'parent' = 'after';
 
@@ -32,9 +32,9 @@ const checkFormValues = (formValues: Record<string, any>) => {
   return nodeValues;
 }
 
-const createNodeFromForm = (formValues: Record<string, any>, boolean: isRoot = false) => {
+const createNodeFromForm = (formValues: Record<string, any>, isRoot = false) => {
   const nodeValues = checkFormValues(formValues)
-  return isRoot ? createEaogFromCp({eaog: nodeValues}) : new EditableEaogNode(nodeValues);
+  return isRoot ? createEditableCP({eaog: nodeValues}).eaog : new EditableEaogNode(nodeValues);
 }
 
 // 处理表单提交
@@ -48,7 +48,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       const nodeValues = checkFormValues(formValues)
       currentNode.value?.mergeFormValues(omit(nodeValues, ['children'])); // 合并表单数据到当前节点，保留原来的children
       currentNode.value?.markAsNewlyModifiedForAWhile();
-    } else if (formMode === 'create-eaog') {
+    } else if (formMode === 'create-cp') {
       const newNode = createNodeFromForm(formValues, true); // 创建新的EAOG（根节点）
       currentNode.value = newNode; // 设置当前节点为新创建的节点
     } else { // 'add-node' 模式
@@ -57,7 +57,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       newNode.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
     }
 
-    await saveCurrentEaog(formMode === 'create-eaog'); // 保存当前EAOG
+    await saveCurrentCP(formMode === 'create-cp'); // 保存当前CP
     modalApi.close(); // 提交成功后关闭模态框
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -238,7 +238,7 @@ const handleModalOpen = (isOpen: boolean) => {
         title.value = "编辑节点";
         formApi.setValues(currentNode.value?.getObjFromFormValues() as Record<string, any> || {});
         break;
-      case 'create-eaog':
+      case 'create-cp':
         title.value = "新建EAOG";
         formApi.resetForm();
         break;
@@ -257,7 +257,7 @@ const [Modal, modalApi] = useVbenModal({
 
 // 表单操作方法 - 使用普通变量
 const createEaog = () => {
-  formMode = 'create-eaog';
+  formMode = 'create-cp';
   modalApi.open();
 };
 

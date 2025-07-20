@@ -1,5 +1,5 @@
 <template>
-  <div v-if="shouldDisplay" class="main-side-eaog-links">
+  <div v-if="shouldDisplay" class="main-parallel-eaog-links">
     <OrthogonalLinkLayer
       :obstacles="obstacles"
       :links="links"
@@ -21,11 +21,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import OrthogonalLinkLayer from './node-links-layer/orthogonal-link-layer.vue';
 import type { LinkSpec, LinkStyle } from './node-links-layer/types';
-import { mainEaog, sideEaog } from '../models/cp-editor-state';
-import type { SyncPoint, SideCP } from '../models/index';
+import { mainCP, parallelCP } from '../models/cp-editor-state';
+import type { SyncPoint, SideCP } from '../models/types';
 import Debug from 'debug';
 
-const debug = Debug('aia:cp:main-side-eaog-links');
+const debug = Debug('aia:cp:main-parallel-eaog-links');
 
 // 定义组件属性
 interface Props {
@@ -42,13 +42,13 @@ const emit = defineEmits<{
 
 // 是否应该显示连线层
 const shouldDisplay = computed(() => {
-  return !!mainEaog.value && !!sideEaog.value && !!getSideCP();
+  return !!mainCP.value && !!parallelCP.value && !!getSideCP();
 });
 
 // 获取sideCP数据
 function getSideCP(): SideCP | undefined {
-  if (!mainEaog.value) return undefined;
-  return mainEaog.value.cp.sideCPs[0]; // TODO: 待改进
+  if (!mainCP.value.eaog) return undefined;
+  return mainCP.value.sideCPs[0]; // TODO: 待改进
 }
 
 // 获取障碍物元素
@@ -102,7 +102,7 @@ const links = computed<LinkSpec[]>(() => {
       const actorElement = props.containerRef.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
-      const waiterSelector = `.side-eaog [data-node-path$="${syncPoint.waiter.path}"]`;
+      const waiterSelector = `.parallel-eaog [data-node-path$="${syncPoint.waiter.path}"]`;
       const waiterElement = props.containerRef.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
@@ -182,7 +182,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.main-side-eaog-links {
+.main-parallel-eaog-links {
   position: absolute;
   top: 0;
   left: 0;

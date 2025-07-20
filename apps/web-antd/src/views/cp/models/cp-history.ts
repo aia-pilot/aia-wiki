@@ -1,54 +1,55 @@
-import { EditableEaogNode } from './editable-eaog-node';
+import { EditableCP } from './editable-cp';
 import Debug from 'debug';
 
-const debug = Debug('aia:cp:eaog-history');
+const debug = Debug('aia:cp:cp-history');
 
 /**
- * EAOG历史记录管理类
- * 为每个EAOG根节点提供独立的历史记录管理
+ * CP历史记录管理类
+ * 为每个CP提供独立的历史记录管理
  */
-export class EaogHistory {
-  // 历史记录，保存EAOG的状态，用于撤销和重做操作
-  private historyData: EditableEaogNode[] = [];
+export class CPHistory {
+  // 历史记录，保存CP的状态，用于撤销和重做操作
+  private historyData: EditableCP[] = [];
   // 当前历史记录索引
   private currentIndex: number = -1;
 
   /**
    * 创建一个新的历史记录管理器
-   * @param rootNode EAOG根节点
+   * @param cp CP对象
    */
-  constructor(rootNode?: EditableEaogNode) {
-    if (rootNode) {
+  constructor(cp?: EditableCP) {
+    if (cp) {
       this.historyData.length = 0;
-      this.historyData.push(rootNode.cloneDeep());
+      this.historyData.push(cp.cloneDeep());
       this.currentIndex = 0;
     } else {
-      throw new Error("rootNode can't be undefined when creating EaogHistory");
+      throw new Error("cp can't be undefined when creating CPHistory");
     }
   }
 
   /**
    * 添加当前状态到历史记录
-   * @param eaog 当前EAOG状态
+   * @param cp 当前CP状态
    */
-  addToHistory(eaog: EditableEaogNode): void {
+  addToHistory(cp: EditableCP): void {
     // 清除当前索引之后的历史记录
     this.historyData.splice(this.currentIndex + 1);
 
     // 检查是否与最后一个历史记录相同
-    if (this.historyData.length > 0 && eaog.equals(this.historyData[this.historyData.length - 1]!)) {
+    const last = this.historyData[this.historyData.length - 1];
+    if (last && cp.eaog.equals(last.eaog)) {
       return;
     }
 
-    this.historyData.push(eaog.cloneDeep());
+    this.historyData.push(cp.cloneDeep());
     this.currentIndex = this.historyData.length - 1; // 更新当前索引
   }
 
   /**
    * 撤销操作
-   * @returns 撤销后的EAOG状态，如果无法撤销则返回undefined
+   * @returns 撤销后的CP状态，如果无法撤销则返回undefined
    */
-  undo(): EditableEaogNode | undefined {
+  undo(): EditableCP | undefined {
     if (this.currentIndex <= 0) return undefined;
     this.currentIndex--;
     return this.historyData[this.currentIndex]?.cloneDeep();
@@ -56,9 +57,9 @@ export class EaogHistory {
 
   /**
    * 重做操作
-   * @returns 重做后的EAOG状态，如果无法重做则返回undefined
+   * @returns 重做后的CP状态，如果无法重做则返回undefined
    */
-  redo(): EditableEaogNode | undefined {
+  redo(): EditableCP | undefined {
     if (this.currentIndex >= this.historyData.length - 1) return undefined;
     this.currentIndex++;
     return this.historyData[this.currentIndex]?.cloneDeep();
@@ -81,7 +82,8 @@ export class EaogHistory {
   /**
    * 获取最后一个历史记录
    */
-  getLast(): EditableEaogNode | undefined {
+  getLast(): EditableCP | undefined {
     return this.historyData[this.historyData.length - 1];
   }
 }
+
