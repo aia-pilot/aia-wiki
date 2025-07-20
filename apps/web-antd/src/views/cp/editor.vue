@@ -19,6 +19,7 @@ import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
+import MainSideEaogLinks from './components/main-side-eaog-links.vue'; // 导入主辅EAOG关联线层组件
 import {complexFlow} from './eaog-samples';
 import {onMounted, ref, provide, type Ref} from 'vue';
 
@@ -39,6 +40,9 @@ const changeCurrentWorkPane = (pane: string) => {
   debug('切换工作面板:', pane);
 };
 
+// 编辑器容器引用
+const editorContainer = ref<HTMLDivElement>();
+
 onMounted(async () => {
   await loadCurrentEaog(complexFlow); // 加载示例流程数据
   debug('CP编辑器已加载，初始EAOG数据:', currentEaog.value);
@@ -46,7 +50,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="cp-editor">
+  <div class="cp-editor" ref="editorContainer">
     <!-- 工具栏 -->
     <EditorToolbar/>
 
@@ -58,7 +62,7 @@ onMounted(async () => {
         <template #main-eaog>
           <Pane :size="sideEaog ? 40 : 80">
             <div class="w-full p-4 border rounded-md">
-              <div v-if="mainEaog" class="eaog-tree" @click="currentPane = 'main-eaog'">
+              <div v-if="mainEaog" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
                 <EaogNodeComponent :node="mainEaog"/>
               </div>
             </div>
@@ -69,7 +73,7 @@ onMounted(async () => {
         <template v-if="sideEaog"  #side-eaog>
           <Pane :size="40">
             <div class="w-full p-4 border rounded-md">
-              <div class="eaog-tree" @click="currentPane = 'side-eaog'">
+              <div class="eaog-tree side-eaog" @click="currentPane = 'side-eaog'">
                 <EaogNodeComponent :node="sideEaog"/>
               </div>
             </div>
@@ -85,6 +89,9 @@ onMounted(async () => {
       </Pane>
 
     </Splitpanes>
+
+    <!-- 主EAOG与辅EAOG关联线层 -->
+    <MainSideEaogLinks v-if="mainEaog && sideEaog" :containerRef="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>
