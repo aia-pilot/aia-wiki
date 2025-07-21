@@ -25,11 +25,12 @@ export const loadCpToEditor = async () => {
 
 
 // TODO: 参数cp改为EditableEaogNode（内含了cp）
-export const saveCpToFile = async (cp: EditableCP, filePath: string) => {
-//   const [eaog, hooks, sideCPs] = [cp.eaog, cp.hooks, cp.sideCPs]
-//     .map((item: any) => item.toJSON ? item.toJSON() : item)
-//     .map((item: any) => compactJson(item, {keyNoQuotation: true}));
-  const {eaog, hooks, sideCPs, frameworks} = cp.toJSON();
+export const saveCpToFile = async (cp: EditableCP, isNew: boolean) => {
+  const [eaog, hooks, sideCPs, frameworks] = [cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks]
+    .map((item: any) => item.toJSON ? item.toJSON() : item)
+    .map((item: any) => compactJson(item, {keyNoQuotation: true}));
+  // const {eaog, hooks, sideCPs, frameworks} = cp.toJSON();
+  const filePath = isNew ? await getNewFilePath() : cp.filePath;
   const content = `// Auto-generated CP file
 export const eaog = ${eaog};\n
 export const hooks = ${hooks};\n

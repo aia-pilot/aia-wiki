@@ -46,5 +46,6 @@ export type CP = {
   hooks?: Hook[]; // CP 的 Hook 列表
   sideCPs?: SideCP[]; // CP 的侧边 CP 列表
   frameworks?: EaogFramework[]; // CP 使用的 EAOG Framework 列表
+  filePath?: string; // 可选的文件路径，用于本地存储
 }
 

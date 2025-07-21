@@ -4,8 +4,8 @@ import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
-import {createEditableCP, EditableCP} from '../../models/editable-cp';
-import {currentNode, saveCurrentCP} from '../../models/cp-editor-state';
+import {createEditableCP} from '../../models/editable-cp';
+import {currentNode, currentCP, saveCurrentCP} from '../../models/cp-editor-state';
 
 
 // 导入您的Schema定义
@@ -32,11 +32,6 @@ const checkFormValues = (formValues: Record<string, any>) => {
   return nodeValues;
 }
 
-const createNodeFromForm = (formValues: Record<string, any>, isRoot = false) => {
-  const nodeValues = checkFormValues(formValues)
-  return isRoot ? createEditableCP({eaog: nodeValues}).eaog : new EditableEaogNode(nodeValues);
-}
-
 // 处理表单提交
 const handleFormSubmit = async (formValues: Record<string, any>) => {
   const { valid } = await formApi.validate();
@@ -44,15 +39,15 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     return; // 如果验证失败，直接返回
   }
   try {
+    const nodeValues = checkFormValues(formValues)
     if (formMode === 'edit-node') {
-      const nodeValues = checkFormValues(formValues)
       currentNode.value?.mergeFormValues(omit(nodeValues, ['children'])); // 合并表单数据到当前节点，保留原来的children
       currentNode.value?.markAsNewlyModifiedForAWhile();
     } else if (formMode === 'create-cp') {
-      const newNode = createNodeFromForm(formValues, true); // 创建新的EAOG（根节点）
-      currentNode.value = newNode; // 设置当前节点为新创建的节点
+      currentCP.value = createEditableCP({eaog: nodeValues});
+      currentNode.value = currentCP.value.eaog; // 设置当前节点为新创建的CP根节点
     } else { // 'add-node' 模式
-      const newNode = createNodeFromForm(formValues);
+      const newNode = new EditableEaogNode(nodeValues, null, currentNode.value.cp);
       currentNode.value?.insert(newNode, insertPosition);
       newNode.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
     }

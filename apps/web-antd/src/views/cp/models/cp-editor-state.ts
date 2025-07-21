@@ -1,8 +1,7 @@
 import {ref, type Ref, watch, computed} from 'vue';
 import type {EditableEaogNode} from './editable-eaog-node';
-import {createEditableCP, type EditableCP} from './editable-cp';
-import type {CP, EaogNode} from "#/views/cp/models/types";
-// @ts-ignore 忽略导入的类型
+import type {EditableCP} from './editable-cp';
+import type {CP} from "#/views/cp/models/types";
 
 /**
  * CP Editor 的核心状态管理
@@ -44,8 +43,8 @@ export const currentTab: Ref<string | undefined> = ref(undefined);
 // 当CP模块变化时，更新当前CP
 watch(mainCPModule, async(newCPM) => {
   if (newCPM?.cp) {
-    const EditableCP = await import('./editable-cp');
-    mainCP.value = createEditableCP(newCPM.cp);
+    const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
+    mainCP.value = createEditableCP({...newCPM.cp, filePath: newCPM.filePath} as CP);
   } else {
     mainCP.value = undefined;
   }
@@ -67,7 +66,7 @@ watch(currentCP, (_) => {
 export const loadCurrentCP = async (cp: EditableCP | CP | string, needSave = false, isNew = false) => {
   let cpData: EditableCP;
 
-  const {EditableCP} = await import('./editable-cp'); // 动态导入EditableCP类
+  const {EditableCP, createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   if (cp instanceof EditableCP) {
     cpData = cp;
   } else if (typeof cp === 'string') {
@@ -95,11 +94,12 @@ export const saveCurrentCP = async (isNew = false) => {
 }
 
 /**
- * 加载并行CP，并行CP将出现在ParalleCP Pane中
+ * 加载并行CP，并行CP将出现在ParallelCP Pane中
  * @param modulePath
  */
 export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('./cp-loader');
+  const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   modulePath = modulePath.replace(/^cp:\/\//, ''); // 去掉前缀cp://
   const cp = await loadCpFromCpStr(modulePath)
   parallelCP.value = createEditableCP(cp);

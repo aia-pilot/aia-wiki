@@ -10,13 +10,13 @@ import {omit} from "lodash-es";
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
-import {currentEaog, currentNode} from "./cp-editor-state";
+import {currentCP, currentNode} from "./cp-editor-state";
 import type {EaogNode, CP} from "#/views/cp/models/types";
 
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'nestedCPManager'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -27,7 +27,7 @@ export class EditableEaogNode implements EaogNode {
 
   // 组合节点的属性
   children: EditableEaogNode[];
-  parent?: EditableEaogNode; // EditableEaogNode属性（非EaogNode属性, TRANSIENT），用于维护树形结构
+  parent: EditableEaogNode | null; // EditableEaogNode属性（非EaogNode属性, TRANSIENT），用于维护树形结构
 
   // 递归节点的属性
   ref?: string;
@@ -50,15 +50,17 @@ export class EditableEaogNode implements EaogNode {
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isCollapsed = false; // 标记节点是否折叠子节点
 
-  // 根节点特有属性（TRANSIENT）
-  cp?: CP; /** 当前Eaog的CP，{@link CP} */
+  cp?: CP; // 当前Eaog的CP（TRANSIENT)
+  // nestedCPManager?: NestedCPManager; // 嵌套CP管理器（TRANSIENT），用于处理嵌套CP的逻辑
 
-  constructor(node: EaogNode, parent?: EditableEaogNode) {
+  constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: CP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
+    this.cp = cp; // 设置当前Eaog的CP
     this.children = Array.isArray(node.children)
-      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this)) // 递归转换子节点
+      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
+    // this.nestedCPManager = new NestedCPManager(this); // 创建嵌套CP管理器
   }
 
   // 新增的 getter 方法
@@ -245,6 +247,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
   clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
   if (this.isRoot) {
     clone.cp = this.cp; // 浅Copy CP
+    // clone.nestedCPManager = new NestedCPManager(clone); // 创建新的嵌套CP管理器
   }
   return clone;
 }
@@ -268,7 +271,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
    * @param formValues 表单值
    * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
    */
-  getObjFromFormValues(formValues: Partial<EaogNode> | undefined): object | undefined {
+  getObjFromFormValues(formValues?: Partial<EaogNode>): object | undefined {
     if (!formValues) { // 编辑前，空表单，返回当前节点的可编辑属性
       return omit(this.toJSON(), ['children', 'id']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
     } else { // 编辑后，合并表单值
@@ -340,7 +343,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
    * @returns 新插入的节点
    */
   insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
-    newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode); // 确保 newNode 是 EditableEaogNode 实例
+    newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, null, this.cp); // 确保 newNode 是 EditableEaogNode 实例
     if (position === 'before' || position === 'after') {
       if (!this.parent) {
         throw new Error('Cannot insert sibling for root node');
@@ -355,10 +358,8 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
       }
       if (!this.parent) {
         debug('更换根节点', newNode, this);
-        newNode.cp = this.cp;
-        delete this.cp;
-        currentEaog.value = newNode;
         newNode.addChild(this);
+        currentCP.value!.eaog = newNode; // 更新当前CP的EAOG为新节点
       } else {
         this.parent.addChild(newNode, this, 'before'); // 在当前节点之前插入新节点
         this.remove(); // 从当前父节点中移除当前节点
@@ -415,7 +416,7 @@ cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
     }
 
     // 清除被移除节点的父节点引用
-    this.parent = undefined;
+    this.parent = null;
 
     return this;
   }
@@ -573,7 +574,7 @@ export const createPlaceHolderNode = (name: string) => {
     type: 'empty',
     name: `${name}-placeholder`,
     description: 'This is a placeholder node',
-  });
+  }, null);
 }
 
 /** 节点类型对应的颜色和图标 {@link allNodeTypes} */

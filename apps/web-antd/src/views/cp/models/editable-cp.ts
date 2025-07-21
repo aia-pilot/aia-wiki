@@ -2,6 +2,7 @@ import { type EaogFramework } from "./eaog-framework";
 import type { EaogNode, Hook, SideCP, CP} from "./types.d";
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {CPHistory} from "./cp-history";
+// @ts-ignore
 import {smartCloneDeep} from "../../../../../../../aia-se-comp/src/util/smart-clone-deep.js";
 /**
  * CP类 - 控制点实现
@@ -11,7 +12,8 @@ export class EditableCP implements CP {
   hooks: Hook[];
   sideCPs: SideCP[];
   frameworks: EaogFramework[];
-  history: CPHistory;
+  filePath?: string; // 可选的文件路径，用于本地存储
+  history?: CPHistory;
 
   /**
    * 创建一个新的CP实例
@@ -19,11 +21,14 @@ export class EditableCP implements CP {
    * @param hooks - CP的Hook列表（可选）
    * @param sideCPs - CP的侧边CP列表（可选）
    * @param frameworks - CP使用的EAOG Framework列表（可选）
+   * @param filePath - 可选的文件路径，用于本地存储
    */
-  constructor(eaog: EaogNode, hooks?: Hook[] = [], sideCPs: SideCP[] = [], frameworks: EaogFramework[] = [], ) {
-    Object.assign(this, {hooks, sideCPs, frameworks});
-    this.eaog = eaog instanceof EditableEaogNode ? eaog : new EditableEaogNode(eaog); // 确保eaog是EditableEaogNode实例
-    this.eaog.cp = this; // 设置CP引用到eaog中
+  constructor(eaog: EaogNode, hooks: Hook[] = [], sideCPs: SideCP[] = [], frameworks: EaogFramework[] = [], filePath?: string) {
+    this.hooks = hooks;
+    this.sideCPs = sideCPs;
+    this.frameworks = frameworks;
+    this.filePath = filePath;
+    this.eaog = eaog instanceof EditableEaogNode ? eaog : new EditableEaogNode(eaog, null, this); // 确保eaog是EditableEaogNode实例
   }
 
   /**
@@ -75,13 +80,14 @@ export class EditableCP implements CP {
       this.eaog.cloneDeep(),
       this.frameworks?.map(framework => framework.cloneDeep ? framework.cloneDeep() : smartCloneDeep(framework)),
       this.hooks?.map(h => smartCloneDeep(h)),
-      this.sideCPs?.map(s => smartCloneDeep(s))
+      this.sideCPs?.map(s => smartCloneDeep(s)),
+      this.filePath
     );
   }
 }
 
 export function createEditableCP(cp: CP): EditableCP {
-  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks);
+  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, cp.filePath);
   editableCP.history = new CPHistory(editableCP.cloneDeep());
   return editableCP;
 }
