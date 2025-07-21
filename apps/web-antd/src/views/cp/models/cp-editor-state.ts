@@ -100,9 +100,8 @@ export const saveCurrentCP = async (isNew = false) => {
 export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('./cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-  modulePath = modulePath.replace(/^cp:\/\//, ''); // 去掉前缀cp://
-  const cp = await loadCpFromCpStr(modulePath)
-  parallelCP.value = createEditableCP(cp);
+  const {cp, filePath} = await loadCpFromCpStr(modulePath)
+  parallelCP.value = createEditableCP(cp, filePath);
 }
 
 /**

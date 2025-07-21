@@ -12,6 +12,7 @@ import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentCP, currentNode} from "./cp-editor-state";
 import type {EaogNode, CP} from "#/views/cp/models/types";
+import {NestedCPManager} from "./nested-cp";
 
 const debug = Debug("aia:cp:eaog-node");
 
@@ -51,7 +52,20 @@ export class EditableEaogNode implements EaogNode {
   isCollapsed = false; // 标记节点是否折叠子节点
 
   cp?: CP; // 当前Eaog的CP（TRANSIENT)
-  // nestedCPManager?: NestedCPManager; // 嵌套CP管理器（TRANSIENT），用于处理嵌套CP的逻辑
+
+  // 展示嵌套CP，包括action, hook, sideCP, frameworks等（TRANSIENT）
+  nestedCPManager?: NestedCPManager; // 嵌套CP管理器，用于处理嵌套CP的逻辑
+  nestedCPBeforeNode?: EditableEaogNode; // 前置的嵌套CP节点，用于展示
+  nestedCPAfterNode?: EditableEaogNode; // 后置的嵌套CP节点，用于展示
+  nestedCPReplaceNode?: EditableEaogNode; // 替换（本节点）的嵌套CP节点，用于展示
+
+  get showNode(): EditableEaogNode {
+    return this.nestedCPReplaceNode || this; // 如果有替换节点，则显示替换节点，否则显示当前节点
+  }
+
+  get showChildren(): EditableEaogNode[] {
+    return [this.nestedCPBeforeNode, ...this.children, this.nestedCPAfterNode].filter(Boolean) // 显示前置子节点、当前子节点和后置子节点
+  }
 
   constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: CP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
@@ -60,7 +74,7 @@ export class EditableEaogNode implements EaogNode {
     this.children = Array.isArray(node.children)
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
-    // this.nestedCPManager = new NestedCPManager(this); // 创建嵌套CP管理器
+    this.nestedCPManager = new NestedCPManager(this); // 创建嵌套CP管理器
   }
 
   // 新增的 getter 方法
@@ -238,19 +252,19 @@ export class EditableEaogNode implements EaogNode {
    * 深度克隆当前节点及其所有子节点
    * omit parent reference to avoid circular references
    */
-cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
-  // 使用泛型和this类型确保返回类型与调用者类型一致
-  const Constructor = this.constructor as new (data: EaogNode) => T;
-  const clone = new Constructor(omit(this.toJSON(), ['children']));
-  // 确保子节点也是使用正确的类型克隆
-  clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
-  clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
-  if (this.isRoot) {
-    clone.cp = this.cp; // 浅Copy CP
-    // clone.nestedCPManager = new NestedCPManager(clone); // 创建新的嵌套CP管理器
+  cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
+    // 使用泛型和this类型确保返回类型与调用者类型一致
+    const Constructor = this.constructor as new (data: EaogNode) => T;
+    const clone = new Constructor(omit(this.toJSON(), ['children']));
+    // 确保子节点也是使用正确的类型克隆
+    clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
+    clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
+    if (this.isRoot) {
+      clone.cp = this.cp; // 浅Copy CP
+      clone.nestedCPManager = new NestedCPManager(clone); // 创建新的嵌套CP管理器
+    }
+    return clone;
   }
-  return clone;
-}
 
 
   toJSON(): object {

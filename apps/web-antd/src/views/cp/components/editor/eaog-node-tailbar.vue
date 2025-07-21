@@ -4,15 +4,18 @@
  * 提供节点相关的功能按钮，如折叠/展开、同步点、钩子、子CP等
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
-import { EditableEaogNode } from '../../models/editable-eaog-node';
-import { EaogFramework } from '../../models/eaog-framework';
+import {EditableEaogNode} from '../../models/editable-eaog-node';
+import {EaogFramework} from '../../models/eaog-framework';
 import Debug from 'debug';
 import {loadParallelCP} from "#/views/cp/models/cp-editor-state";
+import {NestedCPType} from "#/views/cp/models/nested-cp";
+import { computed } from 'vue';
 
 const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
   node: EditableEaogNode;
+  isNestedCP?: boolean; // 是否为嵌套CP节点
 }>();
 
 // 处理折叠/展开按钮点击
@@ -21,36 +24,56 @@ const toggleCollapse = () => {
   debug(`Node ${props.node.name} ${props.node.isCollapsed ? 'collapsed' : 'expanded'}`);
 };
 
-// 创建同步点
-const createSyncPoint = () => {
-  debug(`Creating sync point for node: ${props.node.name}`);
-  // TODO: 实现创建同步点逻辑
+// 处理嵌套 CP 按钮点击
+const handleNestedCPClick = (type: NestedCPType & 'close') => {
+    type === 'close' ? props.node.cp.nestedCP.close() : // 此时node.cp是NestedCP
+      props.node.nestedCPManager?.get(type)?.toggle();
 };
 
-// 添加钩子
-const addHook = () => {
-  debug(`Adding hook for node: ${props.node.name}`);
-  // TODO: 实现添加钩子逻辑
-};
+const closeNestedCPButtonConfig = {
+  type: 'close',
+  icon: 'mdi:close',
+  tooltip: '关闭嵌套 CP',
+  show: true,
+}
 
-// 添加子CP
-const addChildCP = () => {
-  debug(`Adding child CP for node: ${props.node.name}`);
-  // TODO: 实现添加子CP逻辑
-};
-
-// 判断当前节点是否显示同步点按钮
-const shouldShowSyncPointButton = () => {
-  // 例如：只对特定类型的节点显示同步点按钮
-  return ['seq', 'par', 'cor'].includes(props.node.type);
-};
-
-// 判断当前节点是否显示钩子按钮
-const shouldShowHookButton = () => {
-  // 根据需求判断显示条件
-  return true;
-};
-
+// 定义按钮配置
+const buttonConfigs = computed(() => {
+  const config = [
+    {
+      type: NestedCPType.NodeAction,
+      icon: 'mdi:play-circle',
+      tooltip: 'Action CP',
+      show: props.node.nestedCPManager?.has(NestedCPType.NodeAction),
+    },
+    {
+      type: NestedCPType.Hook,
+      icon: 'mdi:hook',
+      tooltip: 'Hook',
+      show: props.node.nestedCPManager?.has(NestedCPType.Hook),
+    },
+    {
+      type: NestedCPType.SideCPLaunchPoint,
+      icon: 'mdi:play-circle-outline',
+      tooltip: '辅CP 执行点',
+      show: props.node.nestedCPManager?.has(NestedCPType.SideCPLaunchPoint),
+    },
+    {
+      type: NestedCPType.SideCPSyncPoint,
+      icon: 'mdi:sync-circle',
+      tooltip: '辅CP 同步点',
+      show: props.node.nestedCPManager?.has(NestedCPType.SideCPSyncPoint),
+    },
+    {
+      type: NestedCPType.FrameworkMountPoint,
+      icon: 'mdi:framework',
+      tooltip: '框架加载点',
+      show: props.node.nestedCPManager?.has(NestedCPType.FrameworkMountPoint),
+    },
+  ]
+  return props.isNestedCP ? [closeNestedCPButtonConfig] : // 如果是嵌套CP，显示关闭按钮
+    config.filter(c => c.show);
+});
 </script>
 
 <template>
@@ -65,30 +88,13 @@ const shouldShowHookButton = () => {
       :class="{ 'opacity-0 group-hover:opacity-100': !node.isCollapsed }"
     />
 
-    <!-- 同步点按钮 -->
+    <!-- 动态渲染各种类型的嵌套CP按钮 -->
     <EditorToolbarButton
-      v-if="shouldShowSyncPointButton()"
-      icon="mdi:sync-circle"
-      tooltip="创建同步点"
-      @click.stop="createSyncPoint"
-      class="opacity-0 group-hover:opacity-100"
-    />
-
-    <!-- 钩子按钮 -->
-    <EditorToolbarButton
-      v-if="shouldShowHookButton()"
-      icon="mdi:hook"
-      tooltip="添加钩子"
-      @click.stop="addHook"
-      class="opacity-0 group-hover:opacity-100"
-    />
-
-    <!-- 子CP按钮 -->
-    <EditorToolbarButton
-      v-if="node.sideCP"
-      icon="mdi:source-branch"
-      tooltip="添加子CP"
-      @click.stop="loadParallelCP(node.sideCP)"
+      v-for="config in buttonConfigs"
+      :key="config.type"
+      :icon="config.icon"
+      :tooltip="config.tooltip"
+      @click.stop="handleNestedCPClick(config.type)"
       class="opacity-0 group-hover:opacity-100"
     />
   </div>

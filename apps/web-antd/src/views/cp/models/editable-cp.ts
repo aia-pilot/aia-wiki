@@ -78,16 +78,25 @@ export class EditableCP implements CP {
   cloneDeep(): EditableCP {
     return new EditableCP(
       this.eaog.cloneDeep(),
-      this.frameworks?.map(framework => framework.cloneDeep ? framework.cloneDeep() : smartCloneDeep(framework)),
       this.hooks?.map(h => smartCloneDeep(h)),
       this.sideCPs?.map(s => smartCloneDeep(s)),
+      this.frameworks?.map(framework => framework.cloneDeep ? framework.cloneDeep() : smartCloneDeep(framework)),
       this.filePath
     );
   }
 }
 
-export function createEditableCP(cp: CP): EditableCP {
-  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, cp.filePath);
+/**
+ * @param cp
+ * @param filePath
+ * @param parentCP - 父CP，其未匹配到的hooks, sideCPs, frameworks等将被继承到新创建的CP中，进一步匹配
+ */
+export function createEditableCP(cp: CP, filePath?: string, parentCP?: EditableCP): EditableCP {
+  // TODO: 这里要过滤到已经匹配的hooks, sideCPs, frameworks等， 参考Hook目前的运行时的做法
+  const hooks = [...(parentCP?.hooks || []), ...(cp.hooks || [])];
+  const sideCPs = [...(parentCP?.sideCPs || []), ...(cp.sideCPs || [])];
+  const frameworks = [...(parentCP?.frameworks || []), ...(cp.frameworks || [])];
+  const editableCP = new EditableCP(cp.eaog, hooks, sideCPs, frameworks, filePath || cp.filePath);
   editableCP.history = new CPHistory(editableCP.cloneDeep());
   return editableCP;
 }

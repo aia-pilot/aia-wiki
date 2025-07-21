@@ -30,9 +30,9 @@ export async function loadCpModuleFromFilePath(filePath: string) {
  */
 export async function loadCpFromCpStr(cpLocateStr: string) {
   const innerModulePath = parseCpModuleLocateStr(cpLocateStr);
-  return await loadCp(innerModulePath);
-  // const filePath = `${eaogsDir}/${innerModulePath}`;
-  // return { filePath, cp }
+  const cp = await loadCp(innerModulePath);
+  const filePath = `${eaogsDir}/${innerModulePath}`;
+  return { filePath, cp }
 }
 
 async function loadCp(innerModulePath: string): Promise<CP> {

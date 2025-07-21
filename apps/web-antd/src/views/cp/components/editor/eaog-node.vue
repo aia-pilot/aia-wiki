@@ -29,6 +29,7 @@ const debug = Debug('aia:eaog-node');
 const props = defineProps<{
   node: EditableEaogNode;
   level?: number; // 节点层级，默认为0，便于视觉调试
+  isNestedCP?: boolean; // 是否为嵌套CP节点，默认为false
 }>();
 
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
@@ -73,6 +74,7 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
+    'bg-yellow-100': props.isNestedCP ?? false, // 如果是嵌套CP节点，背景色为黄色
   };
 });
 </script>
@@ -143,13 +145,14 @@ const headerClasses = computed(() => {
       </div>
 
       <!-- 节点尾部操作栏 -->
-      <eaog-node-tailbar v-if="!node.isRoot" :node="node" class="mt-2" />
+      <eaog-node-tailbar v-if="!node.isRoot || isNestedCP" :node="node" :isNestedCP="isNestedCP" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->
     <div v-if="node.children && node.children.length > 0 && !node.isCollapsed" class="eaog-node-children ml-6 pl-4">
-      <div v-for="child in node.children" :key="child.name">
-        <eaog-node :node="child" :level="nodeLevel + 1"/>
+      <!--  @DEFECT 注意：这里key在有before、after时，会有重名风险    -->
+      <div v-for="child in node.showChildren" :key="child.name">
+        <eaog-node :node="child.showNode" :level="nodeLevel + 1" :isNestedCP="child.showNode !== child || !node.children.includes(child)"/>
       </div>
     </div>
   </div>
