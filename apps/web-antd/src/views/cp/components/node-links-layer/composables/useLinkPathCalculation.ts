@@ -1,4 +1,4 @@
-import { computed, nextTick } from 'vue';
+import {computed, nextTick} from 'vue';
 import type {
   LinkSpec,
   LinkStyle,
@@ -6,7 +6,7 @@ import type {
   Point,
   RequiredLinkStyle
 } from '../types';
-import { AStarPathfinder, generateDebugPoints } from '../utils/pathfinder';
+import {AStarPathfinder, generateDebugPoints} from '../utils/pathfinder';
 
 /**
  * 提取SVG路径中的点坐标
@@ -22,7 +22,7 @@ export function extractPathPoints(pathString: string): Point[] {
   matches.forEach(match => {
     const [_, x, y] = match.match(/[ML]\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/) || [];
     if (x && y) {
-      points.push({ x: parseFloat(x), y: parseFloat(y) });
+      points.push({x: parseFloat(x), y: parseFloat(y)});
     }
   });
 
@@ -33,7 +33,7 @@ export function extractPathPoints(pathString: string): Point[] {
  * 获取连线箭头的方向
  * @param link 计算后的连线
  * @param position 箭头位置（起点或终点）
- * @returns 箭头��向角度
+ * @returns 箭头方向角度
  */
 export function getArrowOrient(link: ComputedLink, position: 'start' | 'end'): string {
   const points = extractPathPoints(link.path);
@@ -77,7 +77,7 @@ export function getLinkEndpoint(link: ComputedLink, position: 'start' | 'end'): 
   const pathPoints = extractPathPoints(link.path);
 
   if (pathPoints.length === 0) {
-    return { x: 0, y: 0 };
+    return {x: 0, y: 0};
   }
 
   if (position === 'start') {
@@ -86,6 +86,7 @@ export function getLinkEndpoint(link: ComputedLink, position: 'start' | 'end'): 
     return pathPoints[pathPoints.length - 1]!;
   }
 }
+
 /**
  * 平滑路径，添加圆角效果
  * @param pathPoints 原始路径点
@@ -113,8 +114,8 @@ function createSmoothPath(pathPoints: Point[], cornerRadius: number = 10): strin
     const next = pathPoints[i + 1]!;
 
     // 计算方向向量
-    const vec1 = { x: curr.x - prev.x, y: curr.y - prev.y };
-    const vec2 = { x: next.x - curr.x, y: next.y - curr.y };
+    const vec1 = {x: curr.x - prev.x, y: curr.y - prev.y};
+    const vec2 = {x: next.x - curr.x, y: next.y - curr.y};
 
     // 计算单位向量长度
     const len1 = Math.sqrt(vec1.x * vec1.x + vec1.y * vec1.y);
@@ -127,8 +128,8 @@ function createSmoothPath(pathPoints: Point[], cornerRadius: number = 10): strin
     }
 
     // 计算单位向量
-    const unitVec1 = { x: vec1.x / len1, y: vec1.y / len1 };
-    const unitVec2 = { x: vec2.x / len2, y: vec2.y / len2 };
+    const unitVec1 = {x: vec1.x / len1, y: vec1.y / len1};
+    const unitVec2 = {x: vec2.x / len2, y: vec2.y / len2};
 
     // 确保圆角半径不超过线段长度的一半
     const radius = Math.min(cornerRadius, len1 / 2, len2 / 2);
@@ -154,13 +155,14 @@ function createSmoothPath(pathPoints: Point[], cornerRadius: number = 10): strin
 
   return path;
 }
+
 /**
  * 使用链接路径计算 Composable
  * 负责计算所有连线的路径和样式
  */
 export function useLinkPathCalculation(
   props: {
-    obstacles: HTMLElement[],
+    obstacles: HTMLElement[] | DOMRect[],
     links: LinkSpec[],
     container: HTMLElement | undefined,
     padding: number,
@@ -178,7 +180,7 @@ export function useLinkPathCalculation(
     const containerRect = props.container?.getBoundingClientRect() || null;
     if (!containerRect) return [];
 
-    const results: ComputedLink[] = [];
+    const links: ComputedLink[] = [];
     const allPathPoints: Point[] = [];
 
     // 创建寻路器实例
@@ -188,8 +190,14 @@ export function useLinkPathCalculation(
       props.gridSize
     );
 
+    // 先重置网格
+    finder.resetGrid();
+
+    // 设置所有障碍物
+    finder.setObstacles(props.obstacles, containerRect, props.padding, true);
+
     for (const link of props.links) {
-      const style = {...defaultLinkStyle, ...props.styles[link.id]};
+      const style = {...defaultLinkStyle, ...(link.style || {}), ...props.styles[link.id]};
 
       try {
         const fromRect = link.from.getBoundingClientRect();
@@ -217,17 +225,15 @@ export function useLinkPathCalculation(
           y: Math.floor(rawEndPoint.y / props.gridSize) * props.gridSize + props.gridSize / 2
         };
 
-        // 创建不包含当前连线起止点的障碍物列表
-        const filteredObstacles = props.obstacles.filter(obstacle =>
-          obstacle !== link.from && obstacle !== link.to
-        );
-
-        // 设置障碍物，排除起止点元素
-        finder.setObstacles(filteredObstacles, containerRect, props.padding);
+        // 将当前连线的起点和终点设为非障碍
+        finder.setObstacles([link.from, link.to], containerRect, props.padding, false);
 
         // 使用规范化的点进行寻路
         const gridPath = finder.findPath(startPoint, endPoint);
         if (gridPath.length === 0) continue;
+
+        // 将当前连线的起点和终点恢复为障碍（为了不影响后续连线的计算）
+        finder.setObstacles([link.from, link.to], containerRect, props.padding, true);
 
         // 构建最终路径
         let finalPath = [];
@@ -239,6 +245,31 @@ export function useLinkPathCalculation(
           // 使用规范化的起点和终点，以及中间的网格路径点
           finalPath = gridPath;
         }
+
+        // 过滤掉处于fromRect和toRect元素中的点，这样连线始终从元素边缘开始和结束
+        // 计算元素在容器内的相对坐标
+        const fromRectLocal = {
+          left: fromRect.left - containerRect.left,
+          right: fromRect.right - containerRect.left,
+          top: fromRect.top - containerRect.top,
+          bottom: fromRect.bottom - containerRect.top
+        };
+        const toRectLocal = {
+          left: toRect.left - containerRect.left,
+          right: toRect.right - containerRect.left,
+          top: toRect.top - containerRect.top,
+          bottom: toRect.bottom - containerRect.top
+        };
+
+        // 过滤掉位于起点和终点元素内的路径点
+        finalPath = finalPath.filter(p => {
+          const isInFromRect = p.x >= fromRectLocal.left && p.x <= fromRectLocal.right &&
+            p.y >= fromRectLocal.top && p.y <= fromRectLocal.bottom;
+          const isInToRect = p.x >= toRectLocal.left && p.x <= toRectLocal.right &&
+            p.y >= toRectLocal.top && p.y <= toRectLocal.bottom;
+          return !(isInFromRect || isInToRect);
+        });
+
 
         // 生成路径字符串
         let pathString: string;
@@ -253,7 +284,7 @@ export function useLinkPathCalculation(
             finalPath.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
         }
 
-        results.push({
+        links.push({
           id: link.id,
           path: pathString,
           style,
@@ -277,7 +308,7 @@ export function useLinkPathCalculation(
       });
     }
 
-    return results;
+    return links;
   });
 
   return {

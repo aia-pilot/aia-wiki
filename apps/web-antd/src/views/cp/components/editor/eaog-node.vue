@@ -29,13 +29,29 @@ const debug = Debug('aia:eaog-node');
 const props = defineProps<{
   node: EditableEaogNode;
   level?: number; // 节点层级，默认为0，便于视觉调试
-  isNestedCP?: boolean; // 是否为嵌套CP节点，默认为false
 }>();
 
-const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
+const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 
-// 默认层级为0
-const nodeLevel = props.level ?? 0;
+const node = props.node.showNode;
+const isReplacedByNestedCP = props.node.isReplacedByNestedCP;
+const nestedCPLabel = isReplacedByNestedCP && `<${node.cp.nestedCP.type}：${node.name}>`
+const nodeName = isReplacedByNestedCP ? `${props.node.name}: ${nestedCPLabel}` : props.node.name;
+const nodeDescription = isReplacedByNestedCP ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${nestedCPLabel}`)}` : props.node.description;
+
+// @deprecated framework TODO: 合并考虑
+// const nodeName = node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
+// const nodeDescription = node.isFramework && (node as EaogFramework).mountedNode
+//   ? (node as EaogFramework).mountedNode!.description
+//   : node.description;
+
+// 判断子节点是否为嵌套CP节点
+const isChildNestedCP = (child: EditableEaogNode) => {
+  return child.showNode !== child || !props.node.children.includes(child)
+};
+
+
+const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
 // 使用组合式函数获取拖拽状态和处理函数
 const {
@@ -74,7 +90,7 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': props.isNestedCP ?? false, // 如果是嵌套CP节点，背景色为黄色
+    'bg-yellow-100': isReplacedByNestedCP ?? false, // 如果是嵌套CP节点，背景色为黄色
   };
 });
 </script>
@@ -123,20 +139,17 @@ const headerClasses = computed(() => {
         <Badge
           :text="getNodeTypeConfig(node.type).icon"
           :style="{color: getNodeTypeConfig(node.type).color}"
-          class="mr-2"
+          class="mr-2 node-type-icon"
         />
       </Tooltip>
 
       <div class="flex-grow eaog-node-info">
         <!--   框架节点，折叠时，显示其挂载的节点名称与描述，更容易为用户理解。    -->
         <div class="font-medium">
-          {{ node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name }}
+          <span class="eaog-node-name">{{ nodeName }}</span>
         </div>
-        <div v-if="node.description" class="text-xs text-gray-500"
-             :class="{'text-gray-300': node.type === 'mount-point'}">
-          {{
-            node.isFramework && (node as EaogFramework).mountedNode ? (node as EaogFramework).mountedNode!.description : node.description
-          }}
+        <div v-if="nodeDescription" class="text-xs text-gray-500" :class="{'text-gray-300': node.type==='mount-point'}">
+          {{ nodeDescription }}
         </div>
       </div>
 
@@ -145,14 +158,15 @@ const headerClasses = computed(() => {
       </div>
 
       <!-- 节点尾部操作栏 -->
-      <eaog-node-tailbar v-if="!node.isRoot || isNestedCP" :node="node" :isNestedCP="isNestedCP" class="mt-2" />
+      <eaog-node-tailbar v-if="!node.isRoot || isReplacedByNestedCP" :node="node" :isReplacedByNestedCP="isReplacedByNestedCP" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->
     <div v-if="node.children && node.children.length > 0 && !node.isCollapsed" class="eaog-node-children ml-6 pl-4">
       <!--  @DEFECT 注意：这里key在有before、after时，会有重名风险    -->
-      <div v-for="child in node.showChildren" :key="child.name">
-        <eaog-node :node="child.showNode" :level="nodeLevel + 1" :isNestedCP="child.showNode !== child || !node.children.includes(child)"/>
+      <!--  用showNode.id为key，才能够在showNode变化后，重新渲染    -->
+      <div v-for="child in node.showChildren" :key="child.showNode.id">
+        <eaog-node :node="child" :level="nodeLevel + 1"/>
       </div>
     </div>
   </div>

@@ -33,6 +33,10 @@ export interface LinkSpec {
   label?: string;
   /** 连线类型 */
   type?: 'solid' | 'dashed' | 'conditional';
+  /** 样式 */
+  style?: LinkStyle;
+  /** 数据 */
+  data?: Record<string, any>;
 }
 
 /**

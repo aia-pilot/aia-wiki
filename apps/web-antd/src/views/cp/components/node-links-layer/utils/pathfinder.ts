@@ -49,21 +49,15 @@ export class AStarPathfinder {
 
   /**
    * 设置障碍物
-   * @param obstacles 障碍物元素列表
+   * @param obstacles 障碍物元素或矩形列表
    * @param containerRect 容器矩形
    * @param padding 障碍物周围的内边距
+   * @param blocked 是否将区域设置为障碍，默认为true，设为false则将区域标记为非障碍
    */
-  setObstacles(obstacles: HTMLElement[], containerRect: DOMRect, padding: number) {
-    // 重置网格
-    this.grid.forEach(row => {
-      row.forEach(cell => {
-        cell.blocked = false;
-      });
-    });
-
+  setObstacles(obstacles: (HTMLElement | DOMRect)[], containerRect: DOMRect, padding: number, blocked: boolean = true) {
     // 设置障碍物
     obstacles.forEach(obstacle => {
-      const rect = obstacle.getBoundingClientRect();
+      const rect = obstacle instanceof HTMLElement ? obstacle.getBoundingClientRect() : obstacle;
       const left = rect.left - containerRect.left - padding;
       const top = rect.top - containerRect.top - padding;
       const right = rect.right - containerRect.left + padding;
@@ -77,10 +71,21 @@ export class AStarPathfinder {
       for (let y = startY; y <= endY; y++) {
         for (let x = startX; x <= endX; x++) {
           if (y >= 0 && y < this.height && x >= 0 && x < this.width && this.grid[y]) {
-            this.grid[y]![x]!.blocked = true;
+            this.grid[y]![x]!.blocked = blocked;
           }
         }
       }
+    });
+  }
+
+  /**
+   * 重置网格，将所有单元格设置为非阻塞状态
+   */
+  resetGrid() {
+    this.grid.forEach(row => {
+      row.forEach(cell => {
+        cell.blocked = false;
+      });
     });
   }
 
@@ -143,7 +148,7 @@ export class AStarPathfinder {
       );
 
       if (current.x === endGrid.x && current.y === endGrid.y) {
-        // 重构路径
+        // 重构路径为实际的坐标点
         const path = [end];
         let temp = current;
         while (cameFrom.has(key(temp))) {

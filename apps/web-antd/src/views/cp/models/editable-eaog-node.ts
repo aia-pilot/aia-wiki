@@ -47,6 +47,7 @@ export class EditableEaogNode implements EaogNode {
   items?: string | { contextName: string };
 
   // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
+  id: string = crypto.randomUUID(); // Vue框架缓存依据
   isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isCollapsed = false; // 标记节点是否折叠子节点
@@ -63,8 +64,12 @@ export class EditableEaogNode implements EaogNode {
     return this.nestedCPReplaceNode || this; // 如果有替换节点，则显示替换节点，否则显示当前节点
   }
 
+  get isReplacedByNestedCP(): boolean {
+    return !!this.nestedCPReplaceNode; // 如果有替换节点，则表示被嵌套CP替换
+  }
+
   get showChildren(): EditableEaogNode[] {
-    return [this.nestedCPBeforeNode, ...this.children, this.nestedCPAfterNode].filter(Boolean) // 显示前置子节点、当前子节点和后置子节点
+    return [this.nestedCPBeforeNode, ...this.children, this.nestedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
   }
 
   constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: CP) {

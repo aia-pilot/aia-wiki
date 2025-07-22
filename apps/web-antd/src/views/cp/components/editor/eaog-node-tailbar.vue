@@ -15,7 +15,7 @@ const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
   node: EditableEaogNode;
-  isNestedCP?: boolean; // 是否为嵌套CP节点
+  isReplacedByNestedCP?: boolean; // 是否为嵌套CP节点
 }>();
 
 // 处理折叠/展开按钮点击
@@ -41,10 +41,10 @@ const closeNestedCPButtonConfig = {
 const buttonConfigs = computed(() => {
   const config = [
     {
-      type: NestedCPType.NodeAction,
+      type: NestedCPType.Action,
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
-      show: props.node.nestedCPManager?.has(NestedCPType.NodeAction),
+      show: props.node.nestedCPManager?.has(NestedCPType.Action),
     },
     {
       type: NestedCPType.Hook,
@@ -71,7 +71,7 @@ const buttonConfigs = computed(() => {
       show: props.node.nestedCPManager?.has(NestedCPType.FrameworkMountPoint),
     },
   ]
-  return props.isNestedCP ? [closeNestedCPButtonConfig] : // 如果是嵌套CP，显示关闭按钮
+  return props.isReplacedByNestedCP ? [closeNestedCPButtonConfig] : // 如果是嵌套CP，显示关闭按钮
     config.filter(c => c.show);
 });
 </script>

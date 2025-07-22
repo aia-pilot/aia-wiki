@@ -7,11 +7,11 @@ import type { EditableEaogNode } from './editable-eaog-node';
  * 嵌套CP的类型枚举
  */
 export enum NestedCPType {
-  NodeAction = 'NodeAction',      // 节点的action属性指向的CP
+  Action = 'Action',      // 节点的action属性指向的CP
   Hook = 'Hook',                 // Hook的action属性指向的CP
-  SideCPLaunchPoint = 'SideCPLaunchPoint', // SideCP的launchPoint属性指向的CP
-  SideCPSyncPoint = 'SideCPSyncPoint',    // SideCP的syncPoint属性指向的CP
-  FrameworkMountPoint = 'FrameworkMountPoint'  // Framework的mountPoint属性指向的CP
+  SideCPLaunchPoint = '辅助CP-启动点', // SideCP的launchPoint属性指向的CP
+  SideCPSyncPoint = '辅助CP-同步点',    // SideCP的syncPoint属性指向的CP
+  FrameworkMountPoint = '框架-加载点'  // Framework的mountPoint属性指向的CP
 }
 
 /**
@@ -111,7 +111,7 @@ export class NestedCPManager {
     this.nestedCPs = [];
 
     // 分析节点的action属性
-    this.collectNodeActionCP();
+    this.collectActionCP();
 
     // 分析hooks中action指向的CP
     this.collectHooksCP();
@@ -126,11 +126,11 @@ export class NestedCPManager {
   /**
    * 收集节点action属性指向的CP
    */
-  private collectNodeActionCP(): void {
+  private collectActionCP(): void {
     if (this.node.action && typeof this.node.action === 'string' && this.node.action.startsWith('cp://')) {
       this.nestedCPs.push(new NestedCP(
         this.node,
-        NestedCPType.NodeAction,
+        NestedCPType.Action,
         this.node.action,
         // @ts-ignore TODO：node添加block属性，让action可以非阻塞执行
         this.node.block ?? true ? 'replace' : 'parallel' // 如果是阻塞执行，则嵌套在当前节点，否则并行展示
@@ -322,9 +322,9 @@ export class NestedCPManager {
     if (!cp) return;
 
     switch (nestedCP.type) {
-      case NestedCPType.NodeAction:
+      case NestedCPType.Action:
         // 不能通过此方法更新节点的action属性，action属性通过直接修改节点对象来更新。
-        throw new Error("Cannot update NodeAction via NestedCPManager. Use node.action directly.");
+        throw new Error("Cannot update Action via NestedCPManager. Use node.action directly.");
 
       case NestedCPType.Hook:
         // 更新hooks
@@ -431,7 +431,7 @@ export class NestedCPManager {
 }
 
 export const NestedCPIconMap: Record<NestedCPType, string> = {
-  [NestedCPType.NodeAction]: 'ⓐ',
+  [NestedCPType.Action]: 'ⓐ',
   [NestedCPType.Hook]: 'ⓗ',
   [NestedCPType.SideCPLaunchPoint]: 'ⓛ',
   [NestedCPType.SideCPSyncPoint]: 'ⓢ',

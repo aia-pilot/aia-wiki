@@ -101,7 +101,7 @@ const _debug = Debug('aia:orthogonal-link-layer');
 
 // Props 定义
 interface Props {
-  obstacles: HTMLElement[];
+  obstacles: HTMLElement[] | DOMRect[];
   links: LinkSpec[];
   container: HTMLElement | undefined;
   padding?: number;
@@ -184,6 +184,8 @@ const handleLinkHover = (link: LinkSpec) => {
 // 生命周期钩子
 onMounted(() => {
   // 监听容器大小变化
+  _debug("************ Orthogonal Link Layer Mounted ************");
+
   if (props.container) {
     resizeObserver.value = new ResizeObserver(() => {
       // 触发重新计算
