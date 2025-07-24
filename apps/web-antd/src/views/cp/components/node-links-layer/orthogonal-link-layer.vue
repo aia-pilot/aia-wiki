@@ -14,7 +14,7 @@
       :stroke-width="link.style.strokeWidth"
       :stroke-dasharray="link.style.dashed ? '5,5' : 'none'"
       :marker-end="link.style.arrow === 'end' || link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-end)` : ''"
-      :marker-start="link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-start)` : ''"
+      :marker-start="link.style.arrow === 'start' || link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-start)` : ''"
       fill="none"
       :data-link-id="link.id"
       class="link-path"
@@ -50,7 +50,7 @@
     <defs>
       <!-- 终点箭头 -->
       <marker
-        v-for="link in computedLinks"
+        v-for="link in computedLinks.filter((l) => l.style.arrow === 'end' || l.style.arrow === 'both')"
         v-if="computedLinks.length > 0"
         :key="`arrowhead-${link.id}-end`"
         :id="`arrowhead-${link.id}-end`"
@@ -69,7 +69,7 @@
 
       <!-- 起点箭头 -->
       <marker
-        v-for="link in computedLinks.filter((l) => l.style.arrow === 'both')"
+        v-for="link in computedLinks.filter((l) => l.style.arrow === 'start' || l.style.arrow === 'both')"
         :key="`arrowhead-${link.id}-start`"
         :id="`arrowhead-${link.id}-start`"
         :markerWidth="link?.style?.dashed ? '8' : '10'"

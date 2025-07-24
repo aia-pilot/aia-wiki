@@ -12,12 +12,12 @@ import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentCP, currentNode} from "./cp-editor-state";
 import type {EaogNode, CP} from "#/views/cp/models/types";
-import {NestedCPManager} from "./nested-cp";
+import {IntegratedCPManager} from "./integrated-cp";
 
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'nestedCPManager'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -55,21 +55,21 @@ export class EditableEaogNode implements EaogNode {
   cp?: CP; // 当前Eaog的CP（TRANSIENT)
 
   // 展示嵌套CP，包括action, hook, sideCP, frameworks等（TRANSIENT）
-  nestedCPManager?: NestedCPManager; // 嵌套CP管理器，用于处理嵌套CP的逻辑
-  nestedCPBeforeNode?: EditableEaogNode; // 前置的嵌套CP节点，用于展示
-  nestedCPAfterNode?: EditableEaogNode; // 后置的嵌套CP节点，用于展示
-  nestedCPReplaceNode?: EditableEaogNode; // 替换（本节点）的嵌套CP节点，用于展示
+  integratedCPManager?: IntegratedCPManager; // 嵌套CP管理器，用于处理嵌套CP的逻辑
+  integratedCPBeforeNode?: EditableEaogNode; // 前置的嵌套CP节点，用于展示
+  integratedCPAfterNode?: EditableEaogNode; // 后置的嵌套CP节点，用于展示
+  integratedCPReplaceNode?: EditableEaogNode; // 替换（本节点）的嵌套CP节点，用于展示
 
   get showNode(): EditableEaogNode {
-    return this.nestedCPReplaceNode || this; // 如果有替换节点，则显示替换节点，否则显示当前节点
+    return this.integratedCPReplaceNode || this; // 如果有替换节点，则显示替换节点，否则显示当前节点
   }
 
-  get isReplacedByNestedCP(): boolean {
-    return !!this.nestedCPReplaceNode; // 如果有替换节点，则表示被嵌套CP替换
+  get isReplacedByIntegratedCP(): boolean {
+    return !!this.integratedCPReplaceNode; // 如果有替换节点，则表示被嵌套CP替换
   }
 
   get showChildren(): EditableEaogNode[] {
-    return [this.nestedCPBeforeNode, ...this.children, this.nestedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
+    return [this.integratedCPBeforeNode, ...this.children, this.integratedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
   }
 
   constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: CP) {
@@ -79,7 +79,7 @@ export class EditableEaogNode implements EaogNode {
     this.children = Array.isArray(node.children)
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
-    this.nestedCPManager = new NestedCPManager(this); // 创建嵌套CP管理器
+    this.integratedCPManager = new IntegratedCPManager(this); // 创建嵌套CP管理器
   }
 
   // 新增的 getter 方法
@@ -266,7 +266,7 @@ export class EditableEaogNode implements EaogNode {
     clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
     if (this.isRoot) {
       clone.cp = this.cp; // 浅Copy CP
-      clone.nestedCPManager = new NestedCPManager(clone); // 创建新的嵌套CP管理器
+      clone.integratedCPManager = new IntegratedCPManager(clone); // 创建新的嵌套CP管理器
     }
     return clone;
   }

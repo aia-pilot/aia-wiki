@@ -48,7 +48,7 @@ export interface LinkStyle {
   /** 是否为虚线 */
   dashed?: boolean;
   /** 箭头方向 */
-  arrow?: 'none' | 'end' | 'both';
+  arrow?: 'none' | 'start' |  'end' | 'both';
   /** 线条宽度 */
   strokeWidth?: number;
   /** 层级 */

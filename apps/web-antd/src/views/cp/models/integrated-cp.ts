@@ -4,9 +4,9 @@ import type { EditableEaogNode } from './editable-eaog-node';
 
 
 /**
- * 嵌套CP的类型枚举
+ * 集成CP的类型枚举
  */
-export enum NestedCPType {
+export enum IntegratedCPType {
   Action = 'Action',      // 节点的action属性指向的CP
   Hook = 'Hook',                 // Hook的action属性指向的CP
   SideCPLaunchPoint = '辅助CP-启动点', // SideCP的launchPoint属性指向的CP
@@ -15,16 +15,16 @@ export enum NestedCPType {
 }
 
 /**
- * 嵌套CP的展示方式类型
+ * 集成CP的展示方式类型
  */
 export type ShowAsType = 'before' | 'after' | 'replace' | 'parallel';
 
 /**
- * 嵌套CP类
+ * 集成CP类
  */
-export class NestedCP {
+export class IntegratedCP {
   node: EditableEaogNode;           // 对应的节点
-  type: NestedCPType;               // 嵌套CP的类型
+  type: IntegratedCPType;           // 集成CP的类型
   showAt: ShowAsType;               // 如何呈现，与主CP的关系。block执行的，将在原节点处，前、后插入，或替换。非block执行的，将在并行面板中展示。
   cpLocateStr: string;              // CP定位字符串，如: 'cp://cp-module/path/to/cp'
   syncTo?: string;                  // 同步点路径（SyncPoint的waiter.path）
@@ -33,12 +33,12 @@ export class NestedCP {
   /**
    * 构造函数
    * @param node 对应的节点
-   * @param type 嵌套CP类型
+   * @param type 集成CP类型
    * @param cpLocateStr CP定位字符串
    * @param showAt 如何展示，当前节点前、后，或替换原节点，或并行展示
    * @param syncTo 同步点路径（可选）
    */
-  constructor(node: EditableEaogNode, type: NestedCPType, cpLocateStr: string, showAt: ShowAsType, syncTo?: string) {
+  constructor(node: EditableEaogNode, type: IntegratedCPType, cpLocateStr: string, showAt: ShowAsType, syncTo?: string) {
     this.node = node;
     this.type = type;
     this.cpLocateStr = cpLocateStr;
@@ -48,7 +48,7 @@ export class NestedCP {
   }
 
   /**
-   * 在Editor中打开嵌套CP
+   * 在Editor中打开集成CP
    */
   async open() {
     const {loadCpFromCpStr} = await import('#/views/cp/models/cp-loader')
@@ -57,10 +57,10 @@ export class NestedCP {
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
     cp = createEditableCP(cp, filePath, this.node.cp); // 创建EditableCP实例
     // @ts-ignore
-    cp.nestedCP = this; // 关联当前嵌套CP到CP模块
-    this.showAt === 'replace' ? this.node.nestedCPReplaceNode = cp.eaog
-      : this.showAt === 'before' ? this.node.nestedCPBeforeNode = cp.eaog
-      : this.showAt === 'after' ? this.node.nestedCPAfterNode = cp.eaog
+    cp.integratedCP = this; // 关联当前集成CP到CP模块
+    this.showAt === 'replace' ? this.node.integratedCPReplaceNode = cp.eaog
+      : this.showAt === 'before' ? this.node.integratedCPBeforeNode = cp.eaog
+      : this.showAt === 'after' ? this.node.integratedCPAfterNode = cp.eaog
         : this.showAt === 'parallel' ? parallelCP.value = cp
           : null
     this.isShown = true; // 标记为已展示
@@ -68,9 +68,9 @@ export class NestedCP {
 
   async close() {
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
-    this.showAt === 'replace' ? this.node.nestedCPReplaceNode = undefined
-      : this.showAt === 'before' ? this.node.nestedCPBeforeNode = undefined
-      : this.showAt === 'after' ? this.node.nestedCPAfterNode = undefined
+    this.showAt === 'replace' ? this.node.integratedCPReplaceNode = undefined
+      : this.showAt === 'before' ? this.node.integratedCPBeforeNode = undefined
+      : this.showAt === 'after' ? this.node.integratedCPAfterNode = undefined
         : this.showAt === 'parallel' ? parallelCP.value = undefined
           : null;
     this.isShown = false; // 标记为未展示
@@ -86,29 +86,29 @@ export class NestedCP {
 }
 
 /**
- * 嵌套CP管理器，管理节点相关的所有嵌套CP
+ * 集成CP管理器，管理节点相关的所有集成CP
  */
-export class NestedCPManager {
-  private nestedCPs: NestedCP[] = [];
+export class IntegratedCPManager {
+  private integratedCPs: IntegratedCP[] = [];
   private node: EditableEaogNode;
   private readonly cp: CP | undefined;
 
   /**
-   * 构造函数，分析并收集节点对应的所有嵌套CP
+   * 构造函数，分析并收集节点对应的所有集成CP
    * @param node 节点
    */
   constructor(node: EditableEaogNode) {
     this.node = node;
     this.cp = node.cp;
-    this.collectNestedCPs();
+    this.collectIntegratedCPs();
   }
 
   /**
-   * 收集节点相关的所有嵌套CP
+   * 收集节点相关的所有集成CP
    */
-  private collectNestedCPs(): void {
-    // 清空现有的嵌套CP列表
-    this.nestedCPs = [];
+  private collectIntegratedCPs(): void {
+    // 清空现有的集成CP列表
+    this.integratedCPs = [];
 
     // 分析节点的action属性
     this.collectActionCP();
@@ -128,12 +128,12 @@ export class NestedCPManager {
    */
   private collectActionCP(): void {
     if (this.node.action && typeof this.node.action === 'string' && this.node.action.startsWith('cp://')) {
-      this.nestedCPs.push(new NestedCP(
+      this.integratedCPs.push(new IntegratedCP(
         this.node,
-        NestedCPType.Action,
+        IntegratedCPType.Action,
         this.node.action,
         // @ts-ignore TODO：node添加block属性，让action可以非阻塞执行
-        this.node.block ?? true ? 'replace' : 'parallel' // 如果是阻塞执行，则嵌套在当前节点，否则并行展示
+        this.node.block ?? true ? 'replace' : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
       ));
     }
   }
@@ -153,11 +153,11 @@ export class NestedCPManager {
     // 收集hooks中action指向的CP
     for (const hook of nodeHooks) {
       if (hook.action && hook.action.startsWith('cp://')) {
-        this.nestedCPs.push(new NestedCP(
+        this.integratedCPs.push(new IntegratedCP(
           this.node,
-          NestedCPType.Hook,
+          IntegratedCPType.Hook,
           hook.action,
-          hook.block ?? false ? (hook.hook /* 'before' | 'after' */) : 'parallel' // 如果是阻塞执行，则嵌套在当前节点，否则并行展示
+          hook.block ?? false ? (hook.hook /* 'before' | 'after' */) : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
         ));
       }
     }
@@ -178,9 +178,9 @@ export class NestedCPManager {
     for (const sideCP of this.cp.sideCPs) {
       // 判断launchPoint是否与当前节点匹配
       if (this.isNodeMatch(sideCP.launchPoint)) {
-        this.nestedCPs.push(new NestedCP(
+        this.integratedCPs.push(new IntegratedCP(
           this.node,
-          NestedCPType.SideCPLaunchPoint,
+          IntegratedCPType.SideCPLaunchPoint,
           sideCP.cp,
           'parallel' // SideCP总是和主CP并行执行
         ));
@@ -190,9 +190,9 @@ export class NestedCPManager {
       for (const syncPoint of sideCP.syncPoints || []) {
         // 判断actor的path是否与当前节点匹配
         if (this.isNodeMatch(syncPoint.actor.path)) {
-          this.nestedCPs.push(new NestedCP(
+          this.integratedCPs.push(new IntegratedCP(
             this.node,
-            NestedCPType.SideCPSyncPoint,
+            IntegratedCPType.SideCPSyncPoint,
             sideCP.cp,
             'parallel', // SideCP的syncPoint通常是并行执行
             syncPoint.waiter.path // syncTo waiter.path
@@ -213,120 +213,120 @@ export class NestedCPManager {
       for (const mountPoint of framework.mountPoints || []) {
         // 判断挂载点是否与当前节点匹配
         if (this.isNodeMatch(mountPoint.path)) {
-          const nestedCP = new NestedCP(
+          const integratedCP = new IntegratedCP(
             this.node,
-            NestedCPType.FrameworkMountPoint,
+            IntegratedCPType.FrameworkMountPoint,
             framework.cp, // TODO: 从cp实例，反射获取cpLocateStr
             'replace' // 框架挂载点将被替换为框架
           );
-          this.nestedCPs.push(nestedCP);
+          this.integratedCPs.push(integratedCP);
         }
       }
     }
   }
 
   /**
-   * 判断是否包含指定类型的嵌套CP
-   * @param type 嵌套CP类型
+   * 判断是否包含指定类型的集成CP
+   * @param type 集成CP类型
    */
-  has(type?: NestedCPType): boolean {
-    return type ? this.nestedCPs.some(cp => cp.type === type) : this.nestedCPs.length > 0;
+  has(type?: IntegratedCPType): boolean {
+    return type ? this.integratedCPs.some(cp => cp.type === type) : this.integratedCPs.length > 0;
   }
 
   /**
-   * 获取嵌套CP的数量
-   * @param type 嵌套CP类型（可选）
+   * 获取集成CP的数量
+   * @param type 集成CP类型（可选）
    */
-  count(type?: NestedCPType): number {
-    return type ? this.nestedCPs.filter(cp => cp.type === type).length : this.nestedCPs.length;
+  count(type?: IntegratedCPType): number {
+    return type ? this.integratedCPs.filter(cp => cp.type === type).length : this.integratedCPs.length;
   }
 
   /**
-   * 根据类型获取嵌套CP列表
-   * @param type 嵌套CP类型
+   * 根据类型获取集成CP列表
+   * @param type 集成CP类型
    */
-  getCPsByType(type: NestedCPType): NestedCP[] {
-    return this.nestedCPs.filter(cp => cp.type === type);
+  getCPsByType(type: IntegratedCPType): IntegratedCP[] {
+    return this.integratedCPs.filter(cp => cp.type === type);
   }
 
-  get(type: NestedCPType): NestedCP | undefined {
-    return this.nestedCPs.find(cp => cp.type === type);
+  get(type: IntegratedCPType): IntegratedCP | undefined {
+    return this.integratedCPs.find(cp => cp.type === type);
   }
 
   /**
-   * 查找匹配条件的第一个嵌套CP
+   * 查找匹配条件的第一个集成CP
    * @param predicate 查找条件
    */
-  find(predicate: (cp: NestedCP) => boolean): NestedCP | undefined {
-    return this.nestedCPs.find(predicate);
+  find(predicate: (cp: IntegratedCP) => boolean): IntegratedCP | undefined {
+    return this.integratedCPs.find(predicate);
   }
 
   /**
-   * 查找所有匹配条件的嵌套CP
+   * 查找所有匹配条件的集成CP
    * @param predicate 查找条件
    */
-  findAll(predicate: (cp: NestedCP) => boolean): NestedCP[] {
-    return this.nestedCPs.filter(predicate);
+  findAll(predicate: (cp: IntegratedCP) => boolean): IntegratedCP[] {
+    return this.integratedCPs.filter(predicate);
   }
 
   /**
-   * 获取所有嵌套CP
+   * 获取所有集成CP
    */
-  getAll(): NestedCP[] {
-    return [...this.nestedCPs];
+  getAll(): IntegratedCP[] {
+    return [...this.integratedCPs];
   }
 
   /**
-   * 添加嵌套CP
-   * @param nestedCP 要添加的嵌套CP
+   * 添加集成CP
+   * @param integratedCP 要添加的集成CP
    * @param updateCP 是否同时更新CP对象
    */
-  addNestedCP(nestedCP: NestedCP, updateCP: boolean = true): void {
-    // 添加到嵌套CP列表
-    this.nestedCPs.push(nestedCP);
+  addIntegratedCP(integratedCP: IntegratedCP, updateCP: boolean = true): void {
+    // 添加到集成CP列表
+    this.integratedCPs.push(integratedCP);
 
     // 如果需要更新CP对象
     if (updateCP && this.cp) {
-      this.updateCPAccordingToNestedCP(nestedCP, true);
+      this.updateCPAccordingToIntegratedCP(integratedCP, true);
     }
   }
 
   /**
-   * 移除嵌套CP
-   * @param nestedCP 要移除的嵌套CP
+   * 移除集成CP
+   * @param integratedCP 要移除的集成CP
    * @param updateCP 是否同时更新CP对象
    */
-  removeNestedCP(nestedCP: NestedCP, updateCP: boolean = true): void {
-    // 从嵌套CP列表中移除
-    const index = this.nestedCPs.findIndex(cp =>
-      cp.type === nestedCP.type && cp.cpLocateStr === nestedCP.cpLocateStr);
+  removeIntegratedCP(integratedCP: IntegratedCP, updateCP: boolean = true): void {
+    // 从集成CP列表中移除
+    const index = this.integratedCPs.findIndex(cp =>
+      cp.type === integratedCP.type && cp.cpLocateStr === integratedCP.cpLocateStr);
 
     if (index !== -1) {
-      this.nestedCPs.splice(index, 1);
+      this.integratedCPs.splice(index, 1);
 
       // 如果需要更新CP对象
       if (updateCP && this.cp) {
-        this.updateCPAccordingToNestedCP(nestedCP, false);
+        this.updateCPAccordingToIntegratedCP(integratedCP, false);
       }
     }
   }
 
   /**
-   * 根据嵌套CP更新CP对象
-   * @param nestedCP 嵌套CP
+   * 根据集成CP更新CP对象
+   * @param integratedCP 集成CP
    * @param isAdd 是添加还是移除
    * TODO: 待调试、完善
    */
-  private updateCPAccordingToNestedCP(nestedCP: NestedCP, isAdd: boolean): void {
+  private updateCPAccordingToIntegratedCP(integratedCP: IntegratedCP, isAdd: boolean): void {
     const cp = this.cp as CP;
     if (!cp) return;
 
-    switch (nestedCP.type) {
-      case NestedCPType.Action:
+    switch (integratedCP.type) {
+      case IntegratedCPType.Action:
         // 不能通过此方法更新节点的action属性，action属性通过直接修改节点对象来更新。
-        throw new Error("Cannot update Action via NestedCPManager. Use node.action directly.");
+        throw new Error("Cannot update Action via IntegratedCPManager. Use node.action directly.");
 
-      case NestedCPType.Hook:
+      case IntegratedCPType.Hook:
         // 更新hooks
         if (cp.hooks) {
           if (isAdd) {
@@ -336,13 +336,13 @@ export class NestedCPManager {
               type: "sync",
               hook: "before",
               path: this.node.path,
-              action: nestedCP.cpLocateStr,
+              action: integratedCP.cpLocateStr,
               params: {}
             });
           } else {
             // 移除匹配的hook
             const hookIndex = cp.hooks.findIndex(h =>
-              h.path === this.node.path && h.action === nestedCP.cpLocateStr);
+              h.path === this.node.path && h.action === integratedCP.cpLocateStr);
             if (hookIndex !== -1) {
               cp.hooks.splice(hookIndex, 1);
             }
@@ -353,45 +353,45 @@ export class NestedCPManager {
             type: "sync",
             hook: "before",
             path: this.node.path,
-            action: nestedCP.cpLocateStr,
+            action: integratedCP.cpLocateStr,
             params: {}
           }];
         }
         break;
 
-      case NestedCPType.SideCPLaunchPoint:
+      case IntegratedCPType.SideCPLaunchPoint:
         // 更新sideCPs的launchPoint
         if (cp.sideCPs) {
           if (isAdd) {
             // 添加sideCP
             cp.sideCPs.push({
-              cp: nestedCP.cpLocateStr,
+              cp: integratedCP.cpLocateStr,
               launchPoint: this.node.path,
               syncPoints: []
             });
           } else {
             // 移除匹配的sideCP
             const sideCPIndex = cp.sideCPs.findIndex(s =>
-              s.launchPoint === this.node.path && s.cp === nestedCP.cpLocateStr);
+              s.launchPoint === this.node.path && s.cp === integratedCP.cpLocateStr);
             if (sideCPIndex !== -1) {
               cp.sideCPs.splice(sideCPIndex, 1);
             }
           }
         } else if (isAdd) {
           cp.sideCPs = [{
-            cp: nestedCP.cpLocateStr,
+            cp: integratedCP.cpLocateStr,
             launchPoint: this.node.path,
             syncPoints: []
           }];
         }
         break;
 
-      case NestedCPType.SideCPSyncPoint:
+      case IntegratedCPType.SideCPSyncPoint:
         // 这个情况比较复杂，需要找到对应的sideCP，然后更新其syncPoints
         // 这里只提供简化实现
         break;
 
-      case NestedCPType.FrameworkMountPoint:
+      case IntegratedCPType.FrameworkMountPoint:
         // 更新frameworks的mountPoints
         if (cp.frameworks && cp.frameworks.length > 0) {
           if (isAdd) {
@@ -401,14 +401,14 @@ export class NestedCPManager {
             }
             cp.frameworks[0].mountPoints.push({
               node: this.node.path,
-              cp: nestedCP.cpLocateStr
+              cp: integratedCP.cpLocateStr
             });
           } else {
             // 移除匹配的mountPoint
             for (const framework of cp.frameworks) {
               if (framework.mountPoints) {
                 const mpIndex = framework.mountPoints.findIndex(mp =>
-                  mp.node === this.node.path && mp.cp === nestedCP.cpLocateStr);
+                  mp.node === this.node.path && mp.cp === integratedCP.cpLocateStr);
                 if (mpIndex !== -1) {
                   framework.mountPoints.splice(mpIndex, 1);
                   break;
@@ -421,7 +421,7 @@ export class NestedCPManager {
             name: "default",
             mountPoints: [{
               node: this.node.path,
-              cp: nestedCP.cpLocateStr
+              cp: integratedCP.cpLocateStr
             }]
           }];
         }
@@ -430,10 +430,10 @@ export class NestedCPManager {
   }
 }
 
-export const NestedCPIconMap: Record<NestedCPType, string> = {
-  [NestedCPType.Action]: 'ⓐ',
-  [NestedCPType.Hook]: 'ⓗ',
-  [NestedCPType.SideCPLaunchPoint]: 'ⓛ',
-  [NestedCPType.SideCPSyncPoint]: 'ⓢ',
-  [NestedCPType.FrameworkMountPoint]: 'ⓕ'
+export const IntegratedCPIconMap: Record<IntegratedCPType, string> = {
+  [IntegratedCPType.Action]: 'ⓐ',
+  [IntegratedCPType.Hook]: 'ⓗ',
+  [IntegratedCPType.SideCPLaunchPoint]: 'ⓛ',
+  [IntegratedCPType.SideCPSyncPoint]: 'ⓢ',
+  [IntegratedCPType.FrameworkMountPoint]: 'ⓕ'
 }

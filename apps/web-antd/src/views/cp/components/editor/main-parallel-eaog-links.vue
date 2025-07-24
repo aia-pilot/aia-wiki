@@ -93,7 +93,7 @@ const links = computed<LinkSpec[]>(() => {
         style: {
           color: syncPoint.block ? '#f00' : '#0f0',
           dashed: !syncPoint.block,
-          arrow: syncPoint.block ? 'both' : 'end',
+          arrow: syncPoint.block ? 'start' : 'end',
           strokeWidth: 2,
           // zIndex: 1
         },

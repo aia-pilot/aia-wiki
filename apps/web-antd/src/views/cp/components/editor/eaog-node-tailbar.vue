@@ -8,7 +8,7 @@ import {EditableEaogNode} from '../../models/editable-eaog-node';
 import {EaogFramework} from '../../models/eaog-framework';
 import Debug from 'debug';
 import {loadParallelCP} from "#/views/cp/models/cp-editor-state";
-import {NestedCPType} from "#/views/cp/models/nested-cp";
+import {NestedCPType} from "#/views/cp/models/integrated-cp";
 import { computed } from 'vue';
 
 const debug = Debug('aia:eaog-node-tailbar');
