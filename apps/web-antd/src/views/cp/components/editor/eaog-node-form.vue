@@ -44,7 +44,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       currentNode.value?.mergeFormValues(omit(nodeValues, ['children'])); // 合并表单数据到当前节点，保留原来的children
       currentNode.value?.markAsNewlyModifiedForAWhile();
     } else if (formMode === 'create-cp') {
-      currentCP.value = createEditableCP({eaog: nodeValues});
+      currentCP.value = await createEditableCP({eaog: nodeValues});
       currentNode.value = currentCP.value.eaog; // 设置当前节点为新创建的CP根节点
     } else { // 'add-node' 模式
       const newNode = new EditableEaogNode(nodeValues, null, currentNode.value.cp);

@@ -1,18 +1,8 @@
 // @ts-nocheck
 import type { CP } from './types.d';
 import type { EditableEaogNode } from './editable-eaog-node';
-
-
-/**
- * 集成CP的类型枚举
- */
-export enum IntegratedCPType {
-  Action = 'action',
-  Hook = 'hook',
-  SideCPLaunchPoint = 'launch', // 辅助CP-启动点
-  SideCPSyncPoint = 'sync', // 辅助CP-同步点
-  FrameworkMountPoint = 'mount' // 框架-加载点
-}
+import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
+import type { IntegrationType } from './types.d';
 
 /**
  * 集成CP的展示方式类型
@@ -25,7 +15,7 @@ export type ShowAsType = 'before' | 'after' | 'replace' | 'parallel';
 export class IntegratedCP {
   // 业务属性
   node: EditableEaogNode;           // 对应的节点
-  type: IntegratedCPType;           // 集成CP的类型
+  type: IntegrationType;           // 集成CP的类型
   syncTo?: string;                  // 同步点路径（SyncPoint的waiter.path）
 
   // 视觉、交互属性
@@ -41,7 +31,7 @@ export class IntegratedCP {
    * @param showAt 如何展示，当前节点前、后，或替换原节点，或并行展示
    * @param syncTo 同步点路径（可选）
    */
-  constructor(node: EditableEaogNode, type: IntegratedCPType, cpLocateStr: string, showAt: ShowAsType, syncTo?: string) {
+  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, syncTo?: string) {
     this.node = node;
     this.type = type;
     this.cpLocateStr = cpLocateStr;
@@ -58,7 +48,7 @@ export class IntegratedCP {
     const {createEditableCP} = await import('#/views/cp/models/editable-cp');
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
-    cp = createEditableCP(cp, filePath, this.node.cp); // 创建EditableCP实例
+    cp = await createEditableCP(cp, filePath, this.node.cp); // 创建EditableCP实例
     // @ts-ignore
     cp.integratedCP = this; // 关联当前集成CP到CP模块
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = cp.eaog
@@ -92,7 +82,6 @@ export class IntegratedCP {
  * 集成CP管理器，管理节点相关的所有集成CP
  */
 export class IntegratedCPManager {
-  private integratedCPs: IntegratedCP[] = [];
   private node: EditableEaogNode;
   private readonly cp: CP | undefined;
 
@@ -103,8 +92,40 @@ export class IntegratedCPManager {
   constructor(node: EditableEaogNode) {
     this.node = node;
     this.cp = node.cp;
-    this.collectIntegratedCPs();
   }
+
+  get integrationManager() {
+    return this.cp.integrationManager as EditableIntegrationManager // 懒加载，确保 integrationManager 已经初始化
+  }
+
+  _integratedCPs: IntegratedCP[] | null = null; // 集成CP列表
+  get integratedCPs(): IntegratedCP[] {
+    if (this._integratedCPs === null) {
+      const integrations = this.integrationManager.getIntegrations(this.node) || [];
+      this._integratedCPs = integrations
+        .filter(({cpLocateStr}) => !!cpLocateStr) // 过滤掉没有CP定位字符串的集成点
+        .map(({type, block, hook, cpLocateStr}) => {
+        const showAt = type === 'launch' || type === 'sync' ? 'parallel' : // launch、sync 是Side CP，总是并行执行
+          type === 'action' || type === 'mount' ? 'replace' : // mount 是Framework CP，总是替换当前节点、action
+            hook // type === 'hook';
+        return new IntegratedCP(this.node, type as IntegrationType, cpLocateStr, showAt/* integration.syncTo */);
+      })
+    }
+    return this._integratedCPs; // 懒加载
+  }
+
+  /**
+   * 判断是否包含指定类型的集成CP
+   * @param type 集成CP类型
+   */
+  has(type?: IntegrationType): boolean {
+    return type ? this.integratedCPs.some(cp => cp.type === type) : this.integratedCPs.length > 0;
+  }
+
+  get(type: IntegrationType): IntegratedCP | undefined {
+    return this.integratedCPs.find(cp => cp.type === type);
+  }
+
 
   /**
    * 收集节点相关的所有集成CP
@@ -133,7 +154,7 @@ export class IntegratedCPManager {
     if (this.node.action && typeof this.node.action === 'string' && this.node.action.startsWith('cp://')) {
       this.integratedCPs.push(new IntegratedCP(
         this.node,
-        IntegratedCPType.Action,
+        IntegrationType.Action,
         this.node.action,
         // @ts-ignore TODO：node添加block属性，让action可以非阻塞执行
         this.node.block ?? true ? 'replace' : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
@@ -158,7 +179,7 @@ export class IntegratedCPManager {
       if (hook.action && hook.action.startsWith('cp://')) {
         this.integratedCPs.push(new IntegratedCP(
           this.node,
-          IntegratedCPType.Hook,
+          IntegrationType.Hook,
           hook.action,
           hook.block ?? false ? (hook.hook /* 'before' | 'after' */) : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
         ));
@@ -183,7 +204,7 @@ export class IntegratedCPManager {
       if (this.isNodeMatch(sideCP.launchPoint)) {
         this.integratedCPs.push(new IntegratedCP(
           this.node,
-          IntegratedCPType.SideCPLaunchPoint,
+          IntegrationType.SideCPLaunchPoint,
           sideCP.cp,
           'parallel' // SideCP总是和主CP并行执行
         ));
@@ -195,7 +216,7 @@ export class IntegratedCPManager {
         if (this.isNodeMatch(syncPoint.actor.path)) {
           this.integratedCPs.push(new IntegratedCP(
             this.node,
-            IntegratedCPType.SideCPSyncPoint,
+            IntegrationType.SideCPSyncPoint,
             sideCP.cp,
             'parallel', // SideCP的syncPoint通常是并行执行
             syncPoint.waiter.path // syncTo waiter.path
@@ -218,7 +239,7 @@ export class IntegratedCPManager {
         if (this.isNodeMatch(mountPoint.path)) {
           const integratedCP = new IntegratedCP(
             this.node,
-            IntegratedCPType.FrameworkMountPoint,
+            IntegrationType.FrameworkMountPoint,
             framework.cp, // TODO: 从cp实例，反射获取cpLocateStr
             'replace' // 框架挂载点将被替换为框架
           );
@@ -228,32 +249,20 @@ export class IntegratedCPManager {
     }
   }
 
-  /**
-   * 判断是否包含指定类型的集成CP
-   * @param type 集成CP类型
-   */
-  has(type?: IntegratedCPType): boolean {
-    return type ? this.integratedCPs.some(cp => cp.type === type) : this.integratedCPs.length > 0;
-  }
-
-  /**
+ /**
    * 获取集成CP的数量
    * @param type 集成CP类型（可选）
    */
-  count(type?: IntegratedCPType): number {
+  count(type?: IntegrationType): number {
     return type ? this.integratedCPs.filter(cp => cp.type === type).length : this.integratedCPs.length;
   }
 
   /**
    * 根据类型获取集成CP列表
-   * @param type 集成CP类型
+   * @param type ���成CP类型
    */
-  getCPsByType(type: IntegratedCPType): IntegratedCP[] {
+  getCPsByType(type: IntegrationType): IntegratedCP[] {
     return this.integratedCPs.filter(cp => cp.type === type);
-  }
-
-  get(type: IntegratedCPType): IntegratedCP | undefined {
-    return this.integratedCPs.find(cp => cp.type === type);
   }
 
   /**
@@ -325,11 +334,11 @@ export class IntegratedCPManager {
     if (!cp) return;
 
     switch (integratedCP.type) {
-      case IntegratedCPType.Action:
+      case 'action':
         // 不能通过此方法更新节点的action属性，action属性通过直接修改节点对象来更新。
         throw new Error("Cannot update Action via IntegratedCPManager. Use node.action directly.");
 
-      case IntegratedCPType.Hook:
+      case 'hook':
         // 更新hooks
         if (cp.hooks) {
           if (isAdd) {
@@ -362,7 +371,7 @@ export class IntegratedCPManager {
         }
         break;
 
-      case IntegratedCPType.SideCPLaunchPoint:
+      case 'launch':
         // 更新sideCPs的launchPoint
         if (cp.sideCPs) {
           if (isAdd) {
@@ -389,12 +398,12 @@ export class IntegratedCPManager {
         }
         break;
 
-      case IntegratedCPType.SideCPSyncPoint:
-        // 这个情况比较复杂，需要找到对应的sideCP，然后更新其syncPoints
+      case 'sync':
+        // 这个情况比较复杂，需要找到对应的sideCP，然后���新其syncPoints
         // 这里只提供简化实现
         break;
 
-      case IntegratedCPType.FrameworkMountPoint:
+      case 'mount':
         // 更新frameworks的mountPoints
         if (cp.frameworks && cp.frameworks.length > 0) {
           if (isAdd) {
@@ -433,10 +442,10 @@ export class IntegratedCPManager {
   }
 }
 
-export const IntegratedCPIconMap: Record<IntegratedCPType, string> = {
-  [IntegratedCPType.Action]: 'ⓐ',
-  [IntegratedCPType.Hook]: 'ⓗ',
-  [IntegratedCPType.SideCPLaunchPoint]: 'ⓛ',
-  [IntegratedCPType.SideCPSyncPoint]: 'ⓢ',
-  [IntegratedCPType.FrameworkMountPoint]: 'ⓕ'
+export const IntegratedCPIconMap: Record<IntegrationType, string> = {
+  'action': 'ⓐ',
+  'hook': 'ⓗ',
+  'launch': 'ⓛ',
+  'sync': 'ⓢ',
+  'mount': 'ⓕ'
 }

@@ -6,8 +6,8 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {EditableEaogNode} from '../../models/editable-eaog-node';
 import Debug from 'debug';
-import {IntegratedCPType} from "#/views/cp/models/integrated-cp";
 import { computed } from 'vue';
+import type {IntegrationType} from "#/views/cp/models/types";
 
 const debug = Debug('aia:eaog-node-tailbar');
 
@@ -23,7 +23,7 @@ const toggleCollapse = () => {
 };
 
 // 处理集成CP按钮点击
-const handleIntegratedCPClick = (type: IntegratedCPType | 'close') => {
+const handleIntegratedCPClick = (type: IntegrationType | 'close') => {
     type === 'close' ? props.node.cp!.integratedCP.close() : // 此时node.cp是IntegratedCP
       props.node.integratedCPManager?.get(type)?.toggle();
 };
@@ -39,34 +39,34 @@ const closeIntegratedCPButtonConfig = {
 const buttonConfigs = computed(() => {
   const config = [
     {
-      type: IntegratedCPType.Action,
+      type: 'action',
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
-      show: props.node.integratedCPManager?.has(IntegratedCPType.Action),
+      show: props.node.integratedCPManager?.has('action'),
     },
     {
-      type: IntegratedCPType.Hook,
+      type: 'hook',
       icon: 'mdi:hook',
       tooltip: 'Hook',
-      show: props.node.integratedCPManager?.has(IntegratedCPType.Hook),
+      show: props.node.integratedCPManager?.has('hook'),
     },
     {
-      type: IntegratedCPType.SideCPLaunchPoint,
+      type: 'launch',
       icon: 'mdi:play-circle-outline',
       tooltip: '辅CP 执行点',
-      show: props.node.integratedCPManager?.has(IntegratedCPType.SideCPLaunchPoint),
+      show: props.node.integratedCPManager?.has('launch'),
     },
     {
-      type: IntegratedCPType.SideCPSyncPoint,
+      type: 'sync',
       icon: 'mdi:sync-circle',
       tooltip: '辅CP 同步点',
-      show: props.node.integratedCPManager?.has(IntegratedCPType.SideCPSyncPoint),
+      show: props.node.integratedCPManager?.has('sync'),
     },
     {
-      type: IntegratedCPType.FrameworkMountPoint,
+      type: 'mount',
       icon: 'mdi:framework',
       tooltip: '框架加载点',
-      show: props.node.integratedCPManager?.has(IntegratedCPType.FrameworkMountPoint),
+      show: props.node.integratedCPManager?.has('mount'),
     },
   ]
   return props.isReplacedByIntegratedCP ? [closeIntegratedCPButtonConfig] : // 如果是集成CP，显示关闭按钮
@@ -92,7 +92,7 @@ const buttonConfigs = computed(() => {
       :key="config.type"
       :icon="config.icon"
       :tooltip="config.tooltip"
-      @click.stop="handleIntegratedCPClick(config.type as IntegratedCPType)"
+      @click.stop="handleIntegratedCPClick(config.type as IntegrationType)"
       class="opacity-0 group-hover:opacity-100"
     />
   </div>

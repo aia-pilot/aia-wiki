@@ -18,7 +18,7 @@ const debug = Debug('aia:cp-toolbar');
 // 通过 inject 注入 eaogNodeForm
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
 
-const parseTextToCP = (eaogTxt: any): EditableCP | undefined => {
+const parseTextToCP = async (eaogTxt: any): Promise<EditableCP | undefined> => {
   let json;
   // 解析JSON文本
   try {
@@ -34,7 +34,7 @@ const parseTextToCP = (eaogTxt: any): EditableCP | undefined => {
       return;
     }
   }
-  return new createEditableCP({eaog: json});
+  return await createEditableCP({eaog: json});
 }
 
 /**
@@ -42,7 +42,7 @@ const parseTextToCP = (eaogTxt: any): EditableCP | undefined => {
  */
 const handleImport = async () => {
   debug('导入EAOG数据');
-  const eaog = (IS_DEV && await importEaogFromClipboard() || loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
+  const eaog = (IS_DEV && await importEaogFromClipboard() || await loadFromLocalStorage('aia-editor-eaog')) || await importEaogFromFile();
   if (eaog) {
     debug('导入成功EAOG to CP:', eaog);
     await loadCurrentCP({eaog}, true, true); // 加载EAOG数据到编辑器
@@ -156,7 +156,7 @@ const importEaogFromClipboard = async (): Promise<EditableCP | undefined> => {
   }
 };
 
-const loadFromLocalStorage = (key: string): EditableCP | undefined => {
+const loadFromLocalStorage = async (key: string): EditableCP | undefined => {
   const data = localStorage.getItem(key);
   if (data) {
     debug('从本地存储读取内容成功');
@@ -179,10 +179,10 @@ const importEaogFromFile = (): Promise<EditableCP | undefined> => {
       }
 
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const content = event.target?.result as string;
         debug('从文件读取内容成功');
-        resolve(parseTextToCP(content));
+        resolve(await parseTextToCP(content));
       };
       reader.onerror = () => {
         console.warn('读取文件失败');

@@ -11,13 +11,15 @@ import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import {currentCP, currentNode} from "./cp-editor-state";
-import type {EaogNode, CP} from "#/views/cp/models/types";
+import type {EaogNode} from "#/views/cp/models/types";
 import {IntegratedCPManager} from "./integrated-cp";
+import type {EditableCP} from "#/views/cp/models/editable-cp";
+import type {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager', 'ipath'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -52,7 +54,8 @@ export class EditableEaogNode implements EaogNode {
   isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
   isCollapsed = false; // 标记节点是否折叠子节点
 
-  cp?: CP; // 当前Eaog的CP（TRANSIENT)
+  cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
+  ipath?: string; /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
 
   // 展示集成CP，包括action, hook, sideCP, frameworks等（TRANSIENT）
   integratedCPManager?: IntegratedCPManager; // 集成CP管理器，用于处理集成CP的逻辑
@@ -72,7 +75,7 @@ export class EditableEaogNode implements EaogNode {
     return [this.integratedCPBeforeNode, ...this.children, this.integratedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
   }
 
-  constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: CP) {
+  constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: EditableCP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
     this.cp = cp; // 设置当前Eaog的CP
@@ -80,6 +83,10 @@ export class EditableEaogNode implements EaogNode {
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
     this.integratedCPManager = new IntegratedCPManager(this); // 创建集成CP管理器
+  }
+
+  get integrationManager() {
+    return this.cp!.integrationManager as EditableIntegrationManager; // 获取当前CP的集成管理器
   }
 
   // 新增的 getter 方法

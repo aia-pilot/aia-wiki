@@ -41,10 +41,10 @@ export const currentTab: Ref<string | undefined> = ref(undefined);
 
 
 // 当CP模块变化时，更新当前CP
-watch(mainCPModule, async(newCPM) => {
+watch(mainCPModule, async (newCPM) => {
   if (newCPM?.cp) {
     const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-    const cp = createEditableCP({...newCPM.cp, filePath: newCPM.filePath} as CP);
+    const cp = await createEditableCP({...newCPM.cp, filePath: newCPM.filePath} as CP);
     mainCP.value = cp;
   } else {
     mainCP.value = undefined;
@@ -72,9 +72,9 @@ export const loadCurrentCP = async (cp: EditableCP | CP | string, needSave = fal
     cpData = cp;
   } else if (typeof cp === 'string') {
     const parsedCP = JSON.parse(cp);
-    cpData = createEditableCP(parsedCP);
+    cpData = await createEditableCP(parsedCP);
   } else {
-    cpData = createEditableCP(cp);
+    cpData = await createEditableCP(cp);
   }
 
   currentCP.value = cpData;
@@ -102,7 +102,7 @@ export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('./cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   const {cp, filePath} = await loadCpFromCpStr(modulePath)
-  parallelCP.value = createEditableCP(cp, filePath);
+  parallelCP.value = await createEditableCP(cp, filePath);
 }
 
 /**
