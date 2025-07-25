@@ -7,11 +7,11 @@ import type { EditableEaogNode } from './editable-eaog-node';
  * 集成CP的类型枚举
  */
 export enum IntegratedCPType {
-  Action = 'Action',      // 节点的action属性指向的CP
-  Hook = 'Hook',                 // Hook的action属性指向的CP
-  SideCPLaunchPoint = '辅助CP-启动点', // SideCP的launchPoint属性指向的CP
-  SideCPSyncPoint = '辅助CP-同步点',    // SideCP的syncPoint属性指向的CP
-  FrameworkMountPoint = '框架-加载点'  // Framework的mountPoint属性指向的CP
+  Action = 'action',
+  Hook = 'hook',
+  SideCPLaunchPoint = 'launch', // 辅助CP-启动点
+  SideCPSyncPoint = 'sync', // 辅助CP-同步点
+  FrameworkMountPoint = 'mount' // 框架-加载点
 }
 
 /**
@@ -23,11 +23,14 @@ export type ShowAsType = 'before' | 'after' | 'replace' | 'parallel';
  * 集成CP类
  */
 export class IntegratedCP {
+  // 业务属性
   node: EditableEaogNode;           // 对应的节点
   type: IntegratedCPType;           // 集成CP的类型
+  syncTo?: string;                  // 同步点路径（SyncPoint的waiter.path）
+
+  // 视觉、交互属性
   showAt: ShowAsType;               // 如何呈现，与主CP的关系。block执行的，将在原节点处，前、后插入，或替换。非block执行的，将在并行面板中展示。
   cpLocateStr: string;              // CP定位字符串，如: 'cp://cp-module/path/to/cp'
-  syncTo?: string;                  // 同步点路径（SyncPoint的waiter.path）
   isShown: boolean;                 // 当前是否在界面呈现
 
   /**

@@ -34,10 +34,10 @@ const props = defineProps<{
 const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 
 const node = props.node.showNode;
-const isReplacedByNestedCP = props.node.isReplacedByNestedCP;
-const nestedCPLabel = isReplacedByNestedCP && `<${node.cp.nestedCP.type}：${node.name}>`
-const nodeName = isReplacedByNestedCP ? `${props.node.name}: ${nestedCPLabel}` : props.node.name;
-const nodeDescription = isReplacedByNestedCP ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${nestedCPLabel}`)}` : props.node.description;
+const isReplacedByIntegratedCP = props.node.isReplacedByIntegratedCP;
+const integratedCPLabel = isReplacedByIntegratedCP && `<${node.cp.integratedCP.type}：${node.name}>`
+const nodeName = isReplacedByIntegratedCP ? `${props.node.name}: ${integratedCPLabel}` : props.node.name;
+const nodeDescription = isReplacedByIntegratedCP ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${integratedCPLabel}`)}` : props.node.description;
 
 // @deprecated framework TODO: 合并考虑
 // const nodeName = node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
@@ -45,8 +45,8 @@ const nodeDescription = isReplacedByNestedCP ? `${[props.node.description, node.
 //   ? (node as EaogFramework).mountedNode!.description
 //   : node.description;
 
-// 判断子节点是否为嵌套CP节点
-const isChildNestedCP = (child: EditableEaogNode) => {
+// 判断子节点是否为集成CP节点
+const isChildIntegratedCP = (child: EditableEaogNode) => {
   return child.showNode !== child || !props.node.children.includes(child)
 };
 
@@ -90,7 +90,7 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': isReplacedByNestedCP ?? false, // 如果是嵌套CP节点，背景色为黄色
+    'bg-yellow-100': isReplacedByIntegratedCP ?? false, // 如果是集成CP节点，背景色为黄色
   };
 });
 </script>
@@ -158,7 +158,7 @@ const headerClasses = computed(() => {
       </div>
 
       <!-- 节点尾部操作栏 -->
-      <eaog-node-tailbar v-if="!node.isRoot || isReplacedByNestedCP" :node="node" :isReplacedByNestedCP="isReplacedByNestedCP" class="mt-2" />
+      <eaog-node-tailbar v-if="!node.isRoot || isReplacedByIntegratedCP" :node="node" :isReplacedByIntegratedCP="isReplacedByIntegratedCP" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->

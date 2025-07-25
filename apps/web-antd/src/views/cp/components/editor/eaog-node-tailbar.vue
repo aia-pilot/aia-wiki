@@ -5,17 +5,15 @@
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import {EditableEaogNode} from '../../models/editable-eaog-node';
-import {EaogFramework} from '../../models/eaog-framework';
 import Debug from 'debug';
-import {loadParallelCP} from "#/views/cp/models/cp-editor-state";
-import {NestedCPType} from "#/views/cp/models/integrated-cp";
+import {IntegratedCPType} from "#/views/cp/models/integrated-cp";
 import { computed } from 'vue';
 
 const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
   node: EditableEaogNode;
-  isReplacedByNestedCP?: boolean; // 是否为嵌套CP节点
+  isReplacedByIntegratedCP?: boolean; // 是否为集成CP节点
 }>();
 
 // 处理折叠/展开按钮点击
@@ -24,13 +22,13 @@ const toggleCollapse = () => {
   debug(`Node ${props.node.name} ${props.node.isCollapsed ? 'collapsed' : 'expanded'}`);
 };
 
-// 处理嵌套 CP 按钮点击
-const handleNestedCPClick = (type: NestedCPType & 'close') => {
-    type === 'close' ? props.node.cp.nestedCP.close() : // 此时node.cp是NestedCP
-      props.node.nestedCPManager?.get(type)?.toggle();
+// 处理集成CP按钮点击
+const handleIntegratedCPClick = (type: IntegratedCPType | 'close') => {
+    type === 'close' ? props.node.cp!.integratedCP.close() : // 此时node.cp是IntegratedCP
+      props.node.integratedCPManager?.get(type)?.toggle();
 };
 
-const closeNestedCPButtonConfig = {
+const closeIntegratedCPButtonConfig = {
   type: 'close',
   icon: 'mdi:close',
   tooltip: '关闭嵌套 CP',
@@ -41,37 +39,37 @@ const closeNestedCPButtonConfig = {
 const buttonConfigs = computed(() => {
   const config = [
     {
-      type: NestedCPType.Action,
+      type: IntegratedCPType.Action,
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
-      show: props.node.nestedCPManager?.has(NestedCPType.Action),
+      show: props.node.integratedCPManager?.has(IntegratedCPType.Action),
     },
     {
-      type: NestedCPType.Hook,
+      type: IntegratedCPType.Hook,
       icon: 'mdi:hook',
       tooltip: 'Hook',
-      show: props.node.nestedCPManager?.has(NestedCPType.Hook),
+      show: props.node.integratedCPManager?.has(IntegratedCPType.Hook),
     },
     {
-      type: NestedCPType.SideCPLaunchPoint,
+      type: IntegratedCPType.SideCPLaunchPoint,
       icon: 'mdi:play-circle-outline',
       tooltip: '辅CP 执行点',
-      show: props.node.nestedCPManager?.has(NestedCPType.SideCPLaunchPoint),
+      show: props.node.integratedCPManager?.has(IntegratedCPType.SideCPLaunchPoint),
     },
     {
-      type: NestedCPType.SideCPSyncPoint,
+      type: IntegratedCPType.SideCPSyncPoint,
       icon: 'mdi:sync-circle',
       tooltip: '辅CP 同步点',
-      show: props.node.nestedCPManager?.has(NestedCPType.SideCPSyncPoint),
+      show: props.node.integratedCPManager?.has(IntegratedCPType.SideCPSyncPoint),
     },
     {
-      type: NestedCPType.FrameworkMountPoint,
+      type: IntegratedCPType.FrameworkMountPoint,
       icon: 'mdi:framework',
       tooltip: '框架加载点',
-      show: props.node.nestedCPManager?.has(NestedCPType.FrameworkMountPoint),
+      show: props.node.integratedCPManager?.has(IntegratedCPType.FrameworkMountPoint),
     },
   ]
-  return props.isReplacedByNestedCP ? [closeNestedCPButtonConfig] : // 如果是嵌套CP，显示关闭按钮
+  return props.isReplacedByIntegratedCP ? [closeIntegratedCPButtonConfig] : // 如果是集成CP，显示关闭按钮
     config.filter(c => c.show);
 });
 </script>
@@ -88,13 +86,13 @@ const buttonConfigs = computed(() => {
       :class="{ 'opacity-0 group-hover:opacity-100': !node.isCollapsed }"
     />
 
-    <!-- 动态渲染各种类型的嵌套CP按钮 -->
+    <!-- 动态渲染各种类型的集成CP按钮 -->
     <EditorToolbarButton
       v-for="config in buttonConfigs"
       :key="config.type"
       :icon="config.icon"
       :tooltip="config.tooltip"
-      @click.stop="handleNestedCPClick(config.type)"
+      @click.stop="handleIntegratedCPClick(config.type as IntegratedCPType)"
       class="opacity-0 group-hover:opacity-100"
     />
   </div>
