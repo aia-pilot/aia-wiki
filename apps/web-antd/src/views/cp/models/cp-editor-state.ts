@@ -1,7 +1,7 @@
-import {ref, type Ref, watch, computed} from 'vue';
+import {ref, watch, computed} from 'vue';
 import type {EditableEaogNode} from './editable-eaog-node';
 import type {EditableCP} from './editable-cp';
-import type {CP} from "#/views/cp/models/types";
+import type {CP, SideCP} from "#/views/cp/models/types";
 
 /**
  * CP Editor 的核心状态管理
@@ -9,13 +9,13 @@ import type {CP} from "#/views/cp/models/types";
  */
 
 // CP模块状态：当前加载的CP模块
-export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>(undefined);
+export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>();
 
 // 主CP
-export const mainCP: Ref<EditableCP | undefined> = ref(undefined);
+export const mainCP = ref<EditableCP | undefined>();
 
 // 并行CP
-export const parallelCP: Ref<EditableCP | undefined> = ref(undefined);
+export const parallelCP = ref<{cp: EditableCP, sideCP?: SideCP}| undefined>();
 
 // 统一对外暴露一个 currentCP，因为虽然有主CP和并行CP，但在编辑器中只有一个当前正在编辑（交互）的CP，toolbar、context-menu、node-form都是针对这个CP进行操作的
 export const currentCP = computed({
@@ -31,13 +31,13 @@ export const currentCP = computed({
 export const currentEaog = computed(() => currentCP.value?.eaog);
 
 // 节点状态：当前被选择的节点
-export const currentNode: Ref<EditableEaogNode | undefined> = ref(undefined);
+export const currentNode= ref<EditableEaogNode | undefined>();
 
 // 工作区面板状态：当前活动的工作面板
-export const currentPane: Ref<string | undefined> = ref(undefined);
+export const currentPane = ref<string | undefined>();
 
 // 标签页状态：当前活动的标签页
-export const currentTab: Ref<string | undefined> = ref(undefined);
+export const currentTab = ref<string | undefined>();
 
 
 // 当CP模块变化时，更新当前CP
@@ -103,7 +103,7 @@ export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('./cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   const {cp, filePath} = await loadCpFromCpStr(modulePath)
-  parallelCP.value = await createEditableCP(cp, filePath);
+  parallelCP.value = {cp: await createEditableCP(cp, filePath)};
 }
 
 /**

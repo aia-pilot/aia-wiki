@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type {CP, Hook} from './types.d';
+import type {CP, Hook, SideCP} from './types.d';
 import type {EditableEaogNode} from './editable-eaog-node';
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 import type {IntegrationType} from './types.d';
@@ -18,6 +18,7 @@ export class IntegratedCP {
   // 业务属性
   node: EditableEaogNode;           // 对应的节点，将在节点的UI界面 Node tailbar，提供操作入口
   launchHook: Hook;     // 集成CP的启动节点，通常等于node；type为'sync'时，是对应sideCP的launch节点
+  sideCP?: SideCP;                // 对应的SideCP，如果有的话
   type: IntegrationType;           // 集成CP的类型
 
   // 视觉、交互属性
@@ -32,13 +33,15 @@ export class IntegratedCP {
    * @param cpLocateStr CP定位字符串
    * @param showAt 如何展示，当前节点前、后，或替换原节点，或并行展示
    * @param launchHook 集成CP的启动Hook，通常为undefined；type为'sync'时，是对应sideCP的launch hook
+   * @param sideCP 对应的SideCP
    */
-  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, launchHook?: Hook) {
+  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, launchHook?: Hook, sideCP?: SideCP) {
     this.node = node;
     this.type = type;
     this.cpLocateStr = cpLocateStr;
     this.showAt = showAt;
     this.launchHook = launchHook; // 如果是'sync'类型，则使用对应的sideCP的launch节点，否则使用当前节点
+    this.sideCP = sideCP;
     this.isShown = false
   }
 
@@ -59,17 +62,18 @@ export class IntegratedCP {
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
     cp = await createEditableCP(cp, filePath, {type: this.integrationType, node: this.integrationNode});
-    cp.integratedCP = this; // 关联当前集成CP到CP模块
+    cp.integratedCP = this; /** 关联当前集成CP到CP，以便UI取值 {@link eaog-node.vue} TODO: 有缺陷，始终挂在CP上？ */
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = cp.eaog
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = cp.eaog
         : this.showAt === 'after' ? this.node.integratedCPAfterNode = cp.eaog
-          : this.showAt === 'parallel' ? parallelCP.value = cp
+          : this.showAt === 'parallel' ? parallelCP.value = {cp, sideCP: (this.type === 'launch' ? this : this.launchHook).sideCP} // 并行CP需要同时保存sideCP信息
             : null
     this.isShown = true; // 标记为已展示
   }
 
   async close() {
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
+
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = undefined
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = undefined
         : this.showAt === 'after' ? this.node.integratedCPAfterNode = undefined
@@ -111,12 +115,12 @@ export class IntegratedCPManager {
       const integrations = this.integrationManager.getIntegrations(this.node) || [];
       this._integratedCPs = integrations
         .filter(({cpLocateStr}) => !!cpLocateStr) // 过滤掉没有CP定位字符串的集成点
-        .map(({type, block, hook, cpLocateStr, launchHook}) => {
+        .map(({type, block, hook, cpLocateStr, launchHook, sideCP}) => {
           const showAt = type === 'launch' || type === 'sync' ? 'parallel' : // launch、sync 是Side CP，总是并行执行
             type === 'action' || type === 'mount' ? 'replace' : // mount 是Framework CP，总是替换当前节点、action
               hook; // type === 'hook';
 
-          return new IntegratedCP(this.node, type as IntegrationType, cpLocateStr, showAt, launchHook);
+          return new IntegratedCP(this.node, type as IntegrationType, cpLocateStr, showAt, launchHook, sideCP);
         })
     }
     return this._integratedCPs; // 懒加载

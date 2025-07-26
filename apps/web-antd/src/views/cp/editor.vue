@@ -45,7 +45,7 @@ onMounted(async () => {
 });
 
 const parallelCPDomReady = ref(false); // 并行CP DOM是否准备就绪
-watch(parallelCP, (newValue) => setTimeout(() => {
+watch(parallelCP, (newValue) => nextTick(() => {
   parallelCPDomReady.value = !!newValue; // 确保DOM准备就绪
   debug('并行CP DOM状态:', parallelCPDomReady.value);
 }));
@@ -76,7 +76,7 @@ watch(parallelCP, (newValue) => setTimeout(() => {
           <Pane :size="40">
             <div class="w-full p-4 border rounded-md">
               <div class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallelCP.eaog" :key="parallelCP.eaog.id"/>
+                <EaogNodeComponent :node="parallelCP.cp.eaog" :key="parallelCP.cp.eaog.id"/>
               </div>
             </div>
           </Pane>
@@ -93,7 +93,7 @@ watch(parallelCP, (newValue) => setTimeout(() => {
     </Splitpanes>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-    <MainSideEaogLinks v-if="parallelCPDomReady" :container="editorContainer"/>
+    <MainSideEaogLinks v-if="parallelCPDomReady && parallelCP?.sideCP" :container="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

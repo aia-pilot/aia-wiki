@@ -20,8 +20,8 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue';
 import OrthogonalLinkLayer from '../node-links-layer/orthogonal-link-layer.vue';
 import type {LinkSpec} from '../node-links-layer/types';
-import {mainCP} from '../../models/cp-editor-state';
-import type {SideCP, SyncPoint} from '../../models/types';
+import {parallelCP} from '../../models/cp-editor-state';
+import type {SyncPoint} from '../../models/types';
 import Debug from 'debug';
 import {type ContentBox, getAllContentBoxes} from "#/views/cp/components/node-links-layer/utils/get-all-content-box";
 
@@ -37,11 +37,6 @@ const emit = defineEmits<{
 }>();
 
 
-// 获取sideCP数据
-function getSideCP(): SideCP | undefined {
-  if (!mainCP.value!.eaog) return undefined;
-  return mainCP.value!.sideCPs[0]; // TODO: 待改进
-}
 
 // 添加一个触发器，用于重新计算链接
 const recalculateTrigger = ref(0);
@@ -57,7 +52,8 @@ const links = computed<LinkSpec[]>(() => {
   const trigger = recalculateTrigger.value;
   debug('重新计算links，trigger:', trigger);
 
-  const sideCP = getSideCP();
+  const sideCP = parallelCP.value!.sideCP;
+  const integrationManager = parallelCP.value!.cp.eaog.integrationManager;
   if (!sideCP?.syncPoints?.length || !props.container) return [];
 
   const linkSpecs: LinkSpec[] = [];
@@ -66,11 +62,13 @@ const links = computed<LinkSpec[]>(() => {
   for (const syncPoint of sideCP.syncPoints) {
     try {
       // 查找主EAOG中的actor节点DOM元素
-      const actorSelector = `.main-eaog [data-node-path$="${syncPoint.actor.path}"] .eaog-node-name`;
+      const actorEaogPath = integrationManager.getEaogBriefPath(syncPoint.actor.path);
+      const actorSelector = `.main-eaog [data-node-path$="${actorEaogPath}"] .eaog-node-name`;
       const actorElement = props.container.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
-      const waiterSelector = `.parallel-eaog [data-node-path$="${syncPoint.waiter.path}"] .node-type-icon`;
+      const waiterEaogPath = integrationManager.getEaogBriefPath(syncPoint.waiter.path);
+      const waiterSelector = `.parallel-eaog [data-node-path$="${waiterEaogPath}"] .node-type-icon span`;
       const waiterElement = props.container.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
@@ -91,7 +89,7 @@ const links = computed<LinkSpec[]>(() => {
         label: linkLabel,
         type: linkType,
         style: {
-          color: syncPoint.block ? '#f00' : '#0f0',
+          color: syncPoint.block ? '#f00' : '#00f',
           dashed: !syncPoint.block,
           arrow: syncPoint.block ? 'start' : 'end',
           strokeWidth: 2,

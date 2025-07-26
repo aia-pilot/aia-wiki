@@ -19,7 +19,11 @@ import {EditableIntegrationManager} from "#/views/cp/models/editable-integration
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager', 'integrationManager', 'ipath'];
+const TRANSIENT_ATTRIBUTES = [
+  'id', 'isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp',
+  'integratedCPManager', 'integratedCPBeforeNode', 'integratedCPAfterNode', 'integratedCPReplaceNode',
+  'integrationManager', 'ipath', 'hookManager', 'syncManager', 'briefPath'
+];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
