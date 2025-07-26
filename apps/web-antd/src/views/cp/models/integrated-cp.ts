@@ -3,6 +3,7 @@ import type { CP } from './types.d';
 import type { EditableEaogNode } from './editable-eaog-node';
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 import type { IntegrationType } from './types.d';
+import type {EditableCP} from "#/views/cp/models/editable-cp";
 
 /**
  * 集成CP的展示方式类型
@@ -48,7 +49,7 @@ export class IntegratedCP {
     const {createEditableCP} = await import('#/views/cp/models/editable-cp');
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
-    cp = await createEditableCP(cp, filePath, this.node.cp); // 创建EditableCP实例
+    cp = await createEditableCP(cp, filePath); // 创建EditableCP实例
     // @ts-ignore
     cp.integratedCP = this; // 关联当前集成CP到CP模块
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = cp.eaog
@@ -83,7 +84,6 @@ export class IntegratedCP {
  */
 export class IntegratedCPManager {
   private node: EditableEaogNode;
-  private readonly cp: CP | undefined;
 
   /**
    * 构造函数，分析并收集节点对应的所有集成CP
@@ -91,11 +91,10 @@ export class IntegratedCPManager {
    */
   constructor(node: EditableEaogNode) {
     this.node = node;
-    this.cp = node.cp;
   }
 
   get integrationManager() {
-    return this.cp.integrationManager as EditableIntegrationManager // 懒加载，确保 integrationManager 已经初始化
+    return this.node.root.integrationManager as EditableIntegrationManager // 懒加载，确保 integrationManager 已经初始化
   }
 
   _integratedCPs: IntegratedCP[] | null = null; // 集成CP列表

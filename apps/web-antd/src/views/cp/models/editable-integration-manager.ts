@@ -1,8 +1,7 @@
 import type {IntegrationPoint, IntegrationType, EaogNode} from './types.d';
 // @ts-ignore
-import {z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
-// @ts-ignore
-import {CPIntegrationManager, IntegrationPointSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
+import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {CPIntegrationManager} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
 /**
  * 可编辑的集成管理器，继承自CPIntegrationManager
  * 提供针对节点的集成点操作方法

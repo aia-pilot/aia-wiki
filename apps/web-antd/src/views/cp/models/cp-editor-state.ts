@@ -44,7 +44,7 @@ export const currentTab: Ref<string | undefined> = ref(undefined);
 watch(mainCPModule, async (newCPM) => {
   if (newCPM?.cp) {
     const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-    const cp = await createEditableCP({...newCPM.cp, filePath: newCPM.filePath} as CP);
+    const cp = await createEditableCP(newCPM.cp as CP, newCPM.filePath);
     mainCP.value = cp;
   } else {
     mainCP.value = undefined;

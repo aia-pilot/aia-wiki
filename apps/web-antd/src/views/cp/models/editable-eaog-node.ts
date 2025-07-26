@@ -14,12 +14,12 @@ import {currentCP, currentNode} from "./cp-editor-state";
 import type {EaogNode} from "#/views/cp/models/types";
 import {IntegratedCPManager} from "./integrated-cp";
 import type {EditableCP} from "#/views/cp/models/editable-cp";
-import type {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
+import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
-const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager', 'ipath'];
+const TRANSIENT_ATTRIBUTES = ['isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp', 'integratedCPManager', 'integrationManager', 'ipath'];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -55,6 +55,7 @@ export class EditableEaogNode implements EaogNode {
   isCollapsed = false; // 标记节点是否折叠子节点
 
   cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
+  integrationManager?: EditableIntegrationManager | undefined; // 集成管理器，处理集成点的添加和查询
   ipath?: string; /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
 
   // 展示集成CP，包括action, hook, sideCP, frameworks等（TRANSIENT）
@@ -83,10 +84,6 @@ export class EditableEaogNode implements EaogNode {
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
     this.integratedCPManager = new IntegratedCPManager(this); // 创建集成CP管理器
-  }
-
-  get integrationManager() {
-    return this.cp!.integrationManager as EditableIntegrationManager; // 获取当前CP的集成管理器
   }
 
   // 新增的 getter 方法
