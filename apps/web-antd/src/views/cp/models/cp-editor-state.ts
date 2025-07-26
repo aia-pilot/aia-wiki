@@ -97,6 +97,7 @@ export const saveCurrentCP = async (isNew = false) => {
 /**
  * 加载并行CP，并行CP将出现在ParallelCP Pane中
  * @param modulePath
+ * @deprecated 该方法已弃用，同时，调用它的cp-panel也要改动
  */
 export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('./cp-loader');

@@ -1,9 +1,10 @@
 // @ts-nocheck
-import type { CP } from './types.d';
-import type { EditableEaogNode } from './editable-eaog-node';
+import type {CP, Hook} from './types.d';
+import type {EditableEaogNode} from './editable-eaog-node';
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
-import type { IntegrationType } from './types.d';
+import type {IntegrationType} from './types.d';
 import type {EditableCP} from "#/views/cp/models/editable-cp";
+import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 
 /**
  * 集成CP的展示方式类型
@@ -15,9 +16,9 @@ export type ShowAsType = 'before' | 'after' | 'replace' | 'parallel';
  */
 export class IntegratedCP {
   // 业务属性
-  node: EditableEaogNode;           // 对应的节点
+  node: EditableEaogNode;           // 对应的节点，将在节点的UI界面 Node tailbar，提供操作入口
+  launchHook: Hook;     // 集成CP的启动节点，通常等于node；type为'sync'时，是对应sideCP的launch节点
   type: IntegrationType;           // 集成CP的类型
-  syncTo?: string;                  // 同步点路径（SyncPoint的waiter.path）
 
   // 视觉、交互属性
   showAt: ShowAsType;               // 如何呈现，与主CP的关系。block执行的，将在原节点处，前、后插入，或替换。非block执行的，将在并行面板中展示。
@@ -30,15 +31,23 @@ export class IntegratedCP {
    * @param type 集成CP类型
    * @param cpLocateStr CP定位字符串
    * @param showAt 如何展示，当前节点前、后，或替换原节点，或并行展示
-   * @param syncTo 同步点路径（可选）
+   * @param launchHook 集成CP的启动Hook，通常为undefined；type为'sync'时，是对应sideCP的launch hook
    */
-  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, syncTo?: string) {
+  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, launchHook?: Hook) {
     this.node = node;
     this.type = type;
     this.cpLocateStr = cpLocateStr;
     this.showAt = showAt;
-    this.syncTo = syncTo;
+    this.launchHook = launchHook; // 如果是'sync'类型，则使用对应的sideCP的launch节点，否则使用当前节点
     this.isShown = false
+  }
+
+  get integrationType(): IntegrationType {
+    return this.type === 'sync' ? 'launch' : this.type; // 'sync'类型的集成CP实际上是一个sideCP的launch点
+  }
+
+  get integrationNode(): EditableEaogNode {
+    return this.launchHook ? findNodeByBriefPath(this.node.root, this.launchHook.path) : this.node; // 如果有launchHook，则使用它，否则使用当前节点
   }
 
   /**
@@ -49,14 +58,13 @@ export class IntegratedCP {
     const {createEditableCP} = await import('#/views/cp/models/editable-cp');
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
-    cp = await createEditableCP(cp, filePath); // 创建EditableCP实例
-    // @ts-ignore
+    cp = await createEditableCP(cp, filePath, {type: this.integrationType, node: this.integrationNode});
     cp.integratedCP = this; // 关联当前集成CP到CP模块
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = cp.eaog
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = cp.eaog
-      : this.showAt === 'after' ? this.node.integratedCPAfterNode = cp.eaog
-        : this.showAt === 'parallel' ? parallelCP.value = cp
-          : null
+        : this.showAt === 'after' ? this.node.integratedCPAfterNode = cp.eaog
+          : this.showAt === 'parallel' ? parallelCP.value = cp
+            : null
     this.isShown = true; // 标记为已展示
   }
 
@@ -64,9 +72,9 @@ export class IntegratedCP {
     const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = undefined
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = undefined
-      : this.showAt === 'after' ? this.node.integratedCPAfterNode = undefined
-        : this.showAt === 'parallel' ? parallelCP.value = undefined
-          : null;
+        : this.showAt === 'after' ? this.node.integratedCPAfterNode = undefined
+          : this.showAt === 'parallel' ? parallelCP.value = undefined
+            : null;
     this.isShown = false; // 标记为未展示
   }
 
@@ -103,12 +111,13 @@ export class IntegratedCPManager {
       const integrations = this.integrationManager.getIntegrations(this.node) || [];
       this._integratedCPs = integrations
         .filter(({cpLocateStr}) => !!cpLocateStr) // 过滤掉没有CP定位字符串的集成点
-        .map(({type, block, hook, cpLocateStr}) => {
-        const showAt = type === 'launch' || type === 'sync' ? 'parallel' : // launch、sync 是Side CP，总是并行执行
-          type === 'action' || type === 'mount' ? 'replace' : // mount 是Framework CP，总是替换当前节点、action
-            hook // type === 'hook';
-        return new IntegratedCP(this.node, type as IntegrationType, cpLocateStr, showAt/* integration.syncTo */);
-      })
+        .map(({type, block, hook, cpLocateStr, launchHook}) => {
+          const showAt = type === 'launch' || type === 'sync' ? 'parallel' : // launch、sync 是Side CP，总是并行执行
+            type === 'action' || type === 'mount' ? 'replace' : // mount 是Framework CP，总是替换当前节点、action
+              hook; // type === 'hook';
+
+          return new IntegratedCP(this.node, type as IntegrationType, cpLocateStr, showAt, launchHook);
+        })
     }
     return this._integratedCPs; // 懒加载
   }
@@ -127,128 +136,6 @@ export class IntegratedCPManager {
 
 
   /**
-   * 收集节点相关的所有集成CP
-   */
-  private collectIntegratedCPs(): void {
-    // 清空现有的集成CP列表
-    this.integratedCPs = [];
-
-    // 分析节点的action属性
-    this.collectActionCP();
-
-    // 分析hooks中action指向的CP
-    this.collectHooksCP();
-
-    // 分析sideCP的launchPoint和syncPoints
-    this.collectSideCPsCP();
-
-    // 分析frameworks的mountPoints
-    this.collectFrameworksMountPointsCP();
-  }
-
-  /**
-   * 收集节点action属性指向的CP
-   */
-  private collectActionCP(): void {
-    if (this.node.action && typeof this.node.action === 'string' && this.node.action.startsWith('cp://')) {
-      this.integratedCPs.push(new IntegratedCP(
-        this.node,
-        IntegrationType.Action,
-        this.node.action,
-        // @ts-ignore TODO：node添加block属性，让action可以非阻塞执行
-        this.node.block ?? true ? 'replace' : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
-      ));
-    }
-  }
-
-  /**
-   * 收集hooks中action指向的CP
-   */
-  private collectHooksCP(): void {
-    if (!this.cp?.hooks) return;
-
-    // 找出与当前节点相关的hooks
-    const nodeHooks = this.cp.hooks.filter(hook => {
-      // 判断hook的path是否与当前节点匹配
-      return this.isNodeMatch(hook.path);
-    });
-
-    // 收集hooks中action指向的CP
-    for (const hook of nodeHooks) {
-      if (hook.action && hook.action.startsWith('cp://')) {
-        this.integratedCPs.push(new IntegratedCP(
-          this.node,
-          IntegrationType.Hook,
-          hook.action,
-          hook.block ?? false ? (hook.hook /* 'before' | 'after' */) : 'parallel' // 如果是阻塞执行，则集成在当前节点，否则并行展示
-        ));
-      }
-    }
-  }
-
-  private isNodeMatch(path: string) { /** 注意：这个是hack，实际上重构 {@link Hook#findMatchedNode} 的算法 */
-    return path.endsWith(this.node.name);
-    // return path === this.node.name || path === this.node.path;
-  }
-
-  /**
-   * 收集sideCP的launchPoint和syncPoints指向的CP
-   */
-  private collectSideCPsCP(): void {
-    if (!this.cp?.sideCPs) return;
-
-    // 检查sideCPs的launchPoint
-    for (const sideCP of this.cp.sideCPs) {
-      // 判断launchPoint是否与当前节点匹配
-      if (this.isNodeMatch(sideCP.launchPoint)) {
-        this.integratedCPs.push(new IntegratedCP(
-          this.node,
-          IntegrationType.SideCPLaunchPoint,
-          sideCP.cp,
-          'parallel' // SideCP总是和主CP并行执行
-        ));
-      }
-
-      // 检查syncPoints
-      for (const syncPoint of sideCP.syncPoints || []) {
-        // 判断actor的path是否与当前节点匹配
-        if (this.isNodeMatch(syncPoint.actor.path)) {
-          this.integratedCPs.push(new IntegratedCP(
-            this.node,
-            IntegrationType.SideCPSyncPoint,
-            sideCP.cp,
-            'parallel', // SideCP的syncPoint通常是并行执行
-            syncPoint.waiter.path // syncTo waiter.path
-          ));
-        }
-      }
-    }
-  }
-
-  /**
-   * 收集frameworks的mountPoints指向的CP
-   */
-  private collectFrameworksMountPointsCP(): void {
-    if (!this.cp?.frameworks) return;
-
-    for (const framework of this.cp.frameworks) {
-      // 检查框架的所有挂载点
-      for (const mountPoint of framework.mountPoints || []) {
-        // 判断挂载点是否与当前节点匹配
-        if (this.isNodeMatch(mountPoint.path)) {
-          const integratedCP = new IntegratedCP(
-            this.node,
-            IntegrationType.FrameworkMountPoint,
-            framework.cp, // TODO: 从cp实例，反射获取cpLocateStr
-            'replace' // 框架挂载点将被替换为框架
-          );
-          this.integratedCPs.push(integratedCP);
-        }
-      }
-    }
-  }
-
- /**
    * 获取集成CP的数量
    * @param type 集成CP类型（可选）
    */

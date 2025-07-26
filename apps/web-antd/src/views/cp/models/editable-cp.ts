@@ -81,11 +81,11 @@ export class EditableCP implements CP {
 /**
  * @param cp
  * @param filePath
- * @param integrationType
+ * @param integration
  */
-export async function createEditableCP(cp: CP, filePath?: string, integrationType: IntegrationType = 'action'): Promise<EditableCP> {
+export async function createEditableCP(cp: CP, filePath?: string, integration?: {type: IntegrationType, node: EditableEaogNode}): Promise<EditableCP> {
   const {currentNode} = await import('./cp-editor-state'); // 动态导入，避免循环依赖
-  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, filePath, currentNode.value, integrationType);
+  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, filePath, integration?.node || currentNode.value, integration?.type || 'action');
   editableCP.history = new CPHistory(editableCP.cloneDeep());
   return editableCP;
 
