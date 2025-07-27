@@ -1,4 +1,4 @@
-import {ref} from 'vue'; // 添加Vue的ref引入
+import {ref} from 'vue';
 // @ts-ignore 忽略导入的类型
 import {cpEaogSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
@@ -10,12 +10,14 @@ import {omit} from "lodash-es";
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
-import {currentCP, currentNode} from "./cp-editor-state";
+import {currentCP} from "./cp-editor-state";
 import type {EaogNode} from "#/views/cp/models/types";
 import {IntegratedCPManager} from "./integrated-cp";
 import type {EditableCP} from "#/views/cp/models/editable-cp";
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
-
+// 导入所需的具体函数
+import * as treeUtils from "../utils/tree-utils";
+// @ts-ignore 忽略导入的类型
 const debug = Debug("aia:cp:eaog-node");
 
 // 将isClicked从TRANSIENT_ATTRIBUTES中移除
@@ -83,7 +85,7 @@ export class EditableEaogNode implements EaogNode {
   constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
-    this.cp = cp; // 设置当前Eaog的CP
+    this.cp = cp; // 设���当前Eaog的CP
     this.children = Array.isArray(node.children)
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
@@ -110,7 +112,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * 递归获取所有子孙节点
+   * 递归获取所有子孙���点
    */
   get descendants(): EditableEaogNode[] {
     return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
@@ -140,11 +142,11 @@ export class EditableEaogNode implements EaogNode {
   select(multiSelect = false): void {
     if (!multiSelect && this.root) {
       // 如果不是多选模式，清除所有其它节点的选中状态
-      this.root.traverseAll(node => {
+      treeUtils.traverseAll(this.root, node => {
         if (node !== this) {
           node.isSelected = false;
         }
-      })
+      });
     }
     this.isSelected = !this.isSelected; // 切换选中状态
   }
@@ -157,7 +159,7 @@ export class EditableEaogNode implements EaogNode {
   // 取消所有选中
   deselectAll(): void {
     if (this.root) {
-      this.root.traverseAll(node => {
+      treeUtils.traverseAll(this.root, node => {
         node.isSelected = false;
       });
     }
@@ -166,7 +168,7 @@ export class EditableEaogNode implements EaogNode {
   // 获取所有被选中的节点
   getSelectedNodes(): EditableEaogNode[] {
     const selected: EditableEaogNode[] = [];
-    this.root.traverseAll(node => {
+    treeUtils.traverseAll(this.root, node => {
       if (node.isSelected) {
         selected.push(node);
       }
@@ -174,30 +176,12 @@ export class EditableEaogNode implements EaogNode {
     return selected;
   }
 
-  // getClickedNode函数已从类中移除
-
-  // 遍历所有节点
   traverseAll(callback: (node: EditableEaogNode) => void): void {
-    callback(this);
-    for (const child of this.children) {
-      child.traverseAll(callback);
-    }
+    treeUtils.traverseAll(this, callback);
   }
 
-  // 查找特定节点
   findNode(predicate: (node: EditableEaogNode) => boolean): EditableEaogNode | null {
-    if (predicate(this)) {
-      return this;
-    }
-
-    for (const child of this.children) {
-      const found = child.findNode(predicate);
-      if (found) {
-        return found;
-      }
-    }
-
-    return null;
+    return treeUtils.findNode(this, predicate);
   }
 
   // 设置新修改状态（用于动画效果）
@@ -223,11 +207,11 @@ export class EditableEaogNode implements EaogNode {
   }
 
   get pathNodes(): EditableEaogNode[] {
-    return this.isRoot ? [this] : [...(this.parent as EditableEaogNode).pathNodes, this]; // 获取从根节点到当前节点的路径节点数���
+    return this.isRoot ? [this] : [...(this.parent as EditableEaogNode).pathNodes, this]; // 获取从根节点到当前节点的路径节点数组
   }
 
   get path(): string {
-    return this.pathNodes.map(node => node.name).join('/'); // 获��从根节点到当前节点的路径字符串
+    return this.pathNodes.map(node => node.name).join('/'); // 获取从根节点到当前节点的路径字符串
   }
 
   get previousSibling(): EditableEaogNode | undefined {
@@ -235,7 +219,7 @@ export class EditableEaogNode implements EaogNode {
       return undefined; // 如果没有父节点，则没有前一个兄弟节点
     }
     const index = this.indexInParent;
-    return index > 0 ? this.parent.children[index - 1] : undefined; // 返回前一个兄弟节点或 null
+    return index > 0 ? this.parent.children[index - 1] : undefined; // 返回前一个兄弟节点或 undefined
   }
 
   get nextSibling(): EditableEaogNode | undefined {
@@ -243,7 +227,7 @@ export class EditableEaogNode implements EaogNode {
       return undefined; // 如果没有父节点，则没有下一个兄弟节点
     }
     const index = this.indexInParent;
-    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 下一个兄弟节点或 null
+    return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 下一个兄弟节点或 undefined
   }
 
   get indexInParent(): number {
@@ -257,8 +241,6 @@ export class EditableEaogNode implements EaogNode {
       return launchPoint === this.name /** 注意：这个是hack，实际上重构 {@link Hook#findMatchedNode} 的算法 */
     })
     return cp?.cp; // 返回与当前节点匹配的辅助CP
-    // const sideCPs = this.root.cp?.sideCPs || [];
-    // return sideCPs.find(cp => cp.id === this.cp?.id); // 查找与当前节点相同ID的侧CP
   }
 
   /**
@@ -279,10 +261,8 @@ export class EditableEaogNode implements EaogNode {
     return clone;
   }
 
-
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
-    // const action = typeof this.action === 'function' ? this.action.toString() : this.action; // 将函数转换为字符串 TODO: 如何恢复？需要更好的处理函数
     const res = {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
     return getCleanObj(res) as any; // 确保返回的对象没有 undefined 属性
   }
@@ -312,264 +292,60 @@ export class EditableEaogNode implements EaogNode {
     Object.assign(this, values);
   }
 
-  /**
-   * 保障子节点������一。如果已经有同名子节点，则在名称后添加数字后缀（依次递增）。
-   */
-  _ensureChildWithUniqueName(child: EditableEaogNode): void {
-    child.name = uniqNameWithSequenceSuffix(child.name, this.children.map(c => c.name)); // 确保子节点名称唯一
-    // child.name = this._getUniqueName(child.name, this.children.map(c => c.name));
-  }
-
-  /**
-   * 在原有名称基础上生成一个唯一的名称
-   * @param name
-   * @param usedNames
-   */
-  _getUniqueName(name: string, usedNames: string[]): string {
-    if (!usedNames.includes(name)) {
-      return name; // 如果名称未被使用，直接返回
-    }
-    // 如果名称已被使用，则在其后面添加数字后缀，直到找到一个未被使用的名称
-    const regex = new RegExp(`^${name}-(\\d+)?$`);
-    const existingNames = usedNames.filter(n => regex.test(n));
-    const maxIndex = existingNames.reduce((max, n) => {
-      const match = n.match(regex);
-      if (match && match[1]) {
-        const index = parseInt(match[1], 10);
-        return Math.max(max, index);
-      }
-      return max;
-    }, -1);
-    return `${name}-${maxIndex + 1}`; // 返回新的唯一名称
-  }
-
+  // 树操作方法现在使用导出的函数
   addChild(child: EditableEaogNode, anchor?: EditableEaogNode, position: 'before' | 'after' = 'after'): void {
-    this._ensureChildWithUniqueName(child); // 确保子节点名称唯一
-    if (anchor) {
-      // 如果指定了锚点节点，则在锚点前或后插入
-      const index = this.children.indexOf(anchor);
-      if (index === -1) {
-        throw new Error('Anchor node not found in children');
-      }
-      if (position === 'before') {
-        this.children.splice(index, 0, child);
-      } else { // 'after'
-        this.children.splice(index + 1, 0, child);
-      }
-    } else {
-      // 如果没有指定锚点，则直接添加到子节点列表末尾
-      this.children.push(child);
-    }
-    child.parent = this; // 设置子节点的父节点为当前节点
+    treeUtils.addChild(this, child, anchor, position);
   }
 
-  /**
-   * 在指定位置插入节点
-   * @param newNode 要插入的新节点
-   * @param position 插入位置: 'before' | 'after' | 'child' | 'parent'
-   * @returns 新插入的节点
-   */
   insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
-    newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp); // 确保 newNode 是 EditableEaogNode 实例
-    if (position === 'before' || position === 'after') {
-      if (!this.parent) {
-        throw new Error('Cannot insert sibling for root node');
-      }
+    const nodeToInsert = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp);
 
-      this.parent.addChild(newNode, this, position); // 使用父节点的 addChild 方法插入新节点
-    } else if (position === 'child') {
-      this.addChild(newNode); // 直接添加为当前节点的子节点的最后一个
-    } else if (position === 'parent') { // 新节点作为当前节点的父节点，插入当前节点的位置
-      if (!Eaog.isCompositeType(newNode.type)) {
-        throw new Error('Cannot promote non-composite node to parent');
-      }
-      if (!this.parent) {
-        debug('更换根节点', newNode, this);
-        newNode.addChild(this);
-        currentCP.value!.eaog = newNode; // 更新当前CP的EAOG为新节点
-      } else {
-        this.parent.addChild(newNode, this, 'before'); // 在当前节点之前插入新节点
-        this.remove(); // 从当前父节点中移除当前节点
-        newNode.addChild(this); // 将当前节点添加为新节点的子节点
-      }
+    const insertedNode = treeUtils.insert(this, nodeToInsert, position);
+
+    // 特殊处理根节点更换情况
+    if (position === 'parent' && this.isRoot && insertedNode !== this) {
+      currentCP.value!.eaog = insertedNode;
     }
-    return newNode; // 返回新插入的节点
+
+    return insertedNode;
   }
 
   replaceWith(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
-    const {previousSibling, nextSibling, parent} = this
-    this.remove(); // 移除当前节点，先移除后加入，保障replace后的节点有正确的命名
-    // 替换到原有位置
-    return previousSibling?.insert(newNode, 'after') || nextSibling?.insert(newNode, 'before') || parent?.insert(newNode, 'child') || undefined
+    const nodeToReplace = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp);
+    return treeUtils.replaceWith(this, nodeToReplace);
   }
 
   replaceWithPlaceHolder(): EditableEaogNode {
-    const placeholder = createPlaceHolderNode(this.name); // 创建一个占位符节点
-    return this.replaceWith(placeholder)!; // 替换当前节点为占位符
+    const placeholder = createPlaceHolderNode(this.name);
+    return this.replaceWith(placeholder)!;
   }
 
-  /**
-   * 如果当前节点是sequential的，其父节点也是sequential的，则将当前节点的所有子节点提升到父节点位置，取代当前节点。
-   */
   shrinkSequentialParent(): boolean {
-    if (!this.parent || !Eaog.isSequentialType(this.parent.type) || !Eaog.isSequentialType(this.type)) {
-      debug('Cannot shrink non-sequential parent or node', this, this.parent);
-      return false
-    }
-    this.remove(false); // 不删除子树，只提升子节点
-    return true
+    return treeUtils.shrinkSequentialParent(this);
   }
 
-  /**
-   * 移除当前节点
-   * @param deleteSubtree 是否同时删除子树，如果为false则提升子节点到当前节点位置
-   * @returns 被移除的节点
-   */
   remove(deleteSubtree: boolean = true): EditableEaogNode {
-    if (!this.parent) {
-      throw new Error('Cannot remove root node');
-    }
-
-    const index = this.indexInParent;
-    this.parent.children.splice(index, 1);
-
-    if (!deleteSubtree && this.children.length > 0) {
-      // 需要提升子节点，将子节点提升到父节点
-      this.parent.children.splice(index, 0, ...this.children);
-      // 更新子节点的父节点引用
-      this.children.forEach(child => {
-        child.parent = this.parent;
-      });
-    }
-
-    // 清除被移除节点的父节点引用
-    delete this.parent;
-
-    return this;
+    return treeUtils.remove(this, deleteSubtree);
   }
 
-  /**
-   * 根据路径获取后代节���
-   * @param path 路径字符串，格式为 "node1/node2/node3"
-   * @returns 找到的子节点或 null
-   */
   getDescendantByPath(path: string): EditableEaogNode | null {
-    const pathNodes = path.split('/').filter(Boolean); // 分割路径并过滤空字符串
-
-    // 空路径返回当前节点
-    if (pathNodes.length === 0) {
-      return this;
-    }
-
-    let _currentNode: EditableEaogNode = this;
-
-    // 遍历路径节点名称
-    for (let i = 0; i < pathNodes.length; i++) {
-      const nodeName = pathNodes[i];
-
-      // 在当前层次查找匹配名称的子节点
-      const childNode = _currentNode.children.find(child => child.name === nodeName);
-
-      if (!childNode) {
-        debug(`找不到名为 ${nodeName} 的子节点，在路径 ${path} 中，当前节点是 ${_currentNode.name}`);
-        return null;
-      }
-
-      _currentNode = childNode;
-    }
-
-    return _currentNode;
+    return treeUtils.getDescendantByPath(this, path);
   }
 
-  /**
-   * 根据路径获取节点
-   * @param path 路径字符串，格式如 "/root/node1/node2" 或 "root/node1/node2"
-   * @returns 找到的节点或 null
-   */
   getNodeByPath(path: string): EditableEaogNode | null {
-    // 去除开头的斜杠
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-
-    // 拆分路径
-    const pathParts = cleanPath.split('/').filter(Boolean);
-
-    if (pathParts.length === 0) {
-      return null;
-    }
-
-    // 获取根节点
-    const rootNode = this.root;
-
-    // 首先检查根节点名称是否匹配
-    if (pathParts[0] !== rootNode.name) {
-      debug(`根节点名称不匹配: 期望 ${pathParts[0]}，实际 ${rootNode.name}`);
-      return null;
-    }
-
-    // 从根节点开始，顺着路径查找
-    let _currentNode: EditableEaogNode = rootNode;
-
-    for (let i = 1; i < pathParts.length; i++) {
-      const childName = pathParts[i];
-      const childNode = _currentNode.children.find(child => child.name === childName);
-
-      if (!childNode) {
-        debug(`在路径 ${path} 中找不到子节点 ${childName}`);
-        return null;
-      }
-
-      _currentNode = childNode;
-    }
-
-    return _currentNode;
+    return treeUtils.getNodeByPath(this.root, path);
   }
 
-  /**
-   * 移动节点到新的位置
-   * @param targetNode 目标节点
-   * @param position 移动位置: 'before' | 'after' | 'child'
-   * @returns 是否成功移动
-   */
   moveTo(targetNode: EditableEaogNode, position: 'before' | 'after' | 'child'): boolean {
-    // 防止将节点移动到自己
-    if (this === targetNode) {
-      return false;
-    }
-
-    // 防止将节点移动到自己的子节点中（会造成循环引用）
-    if (position === 'child' && this.descendants.includes(targetNode)) {
-      return false;
-    }
-    this.remove();
-    targetNode.insert(this, position);
-    return true; // 成功移动
+    return treeUtils.moveTo(this, targetNode, position);
   }
-
-  /**
-   * 为根节点添加历史记录、CP等属性
-   */
-  // initRoot(cp: CP): void {
-  //   if (!this.isRoot) {
-  //     debug('只有根节点可以初始化历史记录');
-  //     return;
-  //   }
-  //   this.cp = cp; // 设置当前Eaog的cp属性
-  //   this.history = new EaogHistory(this);
-  // }
 }
-
-// 从CP中创建一个新的EditableEaogNode实例
-// TODO: 改用EditableCP构造子
-// export function createEaogFromCp(cp: CP): EditableEaogNode {
-//   const eaog = new EditableEaogNode(convertBriefEaog(cp.eaog));
-//   eaog.cp = cp; // 设置当前Eaog的CP
-//   return eaog;
-// }
 
 // 当前EAOG数据作为全局共享状态、当前被点击节点以及剪贴板节点等全局状态已移至cp-editor-state.ts
 
 // 剪贴板中的节点，用于复制粘贴操作, 以及剪贴板新建
 export const clipboardNode = ref<EditableEaogNode | null>(null);
+export const currentNode = ref<EditableEaogNode | null>(null); // 导出当前选择的节点
 
 export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any, any> => {
   for (const n of eaog.nodes) {
@@ -636,4 +412,3 @@ export const nodeTypeUIConfig = {
 
   _default:    { color: 'gray', icon: '◆', description: '未知节点类型' } // 未知节点，缺省配置
 };
-
