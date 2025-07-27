@@ -17,7 +17,7 @@ export class EditableCP implements CP {
   frameworks: EaogFramework[];
   filePath?: string; // 可选的文件路径，用于本地存储
   launchNode?: EditableEaogNode; // 启动CP的节点，即当前编辑的节点
-  integrationType: IntegrationType; // 集成点类型，默认为'action'
+  integrationType: IntegrationType; // 集成点类型，默认为 'action'
 
   // Transient properties
   history?: CPHistory;
@@ -39,7 +39,7 @@ export class EditableCP implements CP {
     this.filePath = filePath;
     this.launchNode = launchNode;
     this.integrationType = integrationType;
-    this.eaog = eaog instanceof EditableEaogNode ? eaog : new EditableEaogNode(eaog, null, this); // 确保eaog是EditableEaogNode实例
+    this.eaog = eaog instanceof EditableEaogNode ? eaog : new EditableEaogNode(eaog, undefined, this); // 确保eaog是EditableEaogNode实例
 
     EditableIntegrationManager.prepareIntegrationsForEaog(this, launchNode, integrationType, null); // 准备集成点
   }
@@ -85,7 +85,7 @@ export class EditableCP implements CP {
  */
 export async function createEditableCP(cp: CP, filePath?: string, integration?: {type: IntegrationType, node: EditableEaogNode}): Promise<EditableCP> {
   const {currentNode} = await import('./cp-editor-state'); // 动态导入，避免循环依赖
-  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, filePath, integration?.node || currentNode.value, integration?.type || 'action');
+  const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks, filePath, integration?.node || currentNode.value, integration?.type ||  'action');
   editableCP.history = new CPHistory(editableCP.cloneDeep());
   return editableCP;
 

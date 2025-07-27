@@ -1,7 +1,10 @@
 import {EditableEaogNode} from "./editable-eaog-node";
 // @ts-ignore 忽略导入的类型
-import {eaogFrameworks as eaogFrameworkDefs} from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
+import {
+  eaogFrameworks as eaogFrameworkDefs
+} from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
 import type {EaogNode} from "#/views/cp/models/types";
+import type {EditableCP} from "#/views/cp/models/editable-cp";
 
 /**
  * Eaog Framework预定义了一定的执行结构，可以包装、装饰、结构化组装已有的行为（lc、cp、mcp、……）。
@@ -14,8 +17,8 @@ import type {EaogNode} from "#/views/cp/models/types";
  * 2. ……
  */
 export class EaogFramework extends EditableEaogNode {
-  constructor(root: EaogNode) {
-    super(root);
+  constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
+    super(node, parent, cp);
     if (!this.isRoot && !this.isLeaf) throw new Error("Root node is required to create an EaogFramework");
     if (!this.meta?.framework) throw new Error("EaogFramework root node must have meta.framework set to true.");
     if (this.descendants.some(d => d.meta?.framework)) throw new Error("EaogFramework root node cannot have descendants with meta.framework set to true.");
@@ -64,7 +67,7 @@ export class EaogFramework extends EditableEaogNode {
 
   get mountedNode(): EditableEaogNode | undefined {
     const mountedNodes = this.mountedNodes;
-    if (mountedNodes.length !== 1)  {
+    if (mountedNodes.length !== 1) {
       throw new Error(`Expected exactly one mounted node, but found ${mountedNodes.length}.`);
     }
     return mountedNodes[0];

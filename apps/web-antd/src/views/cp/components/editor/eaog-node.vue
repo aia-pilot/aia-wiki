@@ -20,7 +20,7 @@ import Debug from 'debug';
 
 // 导入重构后的组合式函数
 import {useDraggable} from "../../composables/use-draggable";
-import {EaogFramework} from "#/views/cp/models/eaog-framework";
+// import {EaogFramework} from "#/views/cp/models/eaog-framework";
 import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
@@ -35,7 +35,7 @@ const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 
 const node = props.node.showNode;
 const isReplacedByIntegratedCP = props.node.isReplacedByIntegratedCP;
-const integratedCPLabel = isReplacedByIntegratedCP && `<${node.cp.integratedCP.type}：${node.name}>`
+const integratedCPLabel = isReplacedByIntegratedCP && `<${node.cp?.integratedCP.type}：${node.name}>`
 const nodeName = isReplacedByIntegratedCP ? `${props.node.name}: ${integratedCPLabel}` : props.node.name;
 const nodeDescription = isReplacedByIntegratedCP ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${integratedCPLabel}`)}` : props.node.description;
 
@@ -44,11 +44,6 @@ const nodeDescription = isReplacedByIntegratedCP ? `${[props.node.description, n
 // const nodeDescription = node.isFramework && (node as EaogFramework).mountedNode
 //   ? (node as EaogFramework).mountedNode!.description
 //   : node.description;
-
-// 判断子节点是否为集成CP节点
-const isChildIntegratedCP = (child: EditableEaogNode) => {
-  return child.showNode !== child || !props.node.children.includes(child)
-};
 
 
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');

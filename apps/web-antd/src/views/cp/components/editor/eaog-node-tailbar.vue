@@ -43,6 +43,7 @@ const buttonConfigs = computed(() => {
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
       show: props.node.integratedCPManager?.has('action'),
+      class: 'rotate-90',
     },
     {
       type: 'hook',
@@ -93,7 +94,8 @@ const buttonConfigs = computed(() => {
       :icon="config.icon"
       :tooltip="config.tooltip"
       @click.stop="handleIntegratedCPClick(config.type as IntegrationType)"
-      class="opacity-0 group-hover:opacity-100"
+      class="opacity-0 group-hover:opacity-100 rotate-90"
+      :class="config.class || ''"
     />
   </div>
 </template>

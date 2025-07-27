@@ -34,7 +34,7 @@ export class EditableEaogNode implements EaogNode {
 
   // 组合节点的属性
   children: EditableEaogNode[];
-  parent: EditableEaogNode | null; // EditableEaogNode属性（非EaogNode属性, TRANSIENT），用于维护树形结构
+  parent?: EditableEaogNode; // EditableEaogNode属性（非EaogNode属性, TRANSIENT），用于维护树形结构
 
   // 递归节点的属性
   ref?: string;
@@ -80,7 +80,7 @@ export class EditableEaogNode implements EaogNode {
     return [this.integratedCPBeforeNode, ...this.children, this.integratedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
   }
 
-  constructor(node: EaogNode, parent: EditableEaogNode | null, cp?: EditableCP) {
+  constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
     this.cp = cp; // 设置当前Eaog的CP
@@ -370,7 +370,7 @@ export class EditableEaogNode implements EaogNode {
    * @returns 新插入的节点
    */
   insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
-    newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, null, this.cp); // 确保 newNode 是 EditableEaogNode 实例
+    newNode = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp); // 确保 newNode 是 EditableEaogNode 实例
     if (position === 'before' || position === 'after') {
       if (!this.parent) {
         throw new Error('Cannot insert sibling for root node');
@@ -443,7 +443,7 @@ export class EditableEaogNode implements EaogNode {
     }
 
     // 清除被移除节点的父节点引用
-    this.parent = null;
+    delete this.parent;
 
     return this;
   }
@@ -601,7 +601,7 @@ export const createPlaceHolderNode = (name: string) => {
     type: 'empty',
     name: `${name}-placeholder`,
     description: 'This is a placeholder node',
-  }, null);
+  });
 }
 
 /** 节点类型对应的颜色和图标 {@link allNodeTypes} */
