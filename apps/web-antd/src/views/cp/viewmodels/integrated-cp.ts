@@ -1,9 +1,9 @@
 // @ts-nocheck
 import type {CP, Hook, SideCP} from '../models/types';
-import type {EditableEaogNode} from '../models/editable-eaog-node';
+import type {EditableEaogNodeVMType} from '../models/editable-eaog-node-vm';
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 import type {IntegrationType} from '../models/types';
-import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 
 /**
@@ -16,7 +16,7 @@ export type ShowAsType = 'before' | 'after' | 'replace' | 'parallel';
  */
 export class IntegratedCP {
   // 业务属性
-  node: EditableEaogNode;           // 对应的节点，将在节点的UI界面 Node tailbar，提供操作入口
+  node: EditableEaogNodeVMType;           // 对应的节点，将在节点的UI界面 Node tailbar，提供操作入口
   launchHook: Hook;     // 集成CP的启动节点，通常等于node；type为'sync'时，是对应sideCP的launch节点
   sideCP?: SideCP;                // 对应的SideCP，如果有的话
   type: IntegrationType;           // 集成CP的类型
@@ -35,7 +35,7 @@ export class IntegratedCP {
    * @param launchHook 集成CP的启动Hook，通常为undefined；type为'sync'时，是对应sideCP的launch hook
    * @param sideCP 对应的SideCP
    */
-  constructor(node: EditableEaogNode, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, launchHook?: Hook, sideCP?: SideCP) {
+  constructor(node: EditableEaogNodeVMType, type: IntegrationType, cpLocateStr: string, showAt: ShowAsType, launchHook?: Hook, sideCP?: SideCP) {
     this.node = node;
     this.type = type;
     this.cpLocateStr = cpLocateStr;
@@ -49,7 +49,7 @@ export class IntegratedCP {
     return this.type === 'sync' ? 'launch' : this.type; // 'sync'类型的集成CP实际上是一个sideCP的launch点
   }
 
-  get integrationNode(): EditableEaogNode {
+  get integrationNode(): EditableEaogNodeVMType {
     return this.launchHook ? findNodeByBriefPath(this.node.root, this.launchHook.path) : this.node; // 如果有launchHook，则使用它，否则使用当前节点
   }
 
@@ -58,8 +58,8 @@ export class IntegratedCP {
    */
   async open() {
     const {loadCpFromCpStr} = await import('#/views/cp/services/cp-loader')
-    const {createEditableCP} = await import('#/views/cp/viewmodel/editable-cp');
-    const {parallelCP} = await import('#/views/cp/viewmodel/cp-editor-state');
+    const {createEditableCP} = await import('#/views/cp/viewmodels/editable-cp');
+    const {parallelCP} = await import('#/views/cp/viewmodels/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
     cp = await createEditableCP(cp, filePath, {type: this.integrationType, node: this.integrationNode});
     cp.integratedCP = this; /** 关联当前集成CP到CP，以便UI取值 {@link eaog-node.vue} TODO: 有缺陷，始终挂在CP上？ */
@@ -72,7 +72,7 @@ export class IntegratedCP {
   }
 
   async close() {
-    const {parallelCP} = await import('#/views/cp/viewmodel/cp-editor-state');
+    const {parallelCP} = await import('#/views/cp/viewmodels/cp-editor-state');
 
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = undefined
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = undefined
@@ -95,13 +95,13 @@ export class IntegratedCP {
  * 集成CP管理器，管理节点相关的所有集成CP
  */
 export class IntegratedCPManager {
-  private node: EditableEaogNode;
+  private node: EditableEaogNodeVMType;
 
   /**
    * 构造函数，分析并收集节点对应的所有集成CP
    * @param node 节点
    */
-  constructor(node: EditableEaogNode) {
+  constructor(node: EditableEaogNodeVMType) {
     this.node = node;
   }
 

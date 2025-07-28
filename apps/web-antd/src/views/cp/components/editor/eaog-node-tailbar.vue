@@ -4,7 +4,7 @@
  * 提供节点相关的功能按钮，如折叠/展开、同步点、钩子、子CP等
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
-import {EditableEaogNode} from '../../models/editable-eaog-node';
+import type {EditableEaogNodeVMType} from '../../models/editable-eaog-node-vm';
 import Debug from 'debug';
 import { computed } from 'vue';
 import type {IntegrationType} from "#/views/cp/models/types";
@@ -12,7 +12,7 @@ import type {IntegrationType} from "#/views/cp/models/types";
 const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
-  node: EditableEaogNode;
+  node: EditableEaogNodeVMType;
   isReplacedByIntegratedCP?: boolean; // 是否为集成CP节点
 }>();
 

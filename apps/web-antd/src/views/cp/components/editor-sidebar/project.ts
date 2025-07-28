@@ -2,8 +2,8 @@
 import {ref, type Ref, toRaw} from 'vue';
 import {type IDBPDatabase, openDB} from 'idb';
 import Debug from 'debug';
-import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
-import {loadCurrentCP} from "#/views/cp/viewmodel/cp-editor-state";
+import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
+import {loadCurrentCP} from "#/views/cp/viewmodels/cp-editor-state";
 
 const debug = Debug('aia:cp:project');
 
@@ -301,7 +301,7 @@ export class ProjectManager {
 
     // 检查是否是EAOG文件，如果是则确保文件名与根节点name保持一致
     if (file.isEaog) {
-      file.name = this._getEaogFilename(file.content as EditableEaogNode);
+      file.name = this._getEaogFilename(file.content as EditableEaogNodeVMType);
     }
 
     await this.db!.put('files', toRaw(file));
@@ -424,7 +424,7 @@ export class ProjectManager {
     return await index.getAll(projectId);
   }
 
-  async updateOrCreateFile(eaog: EditableEaogNode, isNewFile=false): Promise<void> {
+  async updateOrCreateFile(eaog: EditableEaogNodeVMType, isNewFile=false): Promise<void> {
     const content = eaog.toJSON();
     const name = this._getEaogFilename(eaog)
     if (!currentProject.value) {
@@ -440,7 +440,7 @@ export class ProjectManager {
     }
   }
 
-  _getEaogFilename(eaog: EditableEaogNode): string {
+  _getEaogFilename(eaog: EditableEaogNodeVMType): string {
     return `${eaog.name}.eaog.json`
   }
 }

@@ -4,8 +4,8 @@ import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
-import {createEditableCP} from '../../models/editable-cp';
-import {currentNode, currentCP, saveCurrentCP} from '../../viewmodel/cp-editor-state';
+import {createEditableCP} from '../../viewmodels/editable-cp';
+import {currentNode, currentCP, saveCurrentCP} from '../../viewmodels/cp-editor-state';
 
 
 // 导入您的Schema定义
@@ -13,6 +13,7 @@ import {currentNode, currentCP, saveCurrentCP} from '../../viewmodel/cp-editor-s
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
+import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
 // @formatter:on
 
 // 节点类型选项
@@ -47,9 +48,9 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       currentCP.value = await createEditableCP({eaog: nodeValues});
       currentNode.value = currentCP.value.eaog; // 设置当前节点为新创建的CP根节点
     } else { // 'add-node' 模式
-      const newNode = new EditableEaogNode(nodeValues, null, currentNode.value.cp);
-      currentNode.value?.insert(newNode, insertPosition);
-      newNode.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
+      const newNode = new EditableEaogNode(nodeValues);
+      const newNodeVM = currentNode.value?.insert(newNode, insertPosition) as EditableEaogNodeVMType;
+      newNodeVM.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
     }
 
     await saveCurrentCP(formMode === 'create-cp'); // 保存当前CP

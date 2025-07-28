@@ -11,17 +11,10 @@ import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
 import type {EaogNode} from "#/views/cp/models/types";
-import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
-import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
-// 导入所需的具体函数
 import * as treeUtils from "../utils/tree-utils";
-// @ts-ignore 忽略导入的类型
+// @ts-ignore
 const debug = Debug("aia:cp:eaog-node");
 
-// 定义不属于数据模型的临时属性
-const TRANSIENT_ATTRIBUTES = [
-  'parent', 'cp', 'integrationManager', 'ipath'
-];
 
 export class EditableEaogNode implements EaogNode {
   // 实现 EaogNode 的所有属性
@@ -50,17 +43,11 @@ export class EditableEaogNode implements EaogNode {
   item?: string | { contextName: string };
   items?: string | { contextName: string };
 
-  // Model层相关的非EaogNode属性（TRANSIENT）
-  cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
-  integrationManager?: EditableIntegrationManager | undefined; // 集成管理器，处理集成点的添加和查询
-  ipath?: string; /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
-
-  constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
+  constructor(node: EaogNode, parent?: EditableEaogNode) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
-    this.cp = cp; // 设置当前Eaog的CP
     this.children = Array.isArray(node.children)
-      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
+      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this)) // 递归转换子节点
       : [];
   }
 
@@ -146,15 +133,12 @@ export class EditableEaogNode implements EaogNode {
     // 确保子节点也是使用正确的类型克隆
     clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
     clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
-    if (this.isRoot) {
-      clone.cp = this.cp; // 浅Copy CP
-    }
     return clone;
   }
 
   toJSON(): object {
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
-    const res = {...omit(this, [...TRANSIENT_ATTRIBUTES, 'children']), children}; // 返回一个 JSON 对象，忽略 transient 和 children 属性
+    const res = {...omit(this, ['parent', 'children']), children}; // 返回一个 JSON 对象，忽略 parent 和 children 属性
     return getCleanObj(res) as any; // 确保返回的对象没有 undefined 属性
   }
 
@@ -189,12 +173,12 @@ export class EditableEaogNode implements EaogNode {
   }
 
   insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
-    const nodeToInsert = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp);
+    const nodeToInsert = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode);
     return treeUtils.insert(this, nodeToInsert, position);
   }
 
   replaceWith(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
-    const nodeToReplace = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp);
+    const nodeToReplace = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode);
     return treeUtils.replaceWith(this, nodeToReplace);
   }
 
@@ -257,35 +241,3 @@ export const createPlaceHolderNode = (name: string) => {
   });
 }
 
-/** 节点类型对应的颜色和图标 {@link allNodeTypes} */
-export const nodeTypeUIConfig = {
-  // 非叶（结构）节点，执行时不扩展
-  sand:        { color: 'blue',    icon: '↓',  description: '顺序节点：子节点按顺序执行' }, // 改为 seq sequence？
-  pand:        { color: 'green',   icon: '⇊',  description: '并行与节点：子节点并行执行，全部完成才继续' }, // 改为 par parallel
-  cor:         { color: 'orange',  icon: '?',  description: '条件节点：根据条件选择一个子节点执行' }, //
-
-  for:         { color: 'blue',    icon: '↴',  description: '循环节点：对列表元素依次执行' },
-  pfor:        { color: 'green',   icon: '⇓',  description: '并行循环：对列表中的元素并行执行' },
-  por:         { color: 'orange',  icon: '⤓',  description: '并行或节点：子节点中任意一个完成即可继续' },
-  sitr:        { color: 'cyan',    icon: '⟳',  description: '顺序迭代：重���执行子节点' },
-  pitr:        { color: 'cyan',    icon: '⤨',  description: '并行迭代：对列表元素并行执行' },
-
-  // 叶（结构）节点，开发时扩展（Framework）
-  'mount-point':   { color: 'magenta', icon: '↦⊐',  description: '框架上的挂载点' },
-
-  // 叶（结构）节点，执行时动态扩展
-  recursion:   { color: 'magenta', icon: '⟲',  description: '递归：调用其他节点（自身祖先）' },
-  ref:         { color: 'magenta', icon: '↗︎',  description: '引用节点：引用执行其他节点（子树，非自身祖先）' },
-
-  // 叶（行为）节点，执行时不扩展
-  empty:       { color: 'gray',    icon: '◎',  description: '空节点：没有行为，仅用于占位，保持结构完整' },
-  end:         { color: 'gray',     icon: '◉',  description: '结束节点：流程结束' },
-  instruction: { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' }, // @deprecated
-  action:      { color: 'purple',  icon: '▶',  description: '指令节点：执行具体操作' },
-  gen:         { color: 'green',  icon: '▷▷',  description: '生成节点：将生成新的子树，替换当前节点' },
-
-  // gen, hook, wait, ctx
-
-
-  _default:    { color: 'gray', icon: '◆', description: '未知节点��型' } // 未知节点，缺省配置
-};

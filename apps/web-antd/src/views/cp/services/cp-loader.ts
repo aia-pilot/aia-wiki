@@ -1,4 +1,4 @@
-import { mainCPModule } from '../viewmodel/cp-editor-state';
+import { mainCPModule } from '../viewmodels/cp-editor-state';
 import type {CP} from "../models/types";
 // @ts-ignore
 import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";

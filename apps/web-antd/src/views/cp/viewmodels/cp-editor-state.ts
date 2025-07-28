@@ -1,6 +1,6 @@
 import {ref, watch, computed} from 'vue';
-import type {EditableEaogNode} from '../models/editable-eaog-node';
-import type {EditableCP} from '../models/editable-cp';
+import type {EditableEaogNodeVMType} from '../models/editable-eaog-node-vm';
+import type {EditableCP} from '../viewmodels/editable-cp';
 import type {CP, SideCP} from "#/views/cp/models/types";
 
 /**
@@ -31,7 +31,7 @@ export const currentCP = computed({
 export const currentEaog = computed(() => currentCP.value?.eaog);
 
 // 节点状态：当前被选择的节点
-export const currentNode= ref<EditableEaogNode | undefined>();
+export const currentNode= ref<EditableEaogNodeVMType | undefined>();
 
 // 工作区面板状态：当前活动的工作面板
 export const currentPane = ref<string | undefined>();

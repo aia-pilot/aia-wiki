@@ -6,7 +6,7 @@ import {loadCpModuleFromFilePath} from "#/views/cp/services/cp-loader";
 import {prompt} from '@vben/common-ui';
 
 import Debug from 'debug';
-import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 
 const debug = Debug('aia-wiki:local-dir');
 

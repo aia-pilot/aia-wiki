@@ -3,8 +3,8 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {clipboardNode,} from '../../models/editable-eaog-node';
-import {currentNode, saveCurrentCP} from '../../viewmodel/cp-editor-state';
+import {clipboardNode,} from '../../models/editable-eaog-node-vm';
+import {currentNode, saveCurrentCP} from '../../viewmodels/cp-editor-state';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';
 import {onMounted, onUnmounted, ref, inject, type Ref} from 'vue';
@@ -27,7 +27,7 @@ const clipboardWithChildren = ref<boolean>(false);
 const handleCopyNode = (withChildren: boolean) => {
   // 在这里实现复制节点的逻辑
   if (currentNode.value) {
-    // 使用 EditableEaogNode 的 cloneDeep 方法复制节点
+    // 使用 EditableEaogNodeVMType 的 cloneDeep 方法复制节点
     const nodeCopy = currentNode.value.cloneDeep();
     if (!withChildren && nodeCopy.children) {
       nodeCopy.children = []; // 清除子节点
@@ -43,7 +43,7 @@ const handlePasteNode = async (position: 'before' | 'after' | 'child' | 'parent'
   debug('粘贴节点', position, clipboardNode.value);
   if (!clipboardNode.value || !currentNode.value) return;
 
-  // 使用 EditableEaogNode 的 insert 方法插入新节点
+  // 使用 EditableEaogNodeVMType 的 insert 方法插入新节点
   const pastedNode = clipboardNode.value.cloneDeep();
   currentNode.value.insert(pastedNode, position);
   if (currentNode.value.isRoot && position === 'parent') { // 如果是根节点，设置新节点为根节点

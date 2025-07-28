@@ -1,15 +1,18 @@
 import {ref} from 'vue';
-import {currentCP} from "../viewmodel/cp-editor-state";
-import {IntegratedCPManager} from "../viewmodel/integrated-cp";
+import {currentCP} from "../viewmodels/cp-editor-state";
+import {IntegratedCPManager} from "../viewmodels/integrated-cp";
+import type {EaogNode} from "#/views/cp/models/types";
 import {EditableEaogNode} from './editable-eaog-node';
 import * as treeUtils from "../utils/tree-utils";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
+import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 
 // 用于存储 Model 到 ViewModel 的映射关系，避免重复创建 VM
 const modelToVMMap = new WeakMap<EditableEaogNode, EditableEaogNodeVM>();
 
 // ViewModel层的引用存储
-export const clipboardNode = ref<EditableEaogNodeVM | null>(null); // 复制到剪贴板的节点
-export const currentNode = ref<EditableEaogNodeVM | null>(null); // 当前点击的节点（不一定是选中状态）
+export const clipboardNode = ref<EditableEaogNodeVMType | undefined>(); // 复制到剪贴板的节点
+export const currentNode = ref<EditableEaogNodeVMType | undefined>(); // 当前点击的节点（不一定是选中状态）
 
 // 定义会改变树结构的方法名列表，这些方法调用后需要同步VM和Model树
 const STRUCTURE_CHANGE_METHODS = [
@@ -41,6 +44,14 @@ export class EditableEaogNodeVM {
   integratedCPAfterNode?: EditableEaogNodeVM; // 后置的集成CP节点，用于展示
   integratedCPReplaceNode?: EditableEaogNodeVM; // 替换（本节点）的集成CP节点，用于展示
 
+  // 由Creator Wrie进来的属性
+  cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
+  integrationManager?: EditableIntegrationManager; // 集成管理器，处理集成点的添加和查询
+  ipath?: string;
+  /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
+
+
+
   declare parent?: EditableEaogNodeVM;
   declare children: EditableEaogNodeVM[];
   declare root?: EditableEaogNodeVM;
@@ -52,7 +63,6 @@ export class EditableEaogNodeVM {
    */
   constructor(model: EditableEaogNode) {
     this.model = model;
-    this.integratedCPManager = new IntegratedCPManager(model);
   }
 
   // 展示相关的计算属性
@@ -71,7 +81,7 @@ export class EditableEaogNodeVM {
 
   // 节点点击处理
   click(shouldSelect = true, multiSelect = false): void {
-    currentNode.value = this;
+    currentNode.value = this as unknown as EditableEaogNodeVMType; // 更新当前节点引用
     if (shouldSelect) {
       this.select(multiSelect);
     }
@@ -178,7 +188,7 @@ export class EditableEaogNodeVM {
                 if (cp && result instanceof EditableEaogNode) {
                   // 根节点被替换，需要更新CP的引用
                   const newVM = createEditableEaogNodeVM(result);
-                  cp.eaogVM = newVM;
+                  cp.eaog = newVM;
                 }
               }
             }
@@ -257,15 +267,19 @@ function convertModelToVM(result: any): any {
  * ViewModel同时是 EditableEaogNode 的代理，在自身属性方法之外，还透传 model 的属性和方法
  * @param model
  * @param parentVM
+ * @param cp
  */
-export function createEditableEaogNodeVM(model: EditableEaogNode, parentVM?: EditableEaogNodeVM): EditableEaogNodeVMType {
+export function createEditableEaogNodeVM(model: EaogNode, parentVM?: EditableEaogNodeVM, cp?: EditableCP): EditableEaogNodeVMType {
   // 首先检查 WeakMap 中是否已经存在该 model 对应的 VM
   let vm = modelToVMMap.get(model);
 
   // 如果不存在或父节点不匹配（可能已被移动），则创建新的 VM
   if (!vm || (parentVM && vm.parent !== parentVM)) {
+    model = model instanceof EditableEaogNode ? model : new EditableEaogNode(model); // 确保 model 是 EditableEaogNode 实例
     vm = new EditableEaogNodeVM(model);
     vm = vm.makeModelProxy(); // 使用 Proxy 透传 model 的属性和方法
+    vm.cp = cp ?? currentNode.value?.cp; // 关联当前 CP TODO:
+    vm.integratedCPManager = new IntegratedCPManager(vm as unknown as EditableEaogNodeVMType); // 初始化集成CP管理器
     vm.parent = parentVM
     // 初始化子树
     vm.sync();
@@ -277,3 +291,37 @@ export function createEditableEaogNodeVM(model: EditableEaogNode, parentVM?: Edi
 
   return vm as unknown as EditableEaogNodeVMType;
 }
+
+
+/** 节点类型对应的颜色和图标 {@link allNodeTypes} */
+export const nodeTypeUIConfig = {
+  // 非叶（结构）节点，执行时不扩展
+  sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'}, // 改为 seq sequence？
+  pand: {color: 'green', icon: '⇊', description: '并行与节点：子节点并行执行，全部完成才继续'}, // 改为 par parallel
+  cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'}, //
+
+  for: {color: 'blue', icon: '↴', description: '循环节点：对列表元素依次执行'},
+  pfor: {color: 'green', icon: '⇓', description: '并行循环：对列表中的元素并行执行'},
+  por: {color: 'orange', icon: '⤓', description: '并行或节点：子节点中任意一个完成即可继续'},
+  sitr: {color: 'cyan', icon: '⟳', description: '顺序迭代：重���执行子节点'},
+  pitr: {color: 'cyan', icon: '⤨', description: '并行迭代：对列表元素并行执行'},
+
+  // 叶（结构）节点，开发时扩展（Framework）
+  'mount-point': {color: 'magenta', icon: '↦⊐', description: '框架上的挂载点'},
+
+  // 叶（结构）节点，执行时动态扩展
+  recursion: {color: 'magenta', icon: '⟲', description: '递归：调用其他节点（自身祖先）'},
+  ref: {color: 'magenta', icon: '↗︎', description: '引用节点：引用执行其他节点（子树，非自身祖先）'},
+
+  // 叶（行为）节点，执行时不扩展
+  empty: {color: 'gray', icon: '◎', description: '空节点：没有行为，仅用于占位，保持结构完整'},
+  end: {color: 'gray', icon: '◉', description: '结束节点：流程结束'},
+  instruction: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'}, // @deprecated
+  action: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'},
+  gen: {color: 'green', icon: '▷▷', description: '生成节点：将生成新的子树，替换当前节点'},
+
+  // gen, hook, wait, ctx
+
+
+  _default: {color: 'gray', icon: '◆', description: '未知节点��型'} // 未知节点，缺省配置
+};

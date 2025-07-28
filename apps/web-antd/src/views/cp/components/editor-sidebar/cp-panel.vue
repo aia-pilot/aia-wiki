@@ -4,7 +4,7 @@
  * 显示当前CP的hooks和sideCPs数据
  */
 import {JsonViewer} from '@vben/common-ui';
-import {currentCP, loadParallelCP} from '#/views/cp/viewmodel/cp-editor-state';
+import {currentCP, loadParallelCP} from '#/views/cp/viewmodels/cp-editor-state';
 
 </script>
 

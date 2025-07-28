@@ -4,7 +4,7 @@ import {
   eaogFrameworks as eaogFrameworkDefs
 } from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
 import type {EaogNode} from "#/views/cp/models/types";
-import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 
 /**
  * Eaog Framework预定义了一定的执行结构，可以包装、装饰、结构化组装已有的行为（lc、cp、mcp、……）。
