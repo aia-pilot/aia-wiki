@@ -2,11 +2,11 @@ import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/local-dir-tree-item.vue";
 // @ts-ignore
 import {compactJson} from "../../../../../../../../aia-se-comp/src/eaog/compact-json.js";
-import {loadCpModuleFromFilePath} from "#/views/cp/models/cp-loader";
+import {loadCpModuleFromFilePath} from "#/views/cp/services/cp-loader";
 import {prompt} from '@vben/common-ui';
 
 import Debug from 'debug';
-import type {EditableCP} from "#/views/cp/models/editable-cp";
+import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
 
 const debug = Debug('aia-wiki:local-dir');
 

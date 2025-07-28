@@ -1,6 +1,6 @@
-import {ref} from 'vue';
+import {z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
-import {cpEaogSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+import {cpEaogSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 // @ts-ignore 忽略导入的类型
 import {uniqNameWithSequenceSuffix} from "../../../../../../../aia-infra/src/uniq-name.js";
 // @ts-ignore
@@ -10,21 +10,17 @@ import {omit} from "lodash-es";
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
 import {getCleanObj} from "../utils/clean-obj";
 import Debug from 'debug';
-import {currentCP} from "./cp-editor-state";
 import type {EaogNode} from "#/views/cp/models/types";
-import {IntegratedCPManager} from "./integrated-cp";
-import type {EditableCP} from "#/views/cp/models/editable-cp";
+import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
 // 导入所需的具体函数
 import * as treeUtils from "../utils/tree-utils";
 // @ts-ignore 忽略导入的类型
 const debug = Debug("aia:cp:eaog-node");
 
-// 将isClicked从TRANSIENT_ATTRIBUTES中移除
+// 定义不属于数据模型的临时属性
 const TRANSIENT_ATTRIBUTES = [
-  'id', 'isNewlyModified', 'isSelected', 'isCollapsed', 'parent', 'cp',
-  'integratedCPManager', 'integratedCPBeforeNode', 'integratedCPAfterNode', 'integratedCPReplaceNode',
-  'integrationManager', 'ipath', 'hookManager', 'syncManager', 'briefPath'
+  'parent', 'cp', 'integrationManager', 'ipath'
 ];
 
 export class EditableEaogNode implements EaogNode {
@@ -41,7 +37,7 @@ export class EditableEaogNode implements EaogNode {
   // 递归节点的属性
   ref?: string;
 
-  // 条件节点的��性
+  // 条件节点的属性
   condition?: any;
   params?: any; // 指令节点亦有
   choice?: string  // 条件节点的选择项，所有节点都有可能有
@@ -54,45 +50,21 @@ export class EditableEaogNode implements EaogNode {
   item?: string | { contextName: string };
   items?: string | { contextName: string };
 
-  // EditableEaogNode属性（非EaogNode属性, TRANSIENT）...
-  id: string = crypto.randomUUID(); // Vue框架缓存依据
-  isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
-  isSelected = false; // 标记是否被选中，Eaog Tree上可以有多个节点被选中
-  isCollapsed = false; // 标记节点是否折叠子节点
-
+  // Model层相关的非EaogNode属性（TRANSIENT）
   cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
   integrationManager?: EditableIntegrationManager | undefined; // 集成管理器，处理集成点的添加和查询
   ipath?: string; /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
 
-  // 展示集成CP，包括action, hook, sideCP, frameworks等（TRANSIENT）
-  integratedCPManager?: IntegratedCPManager; // 集成CP管理器，用于处理集成CP的逻辑
-  integratedCPBeforeNode?: EditableEaogNode; // 前置的集成CP节点，用于展示
-  integratedCPAfterNode?: EditableEaogNode; // 后置的集成CP节点，用于展示
-  integratedCPReplaceNode?: EditableEaogNode; // 替换（本节点）的集成CP节点，用于展示
-
-  get showNode(): EditableEaogNode {
-    return this.integratedCPReplaceNode || this; // 如果有替换节点，则显示替换节点，否则显示当前节点
-  }
-
-  get isReplacedByIntegratedCP(): boolean {
-    return !!this.integratedCPReplaceNode; // 如果有替换节点，则表示被集成CP替换
-  }
-
-  get showChildren(): EditableEaogNode[] {
-    return [this.integratedCPBeforeNode, ...this.children, this.integratedCPAfterNode].filter(Boolean) as EditableEaogNode[] // 显示前置子节点、当前子节点和后置子节点
-  }
-
   constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
     Object.assign(this, node); // 将传入的节点数据赋值给当前实例
     this.parent = parent; // 设置父节点
-    this.cp = cp; // 设���当前Eaog的CP
+    this.cp = cp; // 设置当前Eaog的CP
     this.children = Array.isArray(node.children)
       ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this, cp)) // 递归转换子节点
       : [];
-    this.integratedCPManager = new IntegratedCPManager(this); // 创建集成CP管理器
   }
 
-  // 新增的 getter 方法
+  // 业务逻辑相关的getter方法
   get isLeaf(): boolean {
     return Eaog.isLeafType(this.type);
   }
@@ -112,7 +84,7 @@ export class EditableEaogNode implements EaogNode {
   }
 
   /**
-   * 递归获取所有子孙���点
+   * 递归获取所有子孙节点
    */
   get descendants(): EditableEaogNode[] {
     return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
@@ -125,77 +97,6 @@ export class EditableEaogNode implements EaogNode {
    */
   get nodes(): EditableEaogNode[] {
     return [this, ...this.descendants];
-  }
-
-  // 点击节点
-  click(shouldSelect = true, multiSelect = false): void {
-    // 设置为当前节点
-    currentNode.value = this;
-
-    // 处理选中状态
-    if (shouldSelect) {
-      this.select(multiSelect);
-    }
-  }
-
-  // 选中节点
-  select(multiSelect = false): void {
-    if (!multiSelect && this.root) {
-      // 如果不是多选模式，清除所有其它节点的选中状态
-      treeUtils.traverseAll(this.root, node => {
-        if (node !== this) {
-          node.isSelected = false;
-        }
-      });
-    }
-    this.isSelected = !this.isSelected; // 切换选中状态
-  }
-
-  // 取消选中节点
-  deselect(): void {
-    this.isSelected = false;
-  }
-
-  // 取消所有选中
-  deselectAll(): void {
-    if (this.root) {
-      treeUtils.traverseAll(this.root, node => {
-        node.isSelected = false;
-      });
-    }
-  }
-
-  // 获取所有被选中的节点
-  getSelectedNodes(): EditableEaogNode[] {
-    const selected: EditableEaogNode[] = [];
-    treeUtils.traverseAll(this.root, node => {
-      if (node.isSelected) {
-        selected.push(node);
-      }
-    });
-    return selected;
-  }
-
-  traverseAll(callback: (node: EditableEaogNode) => void): void {
-    treeUtils.traverseAll(this, callback);
-  }
-
-  findNode(predicate: (node: EditableEaogNode) => boolean): EditableEaogNode | null {
-    return treeUtils.findNode(this, predicate);
-  }
-
-  // 设置新修改状态（用于动画效果）
-  markAsNewlyModifiedForAWhile(duration = 2000): void {
-    this.isNewlyModified = true;
-    // 到时（2秒）取消。2秒，与CSS动画时长一致。
-    setTimeout(() => {
-      this.isNewlyModified = false;
-    }, duration);
-  }
-
-  // 切换折叠状态
-  toggleCollapse(): void {
-    this.isCollapsed = !this.isCollapsed;
   }
 
   get isRoot(): boolean {
@@ -234,15 +135,6 @@ export class EditableEaogNode implements EaogNode {
     return this.parent ? this.parent.children.indexOf(this) : -1; // 获取当前节点在父节点子节点数组中的索引
   }
 
-  get sideCP():string | undefined {
-    // TODO: 现在是tech spike，后继要改进
-    const cp = this.root.cp?.sideCPs?.find(({launchPoint}) => {
-      // syncPoints, cp;
-      return launchPoint === this.name /** 注意：这个是hack，实际上重构 {@link Hook#findMatchedNode} 的算法 */
-    })
-    return cp?.cp; // 返回与当前节点匹配的辅助CP
-  }
-
   /**
    * 深度克隆当前节点及其所有子节点
    * omit parent reference to avoid circular references
@@ -256,7 +148,6 @@ export class EditableEaogNode implements EaogNode {
     clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
     if (this.isRoot) {
       clone.cp = this.cp; // 浅Copy CP
-      clone.integratedCPManager = new IntegratedCPManager(clone); // 创建新的集成CP管理器
     }
     return clone;
   }
@@ -274,12 +165,12 @@ export class EditableEaogNode implements EaogNode {
   /**
    * 转换为表单值（编辑前、编辑后）
    * 必须转换，否则Vben Form会读取不到值。因为，表单绑定的currentNode<EditableEaogNode>，不是plain Object（有prototype链），通不过了 isPlainObject 检查，
-   * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入����用
+   * @see defu@6.1.4/node_modules/defu/dist/defu.cjs#L5 由 packages/@core/ui-kit/form-ui/src/form-api.ts#L302 导入和使用
    * @param formValues 表单值
    * @return 返回一个对象，包含当前节点的可编辑属性，如果没有修改则返回 undefined
    */
   getObjFromFormValues(formValues?: Partial<EaogNode>): object | undefined {
-    if (!formValues) { // 编辑前，空表单，返回当前节点的可编辑属性
+    if (!formValues) { // 编辑前，空表单，返回当前节点的可编辑属���
       return omit(this.toJSON(), ['children', 'id']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
     } else { // 编辑后，合并表单值
       formValues = getCleanObj(formValues, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
@@ -292,22 +183,14 @@ export class EditableEaogNode implements EaogNode {
     Object.assign(this, values);
   }
 
-  // 树操作方法现在使用导出的函数
+  // 树操作方法
   addChild(child: EditableEaogNode, anchor?: EditableEaogNode, position: 'before' | 'after' = 'after'): void {
     treeUtils.addChild(this, child, anchor, position);
   }
 
   insert(newNode: EditableEaogNode | EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
     const nodeToInsert = newNode instanceof EditableEaogNode ? newNode : new EditableEaogNode(newNode, undefined, this.cp);
-
-    const insertedNode = treeUtils.insert(this, nodeToInsert, position);
-
-    // 特殊处理根节点更换情况
-    if (position === 'parent' && this.isRoot && insertedNode !== this) {
-      currentCP.value!.eaog = insertedNode;
-    }
-
-    return insertedNode;
+    return treeUtils.insert(this, nodeToInsert, position);
   }
 
   replaceWith(newNode: EditableEaogNode | EaogNode): EditableEaogNode | undefined {
@@ -340,12 +223,6 @@ export class EditableEaogNode implements EaogNode {
     return treeUtils.moveTo(this, targetNode, position);
   }
 }
-
-// 当前EAOG数据作为全局共享状态、当前被点击节点以及剪贴板节点等全局状态已移至cp-editor-state.ts
-
-// 剪贴板中的节点，用于复制粘贴操作, 以及剪贴板新建
-export const clipboardNode = ref<EditableEaogNode | null>(null);
-export const currentNode = ref<EditableEaogNode | null>(null); // 导出当前选择的节点
 
 export const validateEaog = (eaog: EditableEaogNode): z.SafeParseReturnType<any, any> => {
   for (const n of eaog.nodes) {
@@ -390,7 +267,7 @@ export const nodeTypeUIConfig = {
   for:         { color: 'blue',    icon: '↴',  description: '循环节点：对列表元素依次执行' },
   pfor:        { color: 'green',   icon: '⇓',  description: '并行循环：对列表中的元素并行执行' },
   por:         { color: 'orange',  icon: '⤓',  description: '并行或节点：子节点中任意一个完成即可继续' },
-  sitr:        { color: 'cyan',    icon: '⟳',  description: '顺序迭代：重复执行子节点' },
+  sitr:        { color: 'cyan',    icon: '⟳',  description: '顺序迭代：重���执行子节点' },
   pitr:        { color: 'cyan',    icon: '⤨',  description: '并行迭代：对列表元素并行执行' },
 
   // 叶（结构）节点，开发时扩展（Framework）
@@ -410,5 +287,5 @@ export const nodeTypeUIConfig = {
   // gen, hook, wait, ctx
 
 
-  _default:    { color: 'gray', icon: '◆', description: '未知节点类型' } // 未知节点，缺省配置
+  _default:    { color: 'gray', icon: '◆', description: '未知节点��型' } // 未知节点，缺省配置
 };

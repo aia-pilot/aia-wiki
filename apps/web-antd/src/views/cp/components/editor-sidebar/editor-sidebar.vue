@@ -14,7 +14,7 @@ import Debug from 'debug';
 import {onMounted, watch} from "vue";
 import {projectManager} from "#/views/cp/components/editor-sidebar/project";
 import {saveCpToFile} from "#/views/cp/components/editor-sidebar/local-dir";
-import {currentTab, cpSaver} from "#/views/cp/models/cp-editor-state";
+import {currentTab, cpSaver} from "#/views/cp/viewmodel/cp-editor-state";
 // @ts-ignore
 const debug = Debug('aia:cp:editor-sidebar');
 

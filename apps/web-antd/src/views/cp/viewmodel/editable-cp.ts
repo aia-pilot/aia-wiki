@@ -1,10 +1,10 @@
-import {type EaogFramework} from "./eaog-framework";
-import type {CP, EaogNode, Hook, SideCP, IntegrationType} from "./types.d";
+import {type EaogFramework} from "../models/eaog-framework";
+import type {CP, EaogNode, Hook, SideCP, IntegrationType} from "../models/types";
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {CPHistory} from "./cp-history";
 // @ts-ignore
 import {smartCloneDeep} from "../../../../../../../aia-se-comp/src/util/smart-clone-deep.js";
-import {EditableIntegrationManager} from "./editable-integration-manager";
+import {EditableIntegrationManager} from "../models/editable-integration-manager";
 import {omit} from "lodash-es";
 
 /**

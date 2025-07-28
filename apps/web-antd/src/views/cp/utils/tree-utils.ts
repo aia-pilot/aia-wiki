@@ -1,5 +1,5 @@
 import Debug from 'debug';
-import type { EditableEaogNode } from '../models/editable-eaog-node';
+import type { EaogNode } from '../models/types.d';
 import { uniqNameWithSequenceSuffix } from "../../../../../../../aia-infra/src/uniq-name.js";
 //@ts-ignore
 import { Eaog } from "../../../../../../../aia-eaog/src/eaog.js";
@@ -9,7 +9,7 @@ const debug = Debug("aia:cp:tree-utils");
 /**
  * 保障子节点名称唯一。如果已经有同名子节点，则在名称后添加数字后缀（依次递增）。
  */
-export function ensureChildWithUniqueName(child: EditableEaogNode, siblings: EditableEaogNode[]): void {
+export function ensureChildWithUniqueName(child: EaogNode, siblings: EaogNode[]): void {
   child.name = uniqNameWithSequenceSuffix(child.name, siblings.map(c => c.name));
 }
 
@@ -39,7 +39,7 @@ export function getUniqueName(name: string, usedNames: string[]): string {
 /**
  * 添加子节点
  */
-export function addChild(parent: EditableEaogNode, child: EditableEaogNode, anchor?: EditableEaogNode, position: 'before' | 'after' = 'after'): void {
+export function addChild(parent: EaogNode, child: EaogNode, anchor?: EaogNode, position: 'before' | 'after' = 'after'): void {
   ensureChildWithUniqueName(child, parent.children); // 确保子节点名称唯一
   if (anchor) {
     // 如果指定了锚点节点，则在锚点前或后插入
@@ -66,7 +66,7 @@ export function addChild(parent: EditableEaogNode, child: EditableEaogNode, anch
  * @param position 插入位置: 'before' | 'after' | 'child' | 'parent'
  * @returns 新插入的节点
  */
-export function insert(targetNode: EditableEaogNode, newNode: EditableEaogNode, position: 'before' | 'after' | 'child' | 'parent'): EditableEaogNode {
+export function insert(targetNode: EaogNode, newNode: EaogNode, position: 'before' | 'after' | 'child' | 'parent'): EaogNode {
   if (position === 'before' || position === 'after') {
     if (!targetNode.parent) {
       throw new Error('Cannot insert sibling for root node');
@@ -100,7 +100,7 @@ export function insert(targetNode: EditableEaogNode, newNode: EditableEaogNode, 
  * @param newNode 替换用的新节点
  * @returns 新节点或undefined（如果替换失败）
  */
-export function replaceWith(oldNode: EditableEaogNode, newNode: EditableEaogNode): EditableEaogNode | undefined {
+export function replaceWith(oldNode: EaogNode, newNode: EaogNode): EaogNode | undefined {
   const {previousSibling, nextSibling, parent} = oldNode;
   remove(oldNode); // 移除当前节点，先移除后加入，保障replace后的节点有正确的命名
 
@@ -118,7 +118,7 @@ export function replaceWith(oldNode: EditableEaogNode, newNode: EditableEaogNode
 /**
  * 如果当前节点是sequential的，其父节点也是sequential的，则将当前节点的所有子节点提升到父节点位置，取代当前节点。
  */
-export function shrinkSequentialParent(node: EditableEaogNode): boolean {
+export function shrinkSequentialParent(node: EaogNode): boolean {
   if (!node.parent || !Eaog.isSequentialType(node.parent.type) || !Eaog.isSequentialType(node.type)) {
     debug('Cannot shrink non-sequential parent or node', node, node.parent);
     return false;
@@ -133,7 +133,7 @@ export function shrinkSequentialParent(node: EditableEaogNode): boolean {
  * @param deleteSubtree 是否同时删除子树，如果为false则提升子节点到当前节点位置
  * @returns 被移除的节点
  */
-export function remove(node: EditableEaogNode, deleteSubtree: boolean = true): EditableEaogNode {
+export function remove(node: EaogNode, deleteSubtree: boolean = true): EaogNode {
   if (!node.parent) {
     throw new Error('Cannot remove root node');
   }
@@ -146,7 +146,7 @@ export function remove(node: EditableEaogNode, deleteSubtree: boolean = true): E
     // 需要提升子节点，将子节点提升到父节点
     parent.children.splice(index, 0, ...node.children);
     // 更新子节点的父节点引用
-    node.children.forEach(child => {
+    node.children.forEach((child: EaogNode)=> {
       child.parent = parent;
     });
   }
@@ -163,7 +163,7 @@ export function remove(node: EditableEaogNode, deleteSubtree: boolean = true): E
  * @param path 路径字符串，格式为 "node1/node2/node3"
  * @returns 找到的子节点或 null
  */
-export function getDescendantByPath(node: EditableEaogNode, path: string): EditableEaogNode | null {
+export function getDescendantByPath(node: EaogNode, path: string): EaogNode | null {
   const pathNodes = path.split('/').filter(Boolean); // 分割路径并过滤空字符串
 
   // 空路径返回当前节点
@@ -171,14 +171,14 @@ export function getDescendantByPath(node: EditableEaogNode, path: string): Edita
     return node;
   }
 
-  let currentNode: EditableEaogNode = node;
+  let currentNode: EaogNode = node;
 
   // 遍历路径节点名称
   for (let i = 0; i < pathNodes.length; i++) {
     const nodeName = pathNodes[i];
 
     // 在当前层次查找匹配名称的子节点
-    const childNode = currentNode.children.find(child => child.name === nodeName);
+    const childNode = currentNode.children.find((child: EaogNode) => child.name === nodeName);
 
     if (!childNode) {
       debug(`找不到名为 ${nodeName} 的子节点，在路径 ${path} 中，当前节点是 ${currentNode.name}`);
@@ -197,7 +197,7 @@ export function getDescendantByPath(node: EditableEaogNode, path: string): Edita
  * @param path 路径字符串，格式如 "/root/node1/node2" 或 "root/node1/node2"
  * @returns 找到的节点或 null
  */
-export function getNodeByPath(rootNode: EditableEaogNode, path: string): EditableEaogNode | null {
+export function getNodeByPath(rootNode: EaogNode, path: string): EaogNode | null {
   // 去除开头的斜杠
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
 
@@ -215,11 +215,11 @@ export function getNodeByPath(rootNode: EditableEaogNode, path: string): Editabl
   }
 
   // 从根节点开始，顺着路径查找
-  let currentNode: EditableEaogNode = rootNode;
+  let currentNode: EaogNode = rootNode;
 
   for (let i = 1; i < pathParts.length; i++) {
     const childName = pathParts[i];
-    const childNode = currentNode.children.find(child => child.name === childName);
+    const childNode = currentNode.children.find((child: EaogNode) => child.name === childName);
 
     if (!childNode) {
       debug(`在路径 ${path} 中找不到子节点 ${childName}`);
@@ -237,7 +237,7 @@ export function getNodeByPath(rootNode: EditableEaogNode, path: string): Editabl
  * @param node 起始��点
  * @param callback 回调函数
  */
-export function traverseAll(node: EditableEaogNode, callback: (node: EditableEaogNode) => void): void {
+export function traverseAll(node: EaogNode, callback: (node: EaogNode) => void): void {
   callback(node);
   for (const child of node.children) {
     traverseAll(child, callback);
@@ -250,7 +250,7 @@ export function traverseAll(node: EditableEaogNode, callback: (node: EditableEao
  * @param predicate 断言函数
  * @returns 符合条件的节点或null
  */
-export function findNode(node: EditableEaogNode, predicate: (node: EditableEaogNode) => boolean): EditableEaogNode | null {
+export function findNode(node: EaogNode, predicate: (node: EaogNode) => boolean): EaogNode | null {
   if (predicate(node)) {
     return node;
   }
@@ -272,7 +272,7 @@ export function findNode(node: EditableEaogNode, predicate: (node: EditableEaogN
  * @param position 移动位置: 'before' | 'after' | 'child'
  * @returns 是否成功移动
  */
-export function moveTo(sourceNode: EditableEaogNode, targetNode: EditableEaogNode, position: 'before' | 'after' | 'child'): boolean {
+export function moveTo(sourceNode: EaogNode, targetNode: EaogNode, position: 'before' | 'after' | 'child'): boolean {
   // 防止将节点移动到自己
   if (sourceNode === targetNode) {
     return false;
@@ -281,7 +281,7 @@ export function moveTo(sourceNode: EditableEaogNode, targetNode: EditableEaogNod
   // 防止将节点移动到自己的子节点中（会造成循环引用）
   if (position === 'child') {
     // 获取源节点的所有后代
-    const descendants: EditableEaogNode[] = [];
+    const descendants: EaogNode[] = [];
     traverseAll(sourceNode, node => {
       if (node !== sourceNode) {
         descendants.push(node);

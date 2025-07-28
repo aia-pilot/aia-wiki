@@ -3,7 +3,7 @@ import {ref, type Ref, toRaw} from 'vue';
 import {type IDBPDatabase, openDB} from 'idb';
 import Debug from 'debug';
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
-import {loadCurrentCP} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentCP} from "#/views/cp/viewmodel/cp-editor-state";
 
 const debug = Debug('aia:cp:project');
 

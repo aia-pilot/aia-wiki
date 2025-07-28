@@ -1,9 +1,9 @@
 // @ts-nocheck
-import type {CP, Hook, SideCP} from './types.d';
-import type {EditableEaogNode} from './editable-eaog-node';
+import type {CP, Hook, SideCP} from '../models/types';
+import type {EditableEaogNode} from '../models/editable-eaog-node';
 import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
-import type {IntegrationType} from './types.d';
-import type {EditableCP} from "#/views/cp/models/editable-cp";
+import type {IntegrationType} from '../models/types';
+import type {EditableCP} from "#/views/cp/viewmodel/editable-cp";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 
 /**
@@ -57,9 +57,9 @@ export class IntegratedCP {
    * 在Editor中打开集成CP
    */
   async open() {
-    const {loadCpFromCpStr} = await import('#/views/cp/models/cp-loader')
-    const {createEditableCP} = await import('#/views/cp/models/editable-cp');
-    const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
+    const {loadCpFromCpStr} = await import('#/views/cp/services/cp-loader')
+    const {createEditableCP} = await import('#/views/cp/viewmodel/editable-cp');
+    const {parallelCP} = await import('#/views/cp/viewmodel/cp-editor-state');
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr);
     cp = await createEditableCP(cp, filePath, {type: this.integrationType, node: this.integrationNode});
     cp.integratedCP = this; /** 关联当前集成CP到CP，以便UI取值 {@link eaog-node.vue} TODO: 有缺陷，始终挂在CP上？ */
@@ -72,7 +72,7 @@ export class IntegratedCP {
   }
 
   async close() {
-    const {parallelCP} = await import('#/views/cp/models/cp-editor-state');
+    const {parallelCP} = await import('#/views/cp/viewmodel/cp-editor-state');
 
     this.showAt === 'replace' ? this.node.integratedCPReplaceNode = undefined
       : this.showAt === 'before' ? this.node.integratedCPBeforeNode = undefined

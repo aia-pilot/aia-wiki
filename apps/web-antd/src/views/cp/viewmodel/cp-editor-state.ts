@@ -1,6 +1,6 @@
 import {ref, watch, computed} from 'vue';
-import type {EditableEaogNode} from './editable-eaog-node';
-import type {EditableCP} from './editable-cp';
+import type {EditableEaogNode} from '../models/editable-eaog-node';
+import type {EditableCP} from '../models/editable-cp';
 import type {CP, SideCP} from "#/views/cp/models/types";
 
 /**
@@ -100,7 +100,7 @@ export const saveCurrentCP = async (isNew = false) => {
  * @deprecated 该方法已弃用，同时，调用它的cp-panel也要改动
  */
 export const loadParallelCP = async (modulePath: string) => {
-  const {loadCpFromCpStr} = await import('./cp-loader');
+  const {loadCpFromCpStr} = await import('../services/cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   const {cp, filePath} = await loadCpFromCpStr(modulePath)
   parallelCP.value = {cp: await createEditableCP(cp, filePath)};

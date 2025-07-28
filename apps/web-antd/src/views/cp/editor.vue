@@ -14,7 +14,7 @@
  */
 
 // 导入EaogNode组件和相关类型
-import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCP} from "#/views/cp/models/cp-editor-state";
+import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCP} from "#/views/cp/viewmodel/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';

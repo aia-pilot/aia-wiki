@@ -20,7 +20,7 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue';
 import OrthogonalLinkLayer from '../node-links-layer/orthogonal-link-layer.vue';
 import type {LinkSpec} from '../node-links-layer/types';
-import {parallelCP} from '../../models/cp-editor-state';
+import {parallelCP} from '../../viewmodel/cp-editor-state';
 import type {SyncPoint} from '../../models/types';
 import Debug from 'debug';
 import {type ContentBox, getAllContentBoxes} from "#/views/cp/components/node-links-layer/utils/get-all-content-box";

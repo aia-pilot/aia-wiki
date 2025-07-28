@@ -5,7 +5,7 @@ import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
 import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
 import {createEditableCP} from '../../models/editable-cp';
-import {currentNode, currentCP, saveCurrentCP} from '../../models/cp-editor-state';
+import {currentNode, currentCP, saveCurrentCP} from '../../viewmodel/cp-editor-state';
 
 
 // 导入您的Schema定义
