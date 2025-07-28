@@ -37,7 +37,6 @@ const emit = defineEmits<{
 }>();
 
 
-
 // 添加一个触发器，用于重新计算链接
 const recalculateTrigger = ref(0);
 
@@ -148,15 +147,19 @@ onMounted(() => {
   //   attributeFilter: ['class', 'data-node-path']
   // });
 
-  // 创建并配置容器大小变化观察器
+// 创建并配置容器大小变化和滚动事件观察器
   resizeObserver.value = new ResizeObserver(() => {
     debug('容器大小变化，重新计算连线');
     triggerRecalculate();
   });
 
-  // 开始观察容器大小变化
+// 开始观察容器大小变化
   const parallelEaogPane = props.container.querySelector('.parallel-eaog');
   resizeObserver.value.observe(parallelEaogPane);
+
+// 监听滚动事件
+  const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
+  eaogPanes.addEventListener('scroll', triggerRecalculate);
 });
 
 onUnmounted(() => {
@@ -171,6 +174,10 @@ onUnmounted(() => {
     resizeObserver.value.disconnect();
     resizeObserver.value = null;
   }
+
+  // 停止滚动事件监听
+  const eaogPanes = props.container?.querySelector('.main-eaog, .parallel-eaog');
+  eaogPanes.removeEventListener('scroll', triggerRecalculate);
 });
 </script>
 

@@ -64,21 +64,6 @@ export class EditableEaogNode implements EaogNode {
     return this.meta?.framework === true; // 判断是否为 Eaog Framework
   }
 
-  get childrenDirection(): 'vertical' | 'horizontal' | '' {
-    return this.isLeaf ? ''  // 叶子节点没有子节点，返回空字符串
-      : Eaog.isConcurrentType(this.type) || Eaog.isConditionalType(this.type) ? 'horizontal'  // 并行和条件节点的子节点水平排列
-        : 'vertical'; // 其余节点的子节点垂直排列
-  }
-
-  /**
-   * 递归获取所有子孙节点
-   */
-  get descendants(): EditableEaogNode[] {
-    return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
-      return acc.concat(child, child.descendants);
-    }, []);
-  }
-
   /**
    * 获取当前节点及其所有子孙节点
    */
@@ -91,15 +76,25 @@ export class EditableEaogNode implements EaogNode {
   }
 
   get root(): EditableEaogNode {
-    return this.isRoot ? this : (this.parent as EditableEaogNode).root;
+    return this.isRoot ? this : this.parent!.root;
   }
 
   get pathNodes(): EditableEaogNode[] {
-    return this.isRoot ? [this] : [...(this.parent as EditableEaogNode).pathNodes, this]; // 获取从根节点到当前节点的路径节点数组
+    return this.isRoot ? [this] : [...this.parent!.pathNodes, this]; // 获取从根节点到当前节点的路径节点数组
   }
 
   get path(): string {
     return this.pathNodes.map(node => node.name).join('/'); // 获取从根节点到当前节点的路径字符串
+  }
+
+  get ancestors(): EditableEaogNode[] {
+    return this.pathNodes.slice(0, -1); // 获取当前节点的所有祖先节点（不包括当前节点）
+  }
+
+  get descendants(): EditableEaogNode[] {
+    return this.children.reduce((acc: EditableEaogNode[], child: EditableEaogNode) => {
+      return acc.concat(child, child.descendants);
+    }, []);
   }
 
   get previousSibling(): EditableEaogNode | undefined {

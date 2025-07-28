@@ -5,6 +5,7 @@ import {EditableEaogNode} from './editable-eaog-node';
 import * as treeUtils from "../utils/tree-utils";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 import {EditableIntegrationManager, ShowAtType} from "#/views/cp/models/editable-integration-manager";
+import {Eaog} from "../../../../../../../aia-eaog/src/eaog";
 
 // 用于存储 Model 到 ViewModel 的映射关系，避免重复创建 VM
 const modelToVMMap = new WeakMap<EditableEaogNode, EditableEaogNodeVM>();
@@ -42,12 +43,23 @@ export class EditableEaogNodeVM {
   isSelected = false; // 标记是否被选中
   isCollapsed = false; // 标记节点是否折叠子节点
 
+  /** 是否被折叠起来了 */
+  get isBeenCollapsed(): boolean {
+    return this.pathNodes.some(node => node.isCollapsed); // 从根到当前，只要有折叠，就是被折叠了
+  }
 
-  // 由Creator Wrie进来的属性
+  get childrenDirection(): 'vertical' | 'horizontal' | '' {
+    return this.isLeaf ? ''  // 叶子节点没有子节点，返回空字符串
+      : Eaog.isConcurrentType(this.type) || Eaog.isConditionalType(this.type) ? 'horizontal'  // 并行和条件节点的子节点水平排列
+        : 'vertical'; // 其余节点的子节点垂直排列
+  }
+
+  // 由Creator Wire进来的属性
   cp?: EditableCP; // 当前Eaog的CP
   ipath?: string;
   /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP */
 
+  // 直接用到的代理的EditableEaogNode属性
   declare parent?: EditableEaogNodeVM;
   declare children: EditableEaogNodeVM[];
   declare root?: EditableEaogNodeVM;

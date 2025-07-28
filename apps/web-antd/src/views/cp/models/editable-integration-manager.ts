@@ -199,6 +199,15 @@ class Integration implements IntegrationPoint {
             undefined; // 其他情况未定义
   }
 
+  get isShowing() {
+    return this.integratee !== undefined; // 如果被集成的CP存在，则表示集成点已显示
+  }
+
+  get parallelShowingCPAndSideCP() {
+    return this.isShowing && this.showAt === ShowAtType.Parallel ?
+      {cp: this.integratee, sideCP: this.launchHook ? this.launchHook.sideCP : this.sideCP}
+      : undefined;
+  }
 
   async open(integrator: EditableEaogNodeVMType) {
     this.integrator = integrator; // 设置集成点的发起节点
@@ -208,11 +217,11 @@ class Integration implements IntegrationPoint {
     let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr!);
     const integrationNode = this.launchHook ? findNodeByBriefPath(integrator.root, this.launchHook.path) : integrator; // 如果有launchHook，则使用它，否则使用当前节点
     this.integratee = await createEditableCP(cp, filePath, {type: this.type, node: integrationNode});
-    if (this.showAt === ShowAtType.Parallel) {
-      parallelCP.value = {cp: this.integratee, sideCP: this.launchHook ? this.launchHook.sideCP : this.sideCP}; // 将集成的CP设置为并行CP
-    } else {
-      // DONOTHING; 通过响应式系统（replaceCPRootNode、beforeCPRootNode、afterCPRootNode）自动更新视图
-    }
+    // if (this.showAt === ShowAtType.Parallel) {
+    //   parallelCP.value = {cp: this.integratee, sideCP: this.launchHook ? this.launchHook.sideCP : this.sideCP}; // 将集成的CP设置为并行CP
+    // } else {
+    //   // DONOTHING; 通过响应式系统（replaceCPRootNode、beforeCPRootNode、afterCPRootNode）自动更新视图
+    // }
   }
 
   async close() {

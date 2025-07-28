@@ -1,7 +1,8 @@
-import {ref, watch, computed} from 'vue';
+import {ref, watch, computed, watchEffect} from 'vue';
 import type {EditableEaogNodeVMType} from '../models/editable-eaog-node-vm';
 import type {EditableCP} from '../viewmodels/editable-cp';
 import type {CP, SideCP} from "#/views/cp/models/types";
+import {ShowAtType} from "#/views/cp/models/editable-integration-manager";
 
 /**
  * CP Editor 的核心状态管理
@@ -55,6 +56,15 @@ watch(mainCPModule, async (newCPM) => {
 watch(currentCP, (_) => {
   currentNode.value = undefined;
 });
+
+watchEffect(() => {
+  const parallels = mainCP.value?.eaog.integrationManager?.integrations
+    /* 集成展示中，且发起节点未被折叠 */
+    .filter(({isShowing, integrator, showAt}) => isShowing && !integrator!.isBeenCollapsed && showAt === ShowAtType.Parallel)
+    .map(integration => integration.parallelShowingCPAndSideCP);
+
+  parallelCP.value =  parallels?.[0]; // TODO: 目前只支持一个并行CP，后续可以改为支持多个
+})
 
 /**
  * 从外部（file、store、API等）加载当前CP数据

@@ -45,10 +45,11 @@ onMounted(async () => {
 });
 
 const parallelCPDomReady = ref(false); // 并行CP DOM是否准备就绪
-watch(parallelCP, (newValue) => nextTick(() => {
+// 注意：2次nextTick，1次在祖先折叠、展开后，link的寻路不够好
+watch(parallelCP, (newValue) => nextTick(() => nextTick(() => {
   parallelCPDomReady.value = !!newValue; // 确保DOM准备就绪
   debug('并行CP DOM状态:', parallelCPDomReady.value);
-}));
+})));
 </script>
 
 <template>
