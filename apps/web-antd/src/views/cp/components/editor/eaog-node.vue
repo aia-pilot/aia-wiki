@@ -34,10 +34,10 @@ const props = defineProps<{
 const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 
 const node = props.node.showNode;
-const isReplacedByIntegratedCP = props.node.isReplacedByIntegratedCP;
-const integratedCPLabel = isReplacedByIntegratedCP && `<${node.cp?.integratedCP.type}：${node.name}>`
-const nodeName = isReplacedByIntegratedCP ? `${props.node.name}: ${integratedCPLabel}` : props.node.name;
-const nodeDescription = isReplacedByIntegratedCP ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${integratedCPLabel}`)}` : props.node.description;
+const isReplacedNode = node.isIntegratedNode;
+const integratedCPLabel = isReplacedNode && `<${node.originalNode.type}：${node.name}>`
+const nodeName = isReplacedNode ? `${props.node.name}: ${integratedCPLabel}` : props.node.name;
+const nodeDescription = isReplacedNode ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${integratedCPLabel}`)}` : props.node.description;
 
 // @deprecated framework TODO: 合并考虑
 // const nodeName = node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
@@ -85,7 +85,7 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': isReplacedByIntegratedCP ?? false, // 如果是集成CP节点，背景色为黄色
+    'bg-yellow-100': isReplacedNode ?? false, // 如果是集成CP节点，背景色为黄色
   };
 });
 </script>
@@ -153,7 +153,7 @@ const headerClasses = computed(() => {
       </div>
 
       <!-- 节点尾部操作栏 -->
-      <eaog-node-tailbar v-if="!node.isRoot || isReplacedByIntegratedCP" :node="node" :isReplacedByIntegratedCP="isReplacedByIntegratedCP" class="mt-2" />
+      <eaog-node-tailbar v-if="!node.isRoot || isReplacedNode" :node="node" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->

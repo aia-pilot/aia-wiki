@@ -1,6 +1,7 @@
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 import {cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod";
 import {type EaogFramework} from "#/views/cp/models/eaog-framework";
+import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
 
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
@@ -73,6 +74,10 @@ export interface IntegrationPoint {
   block: boolean;
   path: string;
   ipath?: string;
+  sideCP?: SideCP; // 副CP定义
+  hook?: 'before' | 'after'; // 集成点的Hook类型
+  cpLocateStr?: string; // CP加载字符串，表示集成点所在的CP
+  launchHook?: Hook; // 启动集成的Hook
 }
 
 // declare module '../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js' {

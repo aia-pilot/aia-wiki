@@ -13,7 +13,6 @@ const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
   node: EditableEaogNodeVMType;
-  isReplacedByIntegratedCP?: boolean; // 是否为集成CP节点
 }>();
 
 // 处理折叠/展开按钮点击
@@ -24,8 +23,8 @@ const toggleCollapse = () => {
 
 // 处理集成CP按钮点击
 const handleIntegratedCPClick = (type: IntegrationType | 'close') => {
-    type === 'close' ? props.node.cp!.integratedCP.close() : // 此时node.cp是IntegratedCP
-      props.node.integratedCPManager?.get(type)?.toggle();
+    type === 'close' ? props.node.closeIntegration(type) : // 此时node.cp是IntegratedCP
+      props.node.toggleIntegration(type);
 };
 
 const closeIntegratedCPButtonConfig = {
@@ -37,40 +36,41 @@ const closeIntegratedCPButtonConfig = {
 
 // 定义按钮配置
 const buttonConfigs = computed(() => {
+  const integrationManager = props.node.root.integrationManager;
   const config = [
     {
       type: 'action',
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
-      show: props.node.integratedCPManager?.has('action'),
+      show: integrationManager.has(props.node, 'action'),
       class: 'rotate-90',
     },
     {
       type: 'hook',
       icon: 'mdi:hook',
       tooltip: 'Hook',
-      show: props.node.integratedCPManager?.has('hook'),
+      show: integrationManager.has(props.node, 'hook'),
     },
     {
       type: 'launch',
       icon: 'mdi:play-circle-outline',
       tooltip: '辅CP 执行点',
-      show: props.node.integratedCPManager?.has('launch'),
+      show: integrationManager.has(props.node, 'launch'),
     },
     {
       type: 'sync',
       icon: 'mdi:sync-circle',
       tooltip: '辅CP 同步点',
-      show: props.node.integratedCPManager?.has('sync'),
+      show: integrationManager.has(props.node, 'sync'),
     },
     {
       type: 'mount',
       icon: 'mdi:framework',
       tooltip: '框架加载点',
-      show: props.node.integratedCPManager?.has('mount'),
+      show: integrationManager.has(props.node, 'mount'),
     },
   ]
-  return props.isReplacedByIntegratedCP ? [closeIntegratedCPButtonConfig] : // 如果是集成CP，显示关闭按钮
+  return props.node.isIntegratedNode ? [closeIntegratedCPButtonConfig] : // 如果是集成CP，显示关闭按钮
     config.filter(c => c.show);
 });
 </script>

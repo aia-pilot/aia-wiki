@@ -1,11 +1,10 @@
 import {ref} from 'vue';
 import {currentCP} from "../viewmodels/cp-editor-state";
-import {IntegratedCPManager} from "../viewmodels/integrated-cp";
-import type {EaogNode} from "#/views/cp/models/types";
+import type {EaogNode, IntegrationType} from "#/views/cp/models/types";
 import {EditableEaogNode} from './editable-eaog-node';
 import * as treeUtils from "../utils/tree-utils";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
-import {EditableIntegrationManager} from "#/views/cp/models/editable-integration-manager";
+import {EditableIntegrationManager, ShowAtType} from "#/views/cp/models/editable-integration-manager";
 
 // 用于存储 Model 到 ViewModel 的映射关系，避免重复创建 VM
 const modelToVMMap = new WeakMap<EditableEaogNode, EditableEaogNodeVM>();
@@ -28,35 +27,44 @@ export type EditableEaogNodeVMType = EditableEaogNodeVM & EditableEaogNode;
 /**
  * EditableEaogNode的ViewModel层
  * 负责UI交互属性和行为
+ *
+ * ## 设计模式
+ *
+ * 采用了组合 + 代理的模式来增强 EditableEaogNode ，使其具备可交互性。
+ * VM的实例是 EditableEaogNode 的代理，除了自身的属性和方法外，还透传了 EditableEaogNode 的所有属性和方法。
  */
 export class EditableEaogNodeVM {
   model: EditableEaogNode;
 
   // UI交互状态
   id: string = crypto.randomUUID(); // Vue框架缓存依据
-  isNewlyModified = ref(false); // 标记是否为新添加的节点，用于动画效果
-  isSelected = ref(false); // 标记是否被选中
-  isCollapsed = ref(false); // 标记节点是否折叠子节点
+  isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
+  isSelected = false; // 标记是否被选中
+  isCollapsed = false; // 标记节点是否折叠子节点
 
-  // 用于显示集成的属性 TODO：有点多，待改进
-  integratedCPManager?: IntegratedCPManager; // 集成CP管理器，用于处理集成CP的逻辑
-  integratedCPBeforeNode?: EditableEaogNodeVM; // 前置的集成CP节点，用于展示
-  integratedCPAfterNode?: EditableEaogNodeVM; // 后置的集成CP节点，用于展示
-  integratedCPReplaceNode?: EditableEaogNodeVM; // 替换（本节点）的集成CP节点，用于展示
 
   // 由Creator Wrie进来的属性
-  cp?: EditableCP; // 当前Eaog的CP（TRANSIENT)
-  integrationManager?: EditableIntegrationManager; // 集成管理器，处理集成点的添加和查询
+  cp?: EditableCP; // 当前Eaog的CP
   ipath?: string;
-  /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP（TRANSIENT）*/
-
-
+  /** 集成路径 {@link CPIntegrationManager}，如何从顶层CP集成到当前CP */
 
   declare parent?: EditableEaogNodeVM;
   declare children: EditableEaogNodeVM[];
   declare root?: EditableEaogNodeVM;
 
-  // ...其他属性和方法
+  private _integrationManager?: EditableIntegrationManager; // 集成管理器，处理集成点的添加和查询
+
+  get integrationManager(): EditableIntegrationManager | undefined {
+    return this.root._integrationManager
+  }
+
+  set integrationManager(value: EditableIntegrationManager) {
+    if (!this.isRoot) {
+      throw new Error('只能在根节点上设置集成管理器');
+    }
+    this._integrationManager = value;
+  }
+
 
   /**
    * 注意：请使用 createEditableEaogNodeVM 工厂函数创建实例，否则不正确！
@@ -65,19 +73,42 @@ export class EditableEaogNodeVM {
     this.model = model;
   }
 
-  // 展示相关的计算属性
-  get showNode(): EditableEaogNodeVM {
-    return this.integratedCPReplaceNode || this;
+  // 展示集成CP的节点
+  get showNode(): EditableEaogNodeVMType {
+    const replaceNodes = this.integrationManager?.getIntegratedNodes(this, ShowAtType.Replace) || [];
+    if (replaceNodes.length > 1) {
+      console.warn(`节点 ${this.model.name} 有多个集成点，使用第一个：${replaceNodes[0].name}`);
+    }
+    return replaceNodes[0] || (this as unknown as EditableEaogNodeVMType);
   }
 
-  get isReplacedByIntegratedCP(): boolean {
-    return !!this.integratedCPReplaceNode;
+  get isIntegratedNode() {
+    return this.integrationManager?.isIntegratedNode(this as unknown as EditableEaogNodeVMType) || false;
   }
 
-  get showChildren(): EditableEaogNodeVM[] {
-    return [this.integratedCPBeforeNode, ...this.children, this.integratedCPAfterNode]
-      .filter(Boolean) as EditableEaogNodeVM[];
+  get originalNode(): EditableEaogNodeVMType | undefined {
+    return this.integrationManager?.getOriginalNode(this as unknown as EditableEaogNodeVMType);
   }
+
+  get showChildren(): EditableEaogNodeVMType[] {
+    const beforeNodes = this.integrationManager?.getIntegratedNodes(this, ShowAtType.Before) || [];
+    const afterNodes = this.integrationManager?.getIntegratedNodes(this, ShowAtType.After) || [];
+    return [...beforeNodes, ...this.children, ...afterNodes] as EditableEaogNodeVMType[];
+  }
+
+  async openIntegration(integrationType: IntegrationType, index) {
+    await this.integrationManager?.open(this as unknown as EditableEaogNodeVMType, integrationType, index);
+  }
+
+  async closeIntegration(integrationType: IntegrationType, index) {
+    await this.integrationManager?.close(this as unknown as EditableEaogNodeVMType, integrationType, index);
+  }
+
+  async toggleIntegration(integrationType: IntegrationType, index) {
+    await this.integrationManager?.toggle(this as unknown as EditableEaogNodeVMType, integrationType, index);
+  }
+
+
 
   // 节点点击处理
   click(shouldSelect = true, multiSelect = false): void {
@@ -93,23 +124,23 @@ export class EditableEaogNodeVM {
       // 如果不是多选模式，清除所有其它节点的选中状态
       treeUtils.traverseAll(this.root, node => {
         if (node !== this) {
-          node.isSelected.value = false;
+          node.isSelected = false;
         }
       });
     }
-    this.isSelected.value = !this.isSelected.value; // 切换选中状态
+    this.isSelected = !this.isSelected; // 切换选中状态
   }
 
   // 取消选中节点
   deselect(): void {
-    this.isSelected.value = false;
+    this.isSelected = false;
   }
 
   // 取消所有选中
   deselectAll(): void {
     if (this.root) {
       treeUtils.traverseAll(this.root, node => {
-        node.isSelected.value = false;
+        node.isSelected = false;
       });
     }
   }
@@ -118,7 +149,7 @@ export class EditableEaogNodeVM {
   getSelectedNodes(): EditableEaogNodeVM[] {
     const selected: EditableEaogNodeVM[] = [];
     treeUtils.traverseAll(this.root, node => {
-      if (node.isSelected.value) {
+      if (node.isSelected) {
         selected.push(node);
       }
     });
@@ -127,16 +158,16 @@ export class EditableEaogNodeVM {
 
   // 设置新修改状态（用于动画效果）
   markAsNewlyModifiedForAWhile(duration = 2000): void {
-    this.isNewlyModified.value = true;
+    this.isNewlyModified = true;
     // 到时（2秒）取消。2秒，与CSS动画时长一致。
     setTimeout(() => {
-      this.isNewlyModified.value = false;
+      this.isNewlyModified = false;
     }, duration);
   }
 
   // 切换折叠状态
   toggleCollapse(): void {
-    this.isCollapsed.value = !this.isCollapsed.value;
+    this.isCollapsed = !this.isCollapsed;
   }
 
   /**
@@ -279,7 +310,6 @@ export function createEditableEaogNodeVM(model: EaogNode, parentVM?: EditableEao
     vm = new EditableEaogNodeVM(model);
     vm = vm.makeModelProxy(); // 使用 Proxy 透传 model 的属性和方法
     vm.cp = cp ?? currentNode.value?.cp; // 关联当前 CP TODO:
-    vm.integratedCPManager = new IntegratedCPManager(vm as unknown as EditableEaogNodeVMType); // 初始化集成CP管理器
     vm.parent = parentVM
     // 初始化子树
     vm.sync();
