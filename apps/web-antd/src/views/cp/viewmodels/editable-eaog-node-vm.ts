@@ -1,18 +1,20 @@
 import {ref} from 'vue';
-import {currentCP} from "../viewmodels/cp-editor-state";
+import {currentCP, currentNode} from "./cp-editor-state";
 import type {EaogNode, IntegrationType} from "#/views/cp/models/types";
-import {EditableEaogNode} from './editable-eaog-node';
+import {EditableEaogNode} from '../models/editable-eaog-node';
 import * as treeUtils from "../utils/tree-utils";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 import {EditableIntegrationManager, ShowAtType} from "#/views/cp/models/editable-integration-manager";
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog";
+import Debug from 'debug';
+
+const debug = Debug("aia:cp:editable-eaog-node-vm");
 
 // 用于存储 Model 到 ViewModel 的映射关系，避免重复创建 VM
 const modelToVMMap = new WeakMap<EditableEaogNode, EditableEaogNodeVM>();
 
 // ViewModel层的引用存储
 export const clipboardNode = ref<EditableEaogNodeVMType | undefined>(); // 复制到剪贴板的节点
-export const currentNode = ref<EditableEaogNodeVMType | undefined>(); // 当前点击的节点（不一定是选中状态）
 
 // 定义会改变树结构的方法名列表，这些方法调用后需要同步VM和Model树
 const STRUCTURE_CHANGE_METHODS = [
@@ -125,6 +127,7 @@ export class EditableEaogNodeVM {
   // 节点点击处理
   click(shouldSelect = true, multiSelect = false): void {
     currentNode.value = this as unknown as EditableEaogNodeVMType; // 更新当前节点引用
+    // debug(`Node clicked: ${this.model.name}, currentNode: ${currentNode.value?.model.name}`);
     if (shouldSelect) {
       this.select(multiSelect);
     }

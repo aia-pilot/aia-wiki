@@ -1,8 +1,10 @@
-import {ref, watch, computed, watchEffect} from 'vue';
-import type {EditableEaogNodeVMType} from '../models/editable-eaog-node-vm';
+import {computed, ref, watch, watchEffect} from 'vue';
+import type {EditableEaogNodeVMType} from './editable-eaog-node-vm';
 import type {EditableCP} from '../viewmodels/editable-cp';
-import type {CP, SideCP} from "#/views/cp/models/types";
+import type {CP} from "#/views/cp/models/types";
 import {ShowAtType} from "#/views/cp/models/editable-integration-manager";
+import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
+import {uniqBy} from "lodash-es";
 
 /**
  * CP Editor 的核心状态管理
@@ -16,7 +18,7 @@ export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>();
 export const mainCP = ref<EditableCP | undefined>();
 
 // 并行CP
-export const parallelCP = ref<{cp: EditableCP, sideCP?: SideCP}| undefined>();
+export const parallelCPs = ref<EditableSideCP | undefined>();
 
 // 统一对外暴露一个 currentCP，因为虽然有主CP和并行CP，但在编辑器中只有一个当前正在编辑（交互）的CP，toolbar、context-menu、node-form都是针对这个CP进行操作的
 export const currentCP = computed({
@@ -58,12 +60,11 @@ watch(currentCP, (_) => {
 });
 
 watchEffect(() => {
-  const parallels = mainCP.value?.eaog.integrationManager?.integrations
+  const sideCPs = mainCP.value?.eaog.integrationManager?.integrations
     /* 集成展示中，且发起节点未被折叠 */
-    .filter(({isShowing, integrator, showAt}) => isShowing && !integrator!.isBeenCollapsed && showAt === ShowAtType.Parallel)
-    .map(integration => integration.parallelShowingCPAndSideCP);
-
-  parallelCP.value =  parallels?.[0]; // TODO: 目前只支持一个并行CP，后续可以改为支持多个
+    .filter(({isLoaded, integrator, showAt}) => isLoaded && !integrator!.isBeenCollapsed && showAt === ShowAtType.Parallel)
+    .map(integration => integration.sideCP);
+  parallelCPs.value = uniqBy(sideCPs, 'cpInstance') as EditableSideCP[];
 })
 
 /**
@@ -113,7 +114,7 @@ export const loadParallelCP = async (modulePath: string) => {
   const {loadCpFromCpStr} = await import('../services/cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   const {cp, filePath} = await loadCpFromCpStr(modulePath)
-  parallelCP.value = {cp: await createEditableCP(cp, filePath)};
+  parallelCPs.value = {cp: await createEditableCP(cp, filePath)};
 }
 
 /**

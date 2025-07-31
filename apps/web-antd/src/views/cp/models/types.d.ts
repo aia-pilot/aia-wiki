@@ -1,7 +1,7 @@
 // 定义 EaogNode 类型为 cpNodeSchema 的推断类型
 import {cpNodeSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod";
 import {type EaogFramework} from "#/views/cp/models/eaog-framework";
-import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
+import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 
 export type EaogNode = z.infer<typeof cpNodeSchema>;
 
@@ -16,8 +16,8 @@ export interface Hook extends IntegrationPoint {
 
 // SideCP 类型定义
 export type SideCP = {
-  cp: string;              /** cpLocateStr {@link parseCpModuleLocateStr} */
-  launchPoint: string;     /** 启动点，主CP的briefPath {@link findNodeByBriefPath} */
+  cp: string | EditableCP;              /** cpLocateStr {@link parseCpModuleLocateStr} */
+  launchPoint: string | EditableEaogNodeVMType;     /** 启动点，主CP的briefPath {@link findNodeByBriefPath} */
   syncPoints: SyncPoint[]; // 同步点数组
 };
 
@@ -30,10 +30,12 @@ export type SyncPoint = {
   actor: { // 主CP 充当 Actor
     path: string; /** briefPath {@link findNodeByBriefPath} */
     onSync?: string | ((actorNode: EaogNode, waiterNode: EaogNode) => void);  /** actionUri {@link ActionManager} */
+    node?: EditableEaogNodeVMType; /** 节点实例，集成、加载后的对应节点 */
   };
   waiter: { // 辅CP 充当 Waiter
     path: string;  /** briefPath {@link findNodeByBriefPath} */
     onSync?: string | ((actorNode: EaogNode, waiterNode: EaogNode) => void); /** actionUri {@link ActionManager} */
+    node?: EditableEaogNodeVMType; /** 节点实例，集成、加载后的对应节点 */
   };
   exePhase: "before" | "after"; // 在 Actor 执行前或执行后触发同步
   block: boolean;              // 是否等待 Waiter 完成后再继续执行

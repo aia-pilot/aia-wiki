@@ -14,7 +14,7 @@
  */
 import {computed, inject, type Ref} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
-import {type EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
+import {type EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import Debug from 'debug';
 
 // 导入重构后的组合式函数
@@ -22,7 +22,7 @@ import {useDraggable} from "../../composables/use-draggable";
 // import {EaogFramework} from "#/views/cp/models/eaog-framework";
 import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
-import {nodeTypeUIConfig} from "#/views/cp/models/editable-eaog-node-vm";
+import {nodeTypeUIConfig} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 
 const debug = Debug('aia:eaog-node');
 

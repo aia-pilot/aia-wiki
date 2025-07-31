@@ -20,7 +20,7 @@
 import {computed, onMounted, onUnmounted, ref} from 'vue';
 import OrthogonalLinkLayer from '../node-links-layer/orthogonal-link-layer.vue';
 import type {LinkSpec} from '../node-links-layer/types';
-import {parallelCP} from '../../viewmodels/cp-editor-state';
+import {parallelCPs} from '../../viewmodels/cp-editor-state';
 import type {SyncPoint} from '../../models/types';
 import Debug from 'debug';
 import {type ContentBox, getAllContentBoxes} from "#/views/cp/components/node-links-layer/utils/get-all-content-box";
@@ -51,27 +51,28 @@ const links = computed<LinkSpec[]>(() => {
   const trigger = recalculateTrigger.value;
   debug('重新计算links，trigger:', trigger);
 
-  const sideCP = parallelCP.value!.sideCP;
-  const integrationManager = parallelCP.value!.cp.eaog.integrationManager;
-  if (!sideCP?.syncPoints?.length || !props.container) return [];
+  const sideCPs = parallelCPs.value!;
+  const integrationManager = sideCPs[0].cpInstance.eaog.integrationManager;
+  const syncPoints = sideCPs.flatMap(sp => sp.syncPoints);
 
   const linkSpecs: LinkSpec[] = [];
 
-  // 遍历所有同步点
-  for (const syncPoint of sideCP.syncPoints) {
+  // 遍历所有同步点 TODO: 绘制launch point
+  for (const syncPoint of syncPoints) {
     try {
       // 查找主EAOG中的actor节点DOM元素
-      const actorEaogPath = integrationManager.getEaogBriefPath(syncPoint.actor.path);
+      const actorEaogPath = integrationManager.getNodeBriefPath(syncPoint.actor.path);
       const actorSelector = `.main-eaog [data-node-path$="${actorEaogPath}"] .eaog-node-name`;
       const actorElement = props.container.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
-      const waiterEaogPath = integrationManager.getEaogBriefPath(syncPoint.waiter.path);
+      const waiterEaogPath = integrationManager.getNodeBriefPath(syncPoint.waiter.path);
       const waiterSelector = `.parallel-eaog [data-node-path$="${waiterEaogPath}"] .node-type-icon span`;
       const waiterElement = props.container.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
-        debug(`未找到同步点DOM元素: actor=${syncPoint.actor.path}, waiter=${syncPoint.waiter.path}`);
+        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.path}`);
+        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.path}`);
         continue;
       }
 

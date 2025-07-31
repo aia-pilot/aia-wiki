@@ -3,7 +3,7 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
-import {clipboardNode,} from '../../models/editable-eaog-node-vm';
+import {clipboardNode,} from '../../viewmodels/editable-eaog-node-vm';
 import {currentNode, saveCurrentCP} from '../../viewmodels/cp-editor-state';
 // 导入lucide.ts中可用的图标
 import {Circle, Check, Copy, ArrowLeft, ChevronRight, ArrowDown, ArrowUp, CircleX, Info, Expand} from '@vben/icons';

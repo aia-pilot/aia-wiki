@@ -30,16 +30,16 @@ export const saveCpToFile = async (cp: EditableCP, isNew: boolean) => {
     .map((item: any) => item.toJSON ? item.toJSON() : item)
     .map((item: any) => compactJson(item, {keyNoQuotation: true}));
   // const {eaog, hooks, sideCPs, frameworks} = cp.toJSON();
-  const filePath = isNew ? await getNewFilePath() : cp.filePath;
+  isNew && (cp.filePath = await getNewFilePath());
   const content = `// Auto-generated CP file
 export const eaog = ${eaog};\n
 export const hooks = ${hooks};\n
 export const sideCPs = ${sideCPs};\n
 export const frameWorks = ${frameworks};\n`;
 
-  debug(`保存CP模块到本地目录, file path: ${filePath}`);
+  debug(`保存CP模块到本地目录, file path: ${cp.filePath}`);
   // @ts-ignore
-  await window.electronAPI.invokeMain('use-sys-write-file', { path: filePath, content });
+  await window.electronAPI.invokeMain('use-sys-write-file', { path: cp.filePath, content });
 }
 
 

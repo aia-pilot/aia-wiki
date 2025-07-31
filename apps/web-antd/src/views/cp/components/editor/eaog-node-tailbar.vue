@@ -4,7 +4,7 @@
  * 提供节点相关的功能按钮，如折叠/展开、同步点、钩子、子CP等
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
-import type {EditableEaogNodeVMType} from '../../models/editable-eaog-node-vm';
+import type {EditableEaogNodeVMType} from '../../viewmodels/editable-eaog-node-vm';
 import Debug from 'debug';
 import { computed } from 'vue';
 import type {IntegrationType} from "#/views/cp/models/types";
@@ -31,9 +31,12 @@ const closeIntegratedCPButtonConfig = {
   type: 'close',
   icon: 'mdi:close',
   tooltip: '关闭嵌套 CP',
-  show: true,
+  count: 1,
 }
 
+const countIntegratedCPs = (type: IntegrationType) => {
+  return props.node.root.integrationManager.get(props.node, type, (i) => i.isCPIntegration).length;
+};
 // 定义按钮配置
 const buttonConfigs = computed(() => {
   const integrationManager = props.node.root.integrationManager;
@@ -42,36 +45,36 @@ const buttonConfigs = computed(() => {
       type: 'action',
       icon: 'mdi:play-circle',
       tooltip: 'Action CP',
-      show: integrationManager.has(props.node, 'action'),
+      count: countIntegratedCPs('action'),
       class: 'rotate-90',
     },
     {
       type: 'hook',
       icon: 'mdi:hook',
       tooltip: 'Hook',
-      show: integrationManager.has(props.node, 'hook'),
+      count: countIntegratedCPs('hook'),
     },
     {
       type: 'launch',
       icon: 'mdi:play-circle-outline',
       tooltip: '辅CP 执行点',
-      show: integrationManager.has(props.node, 'launch'),
+      count: countIntegratedCPs('launch'),
     },
     {
       type: 'sync',
       icon: 'mdi:sync-circle',
       tooltip: '辅CP 同步点',
-      show: integrationManager.has(props.node, 'sync'),
+      count: countIntegratedCPs('sync'),
     },
     {
       type: 'mount',
       icon: 'mdi:framework',
       tooltip: '框架加载点',
-      show: integrationManager.has(props.node, 'mount'),
+      count: countIntegratedCPs('mount'),
     },
   ]
-  return props.node.isIntegratedNode ? [closeIntegratedCPButtonConfig] : // 如果是集成CP，显示关闭按钮
-    config.filter(c => c.show);
+  return props.node.isIntegratedNode ? [closeIntegratedCPButtonConfig] : // 如果是被集成CP，显示关闭按钮
+    config.filter(c => c.count > 0); // 是顶层CP，显示有集成CP对应类型的按钮
 });
 </script>
 

@@ -1,126 +1,101 @@
-import type {IntegrationPoint, IntegrationType, EaogNode, Hook, SideCP} from './types.d';
+import type {EaogNode, Hook, IntegrationPoint, IntegrationType, SideCP} from './types.d';
 // @ts-ignore
 import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
-import {CPIntegrationManager} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
-import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
+import {
+  CPIntegrationManager,
+  findNodeByIpath
+} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
+import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
+
+import {reactive} from 'vue';
+
+import Debug from 'debug';
+
+const debug = Debug("aia:cp:editable-integration-manager");
 
 /**
  * 可编辑的集成管理器，继承自CPIntegrationManager
  * 提供针对节点的集成点操作方法
  */
 export class EditableIntegrationManager extends CPIntegrationManager {
+  id: string = crypto.randomUUID(); // 唯一标识符，使用UUID生成
 
-  override loadIntegrations(integrations: IntegrationPoint[], parentIpath?: string): void {
-    integrations = integrations.map(itg => new Integration(itg)); // 生成 Integration 实例
-    super.loadIntegrations(integrations, parentIpath);
+  override loadIntegrations(integrations: IntegrationPoint[], parentIpath?: string, eaog?: EditableEaogNodeVMType): Promise<Integration[]> {
+    integrations = integrations.map(itg => createReactiveIntegration(itg, eaog)); // 生成 Integration 实例
+    return super.loadIntegrations(integrations, parentIpath, eaog);
   }
 
   /**
    * 检查节点是否存在指定类型的集成点
    * @param node 要检查的节点
    * @param type 可选的集成点类型
+   * @param predicate 额外筛选器
    * @returns 是否存在集成点
    */
-  has(node: EaogNode, type?: IntegrationType): boolean {
-    if (!node.ipath) {
-      return false;
-    }
-    return this.integrations.some(integration => integration.ipath === node.ipath && (!type || integration.type === type));
+  has(node: EaogNode, type?: IntegrationType, predicate?: Function): boolean {
+    return node.ipath && this.integrations.some(integration =>
+      integration.ipath === node.ipath && (!type || integration.type === type) && (!predicate || predicate(integration))
+    );
   }
 
   /**
    * 获取节点上的集成点
    * @param node 要获取集成点的节点
    * @param type 可选的集成点类型
+   * @param predicate 额外筛选器函数
    * @returns 符合条件的集成点数组
    */
-  get(node: EaogNode, type?: IntegrationType): IntegrationPoint[] {
+  get(node: EaogNode, type?: IntegrationType, predicate?: Function): Integration[] {
     if (!node.ipath) {
       return [];
     }
-    return this.integrations.filter(integration => integration.ipath === node.ipath && (!type || integration.type === type));
+    return this.integrations.filter(integration =>
+      integration.ipath === node.ipath && (!type || integration.type === type) && (!predicate || predicate(integration))
+    );
   }
 
   /**
-   * 添加集成点
-   * @param integrationPoint 要添加的集成点
-   * @returns 添加后的集成点
+   * 加载未加载的集成点。
+   * 注意：1）将递归加载集成点和延伸集成点；2）采用异步非阻塞加载，避免重复加载
    */
-  add(integrationPoint: IntegrationPoint): IntegrationPoint {
-    try {
-      // 使用zod验证集成点格式
-      const validatedPoint = IntegrationPointSchema.parse(integrationPoint);
+  load(cp: EditableCP, integrations?: Integration[]) {
+    integrations ||= this.integrations || []
+    const launchIntegrations = this.getIntegrationsOnCP(integrations, cp, i => i.isCPLaunchIntegration); // 过滤掉未找到集成发起点
 
-      // 避免重复添加
-      const existingIndex = this.integrations.findIndex(i =>
-        i.ipath === integrationPoint.ipath && i.type === integrationPoint.type
-      );
+    /* DO NOT await here, 避免阻塞 */
+    // 1) 加载启动集成点
+    launchIntegrations.length > 0 && Promise.all(launchIntegrations.map(integration => {
+      return integration.loadAndOpen(cp).then(() => {
+        // 2）加载同一CP其他非启动集成点
+        // const sameIntegrateeIntegrations = this.integrations.filter(i => i !== integration && i.cpLocateStr === integration.cpLocateStr);
+        const sameIntegrateeIntegrations = this.getIntegrationsOnCP(this.integrations, cp, i => !i.isCPLaunchIntegration && i.cpLocateStr === integration.cpLocateStr);
+        sameIntegrateeIntegrations.forEach(sameIntegration => sameIntegration.loadAndOpen(cp.eaog, integration.integratee));
 
-      if (existingIndex >= 0) {
-        this.integrations[existingIndex] = validatedPoint;
-      } else {
-        this.integrations.push(validatedPoint);
-      }
-      return validatedPoint;
-    } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        throw new Error(`集成点验证失败: ${(error as z.ZodError).errors.map((e: {
-          message: string
-        }) => e.message).join(', ')}`);
-      }
-      throw error;
-    }
+        // 3）加载延伸集成集成点（看新加载的CP，可否匹配其它集成点）
+        this.load(integration.integratee)
+      });
+    })).then(() => {
+
+
+
+      // 4）加载不同CP的其他集成点 （此时，同一CP的集成点已经加载完成）
+      // const otherIntegrations = this.getIntegrationsOnCP((integrations), cp, i => !i.isCPLaunchIntegration);
+      // otherIntegrations.forEach(integration => integration.loadAndOpen(cp.eaog));
+    })
   }
 
-  /**
-   * 移除集成点
-   * @param integrationPoint 要移除的集成点
-   * @returns 是否成功移除
-   */
-  remove(integrationPoint: IntegrationPoint): boolean {
-    const initialLength = this.integrations.length;
-
-    this.integrations = this.integrations.filter(integration => {
-      // 通过ipath和type确定唯一的集成点
-      return !(integration.ipath === integrationPoint.ipath &&
-        integration.type === integrationPoint.type &&
-        integration.id === integrationPoint.id);
-    });
-
-    return initialLength > this.integrations.length;
-  }
-
-  /**
-   * 根据节点和类型移除集成点
-   * @param node 相关节点
-   * @param type 可选的集成点类型
-   * @returns 移除的集成点数量
-   */
-  removeByNode(node: EaogNode, type?: IntegrationType): number {
-    if (!node.ipath) {
-      return 0;
-    }
-
-    const initialLength = this.integrations.length;
-
-    if (type) {
-      this.integrations = this.integrations.filter(integration =>
-        !(integration.ipath?.startsWith(node.ipath as string) && integration.type === type)
-      );
-    } else {
-      this.integrations = this.integrations.filter(integration =>
-        !integration.ipath?.startsWith(node.ipath as string)
-      );
-    }
-
-    return initialLength - this.integrations.length;
+  private getIntegrationsOnCP(integrations: Integration[], cp: EditableCP, filter) {
+    integrations = integrations.filter(i => i.status === 'pending' && (!filter || filter(i)))
+    integrations.forEach(i => i.integrator = findNodeByIpath(cp.eaog, i.ipath))
+    return integrations.filter(i => i.integrator);
   }
 
   async open(integrator: EditableEaogNodeVMType, integrationType: IntegrationType, index = 0) {
     const integration = this.get(integrator, integrationType)[index]
     if (integration) {
-      await integration.open(integrator);
+      await integration.loadAndOpen(integrator);
     } else {
       throw new Error(`集成点不存在: ${integrator.ipath}，集成类型： (${integrationType})`);
     }
@@ -129,7 +104,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
   async close(integratee: EditableEaogNodeVMType, integrationType: IntegrationType, index = 0) {
     const integration = this.findIntegrationByIntegrateeNode(integratee, index);
     if (integration) {
-      integration.close();
+      integration.unloadAndClose();
     } else {
       throw new Error(`集成点不存在，被集成的eaog ${integratee.name}，集成类型 (${integrationType})`);
     }
@@ -139,9 +114,9 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     const integration = this.get(integrator, integrationType)[index];
     if (integration) {
       if (integration.integratee) {
-        await integration.close();
+        await integration.unloadAndClose();
       } else {
-        await integration.open(integrator);
+        await integration.loadAndOpen(integrator);
       }
     } else {
       throw new Error(`集成点不存在: ${integrator.ipath}，集成类型： (${integrationType})`);
@@ -174,24 +149,27 @@ export enum ShowAtType {
   Parallel = 'parallel'        // 并行集成，独立显示在 parallel pane 中
 }
 
-class Integration implements IntegrationPoint {
+export class Integration implements IntegrationPoint {
   type!: IntegrationType;
   name!: string;
   block!: boolean;
   path!: string;
   ipath?: string;
-  id?: string;
+  id: string = crypto.randomUUID(); // 唯一标识符，使用UUID生成
   sideCP?: SideCP; // 副CP定义
   hook?: 'before' | 'after'; // 集成点的Hook类型
   cpLocateStr?: string;
   launchHook?: Hook; // 启动集成的Hook
 
+  status?: 'pending' | 'loading' | 'loaded' | 'closed' = 'pending'; // 集成点状态
+  definedAt?: EditableCP; // 定义集成点的CP。非延伸集成时。
   integrator?: EditableEaogNodeVMType; // 发起集成的节点
   integratee?: EditableCP; // 被集成的CP
   showAt?: ShowAtType; // 集成点显示位置
 
-  constructor(integrationPoint: IntegrationPoint) {
+  constructor(integrationPoint: IntegrationPoint, defineAt?: EditableCP) {
     Object.assign(this, integrationPoint);
+    this.definedAt = defineAt;
     this.showAt = this.type === 'launch' || this.type === 'sync' ? ShowAtType.Parallel : // launch、sync 是Side CP，总是并行执行
       this.type === 'action' || this.type === 'mount' ? ShowAtType.Replace : // mount 是Framework CP，总是替换当前节点、action
         this.hook === 'before' ? ShowAtType.Before :  // before Hook 集成点在发起节点前
@@ -199,38 +177,50 @@ class Integration implements IntegrationPoint {
             undefined; // 其他情况未定义
   }
 
-  get isShowing() {
-    return this.integratee !== undefined; // 如果被集成的CP存在，则表示集成点已显示
+  get isExtendIntegration() {
+    return this.path.includes('//'); // 如果path包含双斜杠，说明指向的integrator不在this.definedAt的CP上，是延伸集成点。
   }
 
-  get parallelShowingCPAndSideCP() {
-    return this.isShowing && this.showAt === ShowAtType.Parallel ?
-      {cp: this.integratee, sideCP: this.launchHook ? this.launchHook.sideCP : this.sideCP}
-      : undefined;
+  get isCPIntegration() {
+    return this.cpLocateStr !== undefined; // 如果cpLocateStr存在，则表示是CP集成点
   }
 
-  async open(integrator: EditableEaogNodeVMType) {
-    this.integrator = integrator; // 设置集成点的发起节点
+  get isCPLaunchIntegration() {
+    return ['launch', 'action'].includes(this.type) && this.cpLocateStr !== undefined; // 如果cpLocateStr存在，且类型是launch或action，则表示是CP启动集成点
+  }
+
+  get isLoaded() {
+    return this.integrator != null && this.integratee != null && this.status === 'loaded'; // 如果被集成的CP存在，则表示集成点已显示
+  }
+
+  /**
+   * 在集成发起节点，打开集成点
+   * @param integrator - 发起集成的节点
+   * @param integratee - 被集成的CP（可选），未提供时，将按this.cpLocateStr加载。
+   */
+  async loadAndOpen(integrator?: EditableEaogNodeVMType, integratee?: EditableCP) {
+    this.integrator ||= integrator;
+    if (!this.integrator) {
+      throw new Error(`集成点 ${this.name} (${this.type}) 的发起节点未指定或未找到`);
+    }
+
     const {loadCpFromCpStr} = await import('#/views/cp/services/cp-loader')
     const {createEditableCP} = await import('#/views/cp/viewmodels/editable-cp');
-    const {parallelCP} = await import('#/views/cp/viewmodels/cp-editor-state');
-    let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr!);
-    const integrationNode = this.launchHook ? findNodeByBriefPath(integrator.root, this.launchHook.path) : integrator; // 如果有launchHook，则使用它，否则使用当前节点
-    this.integratee = await createEditableCP(cp, filePath, {type: this.type, node: integrationNode});
-    // if (this.showAt === ShowAtType.Parallel) {
-    //   parallelCP.value = {cp: this.integratee, sideCP: this.launchHook ? this.launchHook.sideCP : this.sideCP}; // 将集成的CP设置为并行CP
-    // } else {
-    //   // DONOTHING; 通过响应式系统（replaceCPRootNode、beforeCPRootNode、afterCPRootNode）自动更新视图
-    // }
+
+    this.status = 'loading';
+    if (!integratee) {
+      let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr!);
+      integratee = await createEditableCP(cp, filePath, this);
+    }
+    this.integratee = integratee;
+    this.sideCP && (this.sideCP.cpInstance = integratee);
+    this.status = 'loaded';
   }
 
-  async close() {
-    this.integrator = undefined; // 清除发起节点
-    this.integratee = undefined; // 清除被集成的CP
-    if (this.showAt === ShowAtType.Parallel) {
-      const {parallelCP} = await import('#/views/cp/viewmodels/cp-editor-state');
-      parallelCP.value = undefined; // 清除并行CP
-    }
+  async unloadAndClose() {
+    this.integrator = undefined;
+    this.integratee = undefined;
+    this.status = 'closed';
   }
 
 
@@ -251,3 +241,6 @@ class Integration implements IntegrationPoint {
   }
 }
 
+function createReactiveIntegration(integrationPoint: IntegrationPoint, eaog?: EditableEaogNodeVMType): Integration {
+  return reactive(new Integration(integrationPoint, eaog.cp));
+}

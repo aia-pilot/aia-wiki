@@ -15,7 +15,7 @@ import EaogNodeForm from '../editor/eaog-node-form.vue';
 import {projectManager, currentFolder, currentFile} from './project';
 
 import Debug from 'debug';
-import {clipboardNode} from "#/views/cp/models/editable-eaog-node-vm";
+import {clipboardNode} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import {loadCurrentCP} from "#/views/cp/viewmodels/cp-editor-state";
 
 const debug = Debug('aia:cp:project-panel');

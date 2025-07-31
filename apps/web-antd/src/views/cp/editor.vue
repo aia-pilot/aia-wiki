@@ -14,7 +14,7 @@
  */
 
 // 导入EaogNode组件和相关类型
-import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCP} from "#/views/cp/viewmodels/cp-editor-state";
+import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
@@ -46,7 +46,7 @@ onMounted(async () => {
 
 const parallelCPDomReady = ref(false); // 并行CP DOM是否准备就绪
 // 注意：2次nextTick，1次在祖先折叠、展开后，link的寻路不够好
-watch(parallelCP, (newValue) => nextTick(() => nextTick(() => {
+watch(parallelCPs, (newValue) => nextTick(() => nextTick(() => {
   parallelCPDomReady.value = !!newValue; // 确保DOM准备就绪
   debug('并行CP DOM状态:', parallelCPDomReady.value);
 })));
@@ -63,7 +63,7 @@ watch(parallelCP, (newValue) => nextTick(() => nextTick(() => {
       <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
         <!-- 主CP EAOG -->
         <template #main-eaog>
-          <Pane :size="parallelCP ? 40 : 80">
+          <Pane :size="parallelCPs?.length > 0 ? 40 : 80">
             <div class="w-full p-4 border rounded-md">
               <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
                 <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
@@ -73,11 +73,11 @@ watch(parallelCP, (newValue) => nextTick(() => nextTick(() => {
         </template>
 
         <!-- 并行CP EAOG 展示将与主CP并行执行的某个CP -->
-        <template v-if="parallelCP" #parallel-eaog>
+        <template v-if="parallelCPs?.length > 0" #parallel-eaog>
           <Pane :size="40">
             <div class="w-full p-4 border rounded-md">
-              <div class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallelCP.cp.eaog" :key="parallelCP.cp.eaog.id"/>
+              <div v-for="(parallel, index) in parallelCPs" :key="index"  class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
+                <EaogNodeComponent :node="parallel.cpInstance.eaog" :key="parallel.cpInstance.eaog.id"/>
               </div>
             </div>
           </Pane>
@@ -94,7 +94,7 @@ watch(parallelCP, (newValue) => nextTick(() => nextTick(() => {
     </Splitpanes>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-    <MainSideEaogLinks v-if="parallelCPDomReady && parallelCP?.sideCP" :container="editorContainer"/>
+    <MainSideEaogLinks v-if="parallelCPDomReady && parallelCPs?.length > 0" :container="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

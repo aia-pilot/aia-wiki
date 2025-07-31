@@ -13,7 +13,7 @@ import {currentNode, currentCP, saveCurrentCP} from '../../viewmodels/cp-editor-
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
-import type {EditableEaogNodeVMType} from "#/views/cp/models/editable-eaog-node-vm";
+import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 // @formatter:on
 
 // 节点类型选项

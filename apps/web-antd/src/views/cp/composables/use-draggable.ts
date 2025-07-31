@@ -2,7 +2,7 @@
  * 拖拽逻辑组合式函数
  */
 import { ref } from 'vue';
-import type { EditableEaogNodeVMType } from "#/views/cp/models/editable-eaog-node-vm";
+import type { EditableEaogNodeVMType } from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import type { DropPosition, DragState, DragEventHandlers } from '#/views/cp/types/node-types';
 import { message } from 'ant-design-vue';
 import Debug from 'debug';
