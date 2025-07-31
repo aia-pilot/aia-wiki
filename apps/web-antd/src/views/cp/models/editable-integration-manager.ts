@@ -3,7 +3,7 @@ import type {EaogNode, Hook, IntegrationPoint, IntegrationType, SideCP} from './
 import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {
   CPIntegrationManager,
-  findNodeByIpath
+  findNodeByIpath, isNodeForIpath
 } from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
 import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
@@ -36,7 +36,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
    */
   has(node: EaogNode, type?: IntegrationType, predicate?: Function): boolean {
     return node.ipath && this.integrations.some(integration =>
-      integration.ipath === node.ipath && (!type || integration.type === type) && (!predicate || predicate(integration))
+      isNodeForIpath(node, integration.ipath) && (!type || integration.type === type) && (!predicate || predicate(integration))
     );
   }
 
@@ -52,7 +52,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
       return [];
     }
     return this.integrations.filter(integration =>
-      integration.ipath === node.ipath && (!type || integration.type === type) && (!predicate || predicate(integration))
+      isNodeForIpath(node, integration.ipath) && (!type || integration.type === type) && (!predicate || predicate(integration))
     );
   }
 
@@ -67,7 +67,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     /* DO NOT await here, 避免阻塞 */
     // 1) 加载启动集成点
     launchIntegrations.length > 0 && Promise.all(launchIntegrations.map(integration => {
-      return integration.loadAndOpen(cp).then(() => {
+      return integration.loadAndOpen(cp.eaog).then(() => {
         // 2）加载同一CP其他非启动集成点
         // const sameIntegrateeIntegrations = this.integrations.filter(i => i !== integration && i.cpLocateStr === integration.cpLocateStr);
         const sameIntegrateeIntegrations = this.getIntegrationsOnCP(this.integrations, cp, i => !i.isCPLaunchIntegration && i.cpLocateStr === integration.cpLocateStr);
@@ -213,7 +213,7 @@ export class Integration implements IntegrationPoint {
       integratee = await createEditableCP(cp, filePath, this);
     }
     this.integratee = integratee;
-    this.sideCP && (this.sideCP.cpInstance = integratee);
+    (this.sideCP as EditableSideCP | undefined)?.integrate(integrator.root.cp, integratee);
     this.status = 'loaded';
   }
 

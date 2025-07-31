@@ -50,6 +50,7 @@ watch(parallelCPs, (newValue) => nextTick(() => nextTick(() => {
   parallelCPDomReady.value = !!newValue; // 确保DOM准备就绪
   debug('并行CP DOM状态:', parallelCPDomReady.value);
 })));
+
 </script>
 
 <template>
@@ -77,7 +78,7 @@ watch(parallelCPs, (newValue) => nextTick(() => nextTick(() => {
           <Pane :size="40">
             <div class="w-full p-4 border rounded-md">
               <div v-for="(parallel, index) in parallelCPs" :key="index"  class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallel.cpInstance.eaog" :key="parallel.cpInstance.eaog.id"/>
+                <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
               </div>
             </div>
           </Pane>

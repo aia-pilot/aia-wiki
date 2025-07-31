@@ -18,7 +18,9 @@ export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>();
 export const mainCP = ref<EditableCP | undefined>();
 
 // 并行CP
-export const parallelCPs = ref<EditableSideCP | undefined>();
+export const parallelCPs = ref<EditableSideCP[] | undefined>();
+
+export const parallelCPsDomReady = ref<EditableSideCP[] | undefined>(); // 延迟到parallel CPs Dom Ready 以便划线
 
 // 统一对外暴露一个 currentCP，因为虽然有主CP和并行CP，但在编辑器中只有一个当前正在编辑（交互）的CP，toolbar、context-menu、node-form都是针对这个CP进行操作的
 export const currentCP = computed({
@@ -59,12 +61,16 @@ watch(currentCP, (_) => {
   currentNode.value = undefined;
 });
 
-watchEffect(() => {
+watchEffect(async () => {
   const sideCPs = mainCP.value?.eaog.integrationManager?.integrations
     /* 集成展示中，且发起节点未被折叠 */
     .filter(({isLoaded, integrator, showAt}) => isLoaded && !integrator!.isBeenCollapsed && showAt === ShowAtType.Parallel)
     .map(integration => integration.sideCP);
-  parallelCPs.value = uniqBy(sideCPs, 'cpInstance') as EditableSideCP[];
+  parallelCPs.value = uniqBy(sideCPs, 'waiterCP') as EditableSideCP[];
+
+  setTimeout(() => {
+    parallelCPsDomReady.value = parallelCPs.value;
+  }, 1000)
 })
 
 /**

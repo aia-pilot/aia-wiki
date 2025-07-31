@@ -142,8 +142,13 @@ const defaultLinkStyle = {
   zIndex: 1
 };
 
+// 使用路径计算组合函数
+const { computedLinks } = useLinkPathCalculation(props, defaultLinkStyle, emit);
+
 // SVG 样式计算
 const svgStyles = computed(() => {
+  // 在每次computedLinks变化时重新计算SVG样式
+  computedLinks.value; // 触发依赖
   const containerRect = props.container?.getBoundingClientRect() || null;
   if (!containerRect) return undefined;
 
@@ -161,8 +166,6 @@ const svgStyles = computed(() => {
   return styles;
 });
 
-// 使用路径计算组合函数
-const { computedLinks } = useLinkPathCalculation(props, defaultLinkStyle, emit);
 
 // 事件处理函数
 const handleSvgClick = (_event: MouseEvent) => {

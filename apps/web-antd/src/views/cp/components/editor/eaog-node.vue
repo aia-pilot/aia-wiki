@@ -91,9 +91,9 @@ const headerClasses = computed(() => {
 </script>
 
 <template>
-  <!-- 使用 node.childrenDirection 来动态设置 class，并添加data-node-path用于DOM选择器 -->
+  <!-- 使用 node.childrenDirection 来动态设置 class，并添加data-node-ipath用于DOM选择器 -->
   <div class="eaog-node"
-       :data-node-path="node.path"
+       :data-node-ipath="node.ipath"
        :class="[
          node.childrenDirection,
          {

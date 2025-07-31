@@ -52,8 +52,9 @@ const links = computed<LinkSpec[]>(() => {
   debug('重新计算links，trigger:', trigger);
 
   const sideCPs = parallelCPs.value!;
-  const integrationManager = sideCPs[0].cpInstance.eaog.integrationManager;
+  // const integrationManager = sideCPs[0].waiterCP.eaog.integrationManager;
   const syncPoints = sideCPs.flatMap(sp => sp.syncPoints);
+  // const syncPoints = sideCPs.slice(-1).flatMap(sp => sp.syncPoints);
 
   const linkSpecs: LinkSpec[] = [];
 
@@ -61,18 +62,21 @@ const links = computed<LinkSpec[]>(() => {
   for (const syncPoint of syncPoints) {
     try {
       // 查找主EAOG中的actor节点DOM元素
-      const actorEaogPath = integrationManager.getNodeBriefPath(syncPoint.actor.path);
-      const actorSelector = `.main-eaog [data-node-path$="${actorEaogPath}"] .eaog-node-name`;
+      // const actorEaogPath = integrationManager.getNodeBriefPath(syncPoint.actor.path);
+      // const actorSelector = `.main-eaog [data-node-ipath="${actorEaogPath}"] .eaog-node-name`;
+      // 注意：这里用node.showNode，以便在replace之后，也能够找到对应节点
+      const actorSelector = `.main-eaog [data-node-ipath="${syncPoint.actor.node.showNode.ipath}"] .eaog-node-name`;
       const actorElement = props.container.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
-      const waiterEaogPath = integrationManager.getNodeBriefPath(syncPoint.waiter.path);
-      const waiterSelector = `.parallel-eaog [data-node-path$="${waiterEaogPath}"] .node-type-icon span`;
+      // const waiterEaogPath = integrationManager.getNodeBriefPath(syncPoint.waiter.path);
+      // const waiterSelector = `.parallel-eaog [data-node-ipath="${waiterEaogPath}"] .node-type-icon span`;
+      const waiterSelector = `.parallel-eaog [data-node-ipath="${syncPoint.waiter.node.showNode.ipath}"] .node-type-icon span`;
       const waiterElement = props.container.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
-        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.path}`);
-        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.path}`);
+        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.node.showNode.ipath}`);
+        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.node.showNode.ipath}`);
         continue;
       }
 
@@ -80,7 +84,7 @@ const links = computed<LinkSpec[]>(() => {
       // const linkId = `sync-${encodeURIComponent(syncPoint.actor.path)}-${encodeURIComponent(syncPoint.waiter.path)}`;
       const linkId = crypto.randomUUID(); // 使用随机ID，避免重复
       const linkType = syncPoint.block ? 'solid' : 'dashed';
-      const linkLabel = syncPoint.description || `${syncPoint.exePhase} ${syncPoint.block ? 'blocking' : 'non-blocking'}`;
+      const linkLabel = syncPoint.label;
 
       linkSpecs.push({
         id: linkId,
@@ -91,6 +95,7 @@ const links = computed<LinkSpec[]>(() => {
         style: {
           color: syncPoint.block ? '#f00' : '#00f',
           dashed: !syncPoint.block,
+          // dashed: false,
           arrow: syncPoint.block ? 'start' : 'end',
           strokeWidth: 2,
           // zIndex: 1
@@ -145,7 +150,7 @@ onMounted(() => {
   //   childList: true,
   //   subtree: true,
   //   attributes: true,
-  //   attributeFilter: ['class', 'data-node-path']
+  //   attributeFilter: ['class', 'data-node-ipath']
   // });
 
 // 创建并配置容器大小变化和滚动事件观察器
