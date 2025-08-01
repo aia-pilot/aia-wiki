@@ -14,6 +14,7 @@
  */
 
 // 导入EaogNode组件和相关类型
+import {ContextMenuTrigger} from '@vben-core/shadcn-ui';
 import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
@@ -21,13 +22,15 @@ import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
 import MainSideEaogLinks from './components/editor/main-parallel-eaog-links.vue'; // 导入主辅EAOG关联线层组件
 import {complexFlow} from './eaog-samples';
-import {onMounted, ref, provide, type Ref, nextTick, watch} from 'vue';
+import {onMounted, ref, provide, type Ref, nextTick, watch, computed} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 import {Splitpanes, Pane} from "splitpanes"
 import 'splitpanes/dist/splitpanes.css'
 
 import Debug from 'debug';
+import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
+import ThreePanes from "#/views/cp/components/editor/three-panes.vue";
 
 const debug = Debug('aia:cp-editor');
 
@@ -38,64 +41,53 @@ currentPane.value = 'eaog-tree'; // 当前工作面板，默认为节点详情
 
 // 编辑器容器引用
 const editorContainer = ref<HTMLDivElement>();
+const showParallel = computed(() => parallelCPs.value.length > 0);
 
 onMounted(async () => {
   await loadCurrentCP({eaog: complexFlow}); // 加载示例流程数据
   debug('CP编辑器已加载，初始EAOG数据:', currentCP.value);
 });
 
-const parallelCPDomReady = ref(false); // 并行CP DOM是否准备就绪
-// 注意：2次nextTick，1次在祖先折叠、展开后，link的寻路不够好
-watch(parallelCPs, (newValue) => nextTick(() => nextTick(() => {
-  parallelCPDomReady.value = !!newValue; // 确保DOM准备就绪
-  debug('并行CP DOM状态:', parallelCPDomReady.value);
-})));
-
 </script>
 
 <template>
-  <div class="cp-editor" ref="editorContainer">
+  <div class="cp-editor w-full h-full" ref="editorContainer">
     <!-- 工具栏 -->
     <EditorToolbar/>
-
-    <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
-    <Splitpanes class="flex p-4 w-full h-full default-theme eaog-panes" :gutter-size="5" :min-pane-size="100">
-      <!-- 左侧栏组件 -->
-      <Pane :size="80">
-        <!-- 上下文菜单组件 -->
-        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-          <Splitpanes class="flex p-4 w-full h-full default-theme eaog-panes" :gutter-size="5" :min-pane-size="100">
-            <!-- 主CP EAOG -->
-            <Pane :size="parallelCPs?.length > 0 ? 60 : 100">
-              <div class="w-full p-4 border rounded-md">
-                <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
-                  <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
-                </div>
+    <EaogContextMenu>
+      <three-panes :show-parallel="showParallel" ref="threePanes" class="flex w-full h-full default-theme">
+        <!-- 主CP EAOG -->
+        <template #main>
+          <ContextMenuTrigger asChild>
+            <div class="w-full p-4 border rounded-md">
+              <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
+                <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
               </div>
-            </Pane>
-            <!-- 并行CP EAOG 展示将与主CP并行执行的某个CP -->
-            <Pane :size="parallelCPs?.length > 0 ? 40 : 0">
-              <div class="w-full p-4 border rounded-md">
-                <div v-for="(parallel, index) in parallelCPs" :key="index"  class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
-                  <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
-                </div>
-              </div>
-            </Pane>
-          </Splitpanes>
-        </EaogContextMenu>
-      </Pane>
+            </div>
+          </ContextMenuTrigger>
+        </template>
 
-      <!-- 右侧栏组件 -->
-      <Pane :size="20">
-        <div class="w-full editor-sidebar" @click="currentPane = 'editor-sidebar'">
+        <!-- 并行CP EAOG -->
+        <template #parallel>
+          <ContextMenuTrigger asChild>
+            <div class="w-full p-4 border rounded-md">
+              <div v-for="(parallel, index) in parallelCPs" :key="index" class="eaog-tree parallel-eaog"
+                   @click="currentPane = 'parallel-eaog'">
+                <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
+              </div>
+            </div>
+          </ContextMenuTrigger>
+        </template>
+
+        <!-- 右侧栏 -->
+        <template #sidebar>
           <EditorSidebar/>
-        </div>
-      </Pane>
-
-    </Splitpanes>
+        </template>
+      </three-panes>
+    </EaogContextMenu>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-    <MainSideEaogLinks v-if="parallelCPDomReady && parallelCPs?.length > 0" :container="editorContainer"/>
+    <MainSideEaogLinks v-if="showParallel" :container="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

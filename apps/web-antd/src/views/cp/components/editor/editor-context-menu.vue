@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {
-  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
+  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger,
   ContextMenuSubContent, ContextMenuSeparator
 } from '@vben-core/shadcn-ui';
 import {clipboardNode,} from '../../viewmodels/editable-eaog-node-vm';
@@ -115,9 +115,7 @@ onUnmounted(() => {
 
 <template>
   <ContextMenu>
-    <ContextMenuTrigger as-child>
-      <slot></slot>
-    </ContextMenuTrigger>
+    <slot/>
     <ContextMenuContent :class="$attrs.class">
       <!-- 新建节点 -->
       <ContextMenuSub>

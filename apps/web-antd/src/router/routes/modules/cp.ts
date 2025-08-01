@@ -50,6 +50,15 @@ const routes: RouteRecordRaw[] = [
           title: '正交线验证',
         },
       },
+      { // @DEV
+        path: 'splitpanes',
+        name: 'Split Panes Test',
+        component: () => import('#/views/cp/splitpanes.test.vue'),
+        meta: {
+          icon: 'lucide:zap',
+          title: 'Split Panes',
+        },
+      },
     ]
   }
 ];

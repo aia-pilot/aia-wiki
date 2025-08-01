@@ -41,9 +41,18 @@ const emit = defineEmits<{
 const recalculateTrigger = ref(0);
 
 // 触发重新计算的方法
+
+
+let ticking = false
 function triggerRecalculate() {
-  recalculateTrigger.value++;
-  debug('触发链接重新计算，recalculateTrigger:', recalculateTrigger.value);
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      debug('触发链接重新计算，recalculateTrigger:', recalculateTrigger.value);
+      recalculateTrigger.value++;
+      ticking = false
+    })
+    ticking = true
+  }
 }
 
 const links = computed<LinkSpec[]>(() => {
@@ -51,7 +60,7 @@ const links = computed<LinkSpec[]>(() => {
   const trigger = recalculateTrigger.value;
   debug('重新计算links，trigger:', trigger);
 
-  const sideCPs = parallelCPs.value!;
+  const sideCPs = parallelCPs.value;
   // const integrationManager = sideCPs[0].waiterCP.eaog.integrationManager;
   const syncPoints = sideCPs.flatMap(sp => sp.syncPoints);
   // const syncPoints = sideCPs.slice(-1).flatMap(sp => sp.syncPoints);
@@ -132,20 +141,7 @@ function handleLinkClick(linkSpec: LinkSpec) {
   emit('link:click', linkSpec.data!.syncPoint);
 }
 
-
-let ticking = false
-function scrollHandler() {
-  if (!ticking) {
-    requestAnimationFrame(() => {
-      triggerRecalculate()
-      ticking = false
-    })
-    ticking = true
-  }
-}
-
 const dom = ref<HTMLElement | undefined>();
-const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
 
 let lastScrollX = 0
 let lastScrollY = 0
@@ -156,28 +152,6 @@ const svg = computed(() => {
   return dom.value?.querySelector('svg') as SVGElement;
 });
 
-// function scrollHandler(e: Event) {
-//   const target = e.target as HTMLElement
-//   const currentX = target.scrollLeft
-//   const currentY = target.scrollTop
-//
-//   debug('滚动事件触发，当前滚动位置:', { x: currentX, y: currentY });
-//   // transform 平移
-//   if (!rafScheduled) {
-//     requestAnimationFrame(() => {
-//       svg.value.style.transform = `translate(${-currentX}px, ${-currentY}px)`
-//       rafScheduled = false
-//     })
-//     rafScheduled = true
-//   }
-//
-//   // 滚动结束后重算
-//   if (scrollEndTimer) clearTimeout(scrollEndTimer)
-//   scrollEndTimer = setTimeout(() => {
-//     triggerRecalculate()
-//     svg.value.style.transform = `translate(0, 0)`
-//   }, 300)
-// }
 
 
 
@@ -213,7 +187,8 @@ onMounted(() => {
   resizeObserver.value.observe(parallelEaogPane);
 
 // 监听滚动事件
-  eaogPanes.addEventListener('scroll', scrollHandler);
+  const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
+  eaogPanes.addEventListener('scroll', triggerRecalculate);
 
 });
 
@@ -232,7 +207,7 @@ onUnmounted(() => {
 
   // 停止滚动事件监听
   const eaogPanes = props.container?.querySelector('.main-eaog, .parallel-eaog');
-  eaogPanes.removeEventListener('scroll', scrollHandler);
+  eaogPanes.removeEventListener('scroll', triggerRecalculate);
 });
 </script>
 

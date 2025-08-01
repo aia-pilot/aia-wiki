@@ -18,7 +18,7 @@ export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>();
 export const mainCP = ref<EditableCP | undefined>();
 
 // 并行CP
-export const parallelCPs = ref<EditableSideCP[] | undefined>();
+export const parallelCPs = ref<EditableSideCP[]>([]);
 
 export const parallelCPsDomReady = ref<EditableSideCP[] | undefined>(); // 延迟到parallel CPs Dom Ready 以便划线
 
@@ -68,9 +68,9 @@ watchEffect(async () => {
     .map(integration => integration.sideCP);
   parallelCPs.value = uniqBy(sideCPs, 'waiterCP') as EditableSideCP[];
 
-  setTimeout(() => {
-    parallelCPsDomReady.value = parallelCPs.value;
-  }, 1000)
+  // setTimeout(() => {
+  //   parallelCPsDomReady.value = parallelCPs.value;
+  // }, 1000)
 })
 
 /**
