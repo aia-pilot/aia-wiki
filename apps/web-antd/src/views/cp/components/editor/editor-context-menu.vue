@@ -115,13 +115,8 @@ onUnmounted(() => {
 
 <template>
   <ContextMenu>
-    <!-- 主CP EAOG 触发区域 -->
     <ContextMenuTrigger as-child>
-      <slot name="main-eaog"></slot>
-    </ContextMenuTrigger>
-    <!-- 并行CP EAOG 触发区域 -->
-    <ContextMenuTrigger as-child>
-      <slot name="parallel-eaog"></slot>
+      <slot></slot>
     </ContextMenuTrigger>
     <ContextMenuContent :class="$attrs.class">
       <!-- 新建节点 -->

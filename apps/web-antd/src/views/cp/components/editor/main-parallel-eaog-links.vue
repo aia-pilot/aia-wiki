@@ -1,5 +1,5 @@
 <template>
-  <div class="main-parallel-eaog-links">
+  <div ref="dom" class="main-parallel-eaog-links">
     <OrthogonalLinkLayer
       :obstacles="obstacles"
       :links="links"
@@ -132,6 +132,55 @@ function handleLinkClick(linkSpec: LinkSpec) {
   emit('link:click', linkSpec.data!.syncPoint);
 }
 
+
+let ticking = false
+function scrollHandler() {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      triggerRecalculate()
+      ticking = false
+    })
+    ticking = true
+  }
+}
+
+const dom = ref<HTMLElement | undefined>();
+const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
+
+let lastScrollX = 0
+let lastScrollY = 0
+let rafScheduled = false
+let scrollEndTimer: number | null = null
+
+const svg = computed(() => {
+  return dom.value?.querySelector('svg') as SVGElement;
+});
+
+// function scrollHandler(e: Event) {
+//   const target = e.target as HTMLElement
+//   const currentX = target.scrollLeft
+//   const currentY = target.scrollTop
+//
+//   debug('滚动事件触发，当前滚动位置:', { x: currentX, y: currentY });
+//   // transform 平移
+//   if (!rafScheduled) {
+//     requestAnimationFrame(() => {
+//       svg.value.style.transform = `translate(${-currentX}px, ${-currentY}px)`
+//       rafScheduled = false
+//     })
+//     rafScheduled = true
+//   }
+//
+//   // 滚动结束后重算
+//   if (scrollEndTimer) clearTimeout(scrollEndTimer)
+//   scrollEndTimer = setTimeout(() => {
+//     triggerRecalculate()
+//     svg.value.style.transform = `translate(0, 0)`
+//   }, 300)
+// }
+
+
+
 // 监听DOM变化，在节点元素发生变化时重新计算连线
 const observer = ref<MutationObserver | null>(null);
 const resizeObserver = ref<ResizeObserver | null>(null);
@@ -164,8 +213,8 @@ onMounted(() => {
   resizeObserver.value.observe(parallelEaogPane);
 
 // 监听滚动事件
-  const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
-  eaogPanes.addEventListener('scroll', triggerRecalculate);
+  eaogPanes.addEventListener('scroll', scrollHandler);
+
 });
 
 onUnmounted(() => {
@@ -183,7 +232,7 @@ onUnmounted(() => {
 
   // 停止滚动事件监听
   const eaogPanes = props.container?.querySelector('.main-eaog, .parallel-eaog');
-  eaogPanes.removeEventListener('scroll', triggerRecalculate);
+  eaogPanes.removeEventListener('scroll', scrollHandler);
 });
 </script>
 

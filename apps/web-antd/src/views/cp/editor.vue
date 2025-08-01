@@ -59,31 +59,31 @@ watch(parallelCPs, (newValue) => nextTick(() => nextTick(() => {
     <EditorToolbar/>
 
     <!-- Eaog工作区（Eaog树、节点详情、上下文菜单） -->
-    <!-- 上下文菜单组件 -->
     <Splitpanes class="flex p-4 w-full h-full default-theme eaog-panes" :gutter-size="5" :min-pane-size="100">
-      <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
-        <!-- 主CP EAOG -->
-        <template #main-eaog>
-          <Pane :size="parallelCPs?.length > 0 ? 40 : 80">
-            <div class="w-full p-4 border rounded-md">
-              <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
-                <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
+      <!-- 左侧栏组件 -->
+      <Pane :size="80">
+        <!-- 上下文菜单组件 -->
+        <EaogContextMenu :shortCutDisabled="currentPane !== 'eaog-tree'">
+          <Splitpanes class="flex p-4 w-full h-full default-theme eaog-panes" :gutter-size="5" :min-pane-size="100">
+            <!-- 主CP EAOG -->
+            <Pane :size="parallelCPs?.length > 0 ? 60 : 100">
+              <div class="w-full p-4 border rounded-md">
+                <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
+                  <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
+                </div>
               </div>
-            </div>
-          </Pane>
-        </template>
-
-        <!-- 并行CP EAOG 展示将与主CP并行执行的某个CP -->
-        <template v-if="parallelCPs?.length > 0" #parallel-eaog>
-          <Pane :size="40">
-            <div class="w-full p-4 border rounded-md">
-              <div v-for="(parallel, index) in parallelCPs" :key="index"  class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
+            </Pane>
+            <!-- 并行CP EAOG 展示将与主CP并行执行的某个CP -->
+            <Pane :size="parallelCPs?.length > 0 ? 40 : 0">
+              <div class="w-full p-4 border rounded-md">
+                <div v-for="(parallel, index) in parallelCPs" :key="index"  class="eaog-tree parallel-eaog" @click="currentPane = 'parallel-eaog'">
+                  <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
+                </div>
               </div>
-            </div>
-          </Pane>
-        </template>
-      </EaogContextMenu>
+            </Pane>
+          </Splitpanes>
+        </EaogContextMenu>
+      </Pane>
 
       <!-- 右侧栏组件 -->
       <Pane :size="20">
