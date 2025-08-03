@@ -16,7 +16,7 @@ export interface Hook extends IntegrationPoint {
 
 // SideCP 类型定义
 export type SideCP = {
-  cp: string | EditableCP;              /** cpLocateStr {@link parseCpModuleLocateStr} */
+  cp: string | EditableCP;              /** cpLocateStr {@link convertCpLocateStrToRelativePath} */
   launchPoint: string | EditableEaogNodeVMType;     /** 启动点，主CP的briefPath {@link findNodeByBriefPath} */
   syncPoints: SyncPoint[]; // 同步点数组
 };

@@ -1,7 +1,7 @@
 import { mainCPModule } from '../viewmodels/cp-editor-state';
 import type {CP} from "../models/types";
 // @ts-ignore
-import {parseCpModuleLocateStr} from "../../../../../../../aia-se-comp/src/action/parse-cp-module-locate-str.js";
+import {convertCpLocateStrToRelativePath} from "aia-cp-manager";
 
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
@@ -12,33 +12,43 @@ const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
  * @param filePath
  */
 export async function loadCpModuleFromFilePath(filePath: string) {
-  const normalized = filePath.replace(/\\/g, '/');
-  const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
+  // const cp = await loadCp(filePath);
+  mainCPModule.value = await loadCp(filePath);
 
-  if (!normalized.startsWith(base)) {
-    throw new Error(`文件路径 ${filePath} 不在 VITE_CP_STORE_PATH 范围内`);
-  }
-
-  const relativePath = normalized.slice(base.length);
-  const cp = await loadCp(relativePath);
-  mainCPModule.value = { filePath: normalized, cp };
+  // const normalized = filePath.replace(/\\/g, '/');
+  // const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
+  //
+  // if (!normalized.startsWith(base)) {
+  //   throw new Error(`文件路径 ${filePath} 不在 VITE_CP_STORE_PATH 范围内`);
+  // }
+  //
+  // const relativePath = normalized.slice(base.length);
+  // const cp = await loadCp(relativePath);
+  // mainCPModule.value = { filePath: normalized, cp };
 }
 
 /**
  * 从 CP 模块定位字符串加载 CP 模块。从内部CP-store（npm pkg repo）中加载 CP 模块。
  * @param cpLocateStr
+ * @deprecated
  */
 export async function loadCpFromCpStr(cpLocateStr: string) {
-  const modulePath = parseCpModuleLocateStr(cpLocateStr);
+  const modulePath = convertCpLocateStrToRelativePath(cpLocateStr);
   const cp = await loadCp(modulePath);
   const filePath = `${eaogsDir}/${modulePath}`;
   return { filePath, cp }
 }
 
-async function loadCp(modulePath: string): Promise<CP> {
+export async function loadCp(filePath: string) {
   // aia-svc/public/cp-store symbol link到了eaogsDir目录。 注意：ONLY FOR @DEV @POC
-  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${modulePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
-  return cp;
+  if (filePath.startsWith('cp://')) {
+    filePath = filePath.slice(5); // 去掉前缀cp://
+    const names = filePath.split('/'); // 支持多级CP
+    const name = names[names.length - 1]!; // 最后一个是CP名称
+    filePath = `cp-store/${filePath}/${name}.cp.js`; // 转换为相对路径
+  }
+  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/${filePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
+  return {cp, filePath};
 }
 
 /**

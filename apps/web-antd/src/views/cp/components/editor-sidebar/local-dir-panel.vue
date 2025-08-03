@@ -1,7 +1,7 @@
 <template>
   <div class="w-full border-r h-full overflow-auto">
     <div class="flex items-center gap-2 p-2 border-b">
-      <EditorToolbarButton icon="lucide:folder-open" tooltip="打开本地项目" @click="openFolder"/>
+<!--      <EditorToolbarButton icon="lucide:folder-open" tooltip="打开本地项目" @click="openFolder"/>-->
       <EditorToolbarButton icon="ant-design:folder-add-outlined" tooltip="新建目录" :disabled="!selected?.isDirectory"
                            @click="addFolder()"/>
       <EditorToolbarButton icon="lucide:refresh-cw" tooltip="刷新" @click="handleRefresh"/>
@@ -28,26 +28,40 @@
 </template>
 
 <script setup lang="ts">
-import {ref, onMounted} from 'vue';
+import {onMounted} from 'vue';
 import DirTreeItem from './local-dir-tree-item.vue';
 import type {FileNode} from './local-dir-tree-item.vue';
 import {message} from "ant-design-vue";
 import EditorToolbarButton from "#/views/cp/components/editor/editor-toolbar-button.vue";
+// @ts-ignore
 import {prompt, confirm} from '@vben/common-ui';
 
 import Debug from 'debug';
-const debug = Debug('aia-wiki-new:dir-tree-sidebar');
 
 import {localDirs, selected, isCpFile, loadCpToEditor} from './local-dir';
+import {requestClient} from "#/api/request";
+
+const debug = Debug('aia-wiki-new:dir-tree-sidebar');
+const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 
 onMounted(async () => {
-  // 尝试从localStorage恢复上次打开的目录
-  const lastSelectedDir = localStorage.getItem('aia-cp-editor-last-selected-dir');
-  if (lastSelectedDir) {
-    // @ts-ignore
-    const fileTrees = await window.electronAPI.invokeMain('use-sys-get-dir-tree', { path: lastSelectedDir });
-    addFileTrees(fileTrees);
-  }
+  const cpTree = await requestClient.get(`${aiaSvcBaseUrl}/cp`, {withCredentials: true,})
+    // .then(res => res.data)
+    .catch(err => {
+      console.error('获取CP列表失败:', err);
+      message.error('获取CP列表失败');
+      return [];
+    });
+
+  addFileTrees([cpTree]);
+
+  // // 尝试从localStorage恢复上次打开的目录
+  // const lastSelectedDir = localStorage.getItem('aia-cp-editor-last-selected-dir');
+  // if (lastSelectedDir) {
+  //   // @ts-ignore
+  //   const fileTrees = await window.electronAPI.invokeMain('use-sys-get-dir-tree', { path: lastSelectedDir });
+  //   addFileTrees(fileTrees);
+  // }
 });
 
 function addFileTrees(fileTrees: any) {

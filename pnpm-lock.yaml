@@ -528,6 +528,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      aia-cp-manager:
+        specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager
+        version: link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager
     devDependencies:
       '@changesets/changelog-github':
         specifier: 'catalog:'

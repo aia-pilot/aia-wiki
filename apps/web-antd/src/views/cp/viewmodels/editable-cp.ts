@@ -26,7 +26,7 @@ export class EditableCP implements CP {
   sideCPs: SideCP[]; // 本CP将要加载的侧边CP列表
   frameworks: EaogFramework[];
   filePath?: string; // 可选的文件路径，用于本地存储
-  // locateStr?: string; /** cpLocateStr {@link parseCpModuleLocateStr} CP加载字符串，表示CP所在的路径 TODO: modulePath? */
+  // locateStr?: string; /** cpLocateStr {@link convertCpLocateStrToRelativePath} CP加载字符串，表示CP所在的路径 TODO: modulePath? */
   integrateFrom?: Integration; // 从何集成而来
   integrateTo?: EditableIntegrationManager; // 集成到哪个CP上，集成点管理器
   // Transient properties

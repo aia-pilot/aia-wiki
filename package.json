@@ -117,5 +117,8 @@
       "canvas",
       "node-gyp"
     ]
+  },
+  "dependencies": {
+    "aia-cp-manager": "link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager"
   }
 }

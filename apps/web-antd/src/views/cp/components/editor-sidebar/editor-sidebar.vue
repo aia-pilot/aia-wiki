@@ -39,7 +39,7 @@ onMounted(() => {
       <TabsList>
         <TabsTrigger value="node-details">节点详情</TabsTrigger>
         <TabsTrigger value="project-panel">项目面板</TabsTrigger>
-        <TabsTrigger v-if="IS_STANDALONE_APP" value="local-dir-panel">本地目录</TabsTrigger>
+        <TabsTrigger value="local-dir-panel">本地目录</TabsTrigger>
         <TabsTrigger value="cp-panel">CP面板</TabsTrigger>
       </TabsList>
 
@@ -54,7 +54,7 @@ onMounted(() => {
       </TabsContent>
 
       <!-- 本地目录面板 -->
-      <TabsContent v-if="IS_STANDALONE_APP" value="local-dir-panel" class="pt-4">
+      <TabsContent value="local-dir-panel" class="pt-4">
         <LocalDirPanel />
       </TabsContent>
 

@@ -1,18 +1,16 @@
 import type {EaogNode, Hook, IntegrationPoint, IntegrationType, SideCP} from './types.d';
 // @ts-ignore
 import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
-import {
-  CPIntegrationManager,
-  findNodeByIpath, isNodeForIpath
-} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
+import {CPIntegrationManager, findNodeByIpath, isNodeForIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
 import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
-import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 
 import {reactive} from 'vue';
 
 import Debug from 'debug';
+import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
 
+// @ts-ignore
 const debug = Debug("aia:cp:editable-integration-manager");
 
 /**
@@ -204,12 +202,12 @@ export class Integration implements IntegrationPoint {
       throw new Error(`集成点 ${this.name} (${this.type}) 的发起节点未指定或未找到`);
     }
 
-    const {loadCpFromCpStr} = await import('#/views/cp/services/cp-loader')
+    const {loadCp} = await import('#/views/cp/services/cp-loader')
     const {createEditableCP} = await import('#/views/cp/viewmodels/editable-cp');
 
     this.status = 'loading';
     if (!integratee) {
-      let {cp, filePath} = await loadCpFromCpStr(this.cpLocateStr!);
+      let {cp, filePath} = await loadCp(this.cpLocateStr!);
       integratee = await createEditableCP(cp, filePath, this);
     }
     this.integratee = integratee;

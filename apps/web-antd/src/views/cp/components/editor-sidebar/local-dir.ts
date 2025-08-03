@@ -7,11 +7,12 @@ import {prompt} from '@vben/common-ui';
 
 import Debug from 'debug';
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
+import {message} from "ant-design-vue";
 
 const debug = Debug('aia-wiki:local-dir');
 
 export const localDirs = ref<FileNode[]>([]);
-export const selected = ref<FileNode | undefined>(undefined);
+export const selected = ref<FileNode | undefined>();
 
 export const isCpFile = (file: FileNode) => {
   return !file.isDirectory && file.path.endsWith('.cp.js');
@@ -19,7 +20,11 @@ export const isCpFile = (file: FileNode) => {
 
 export const loadCpToEditor = async () => {
   if (isCpFile(selected.value!)) {
-    await loadCpModuleFromFilePath(selected.value!.path);
+
+    await loadCpModuleFromFilePath(selected.value!.path).catch((err) => {
+      debug(`加载CP模块失败: `, err);
+      message.warn(`加载CP模块失败: ${err.message}`, 10);
+    });
   }
 }
 

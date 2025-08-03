@@ -7,6 +7,9 @@ import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-nod
 import {createEditableCP} from '../../viewmodels/editable-cp';
 import {currentNode, currentCP, saveCurrentCP} from '../../viewmodels/cp-editor-state';
 
+import Debug from 'debug';
+const debug = Debug('aia:cp-editor:eaog-node-form');
+
 
 // 导入您的Schema定义
 // @formatter:off
@@ -58,8 +61,10 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       message.error(`表单验证失败，请检查输入.${zogErrorToString(error)}`, 5);
+      debug('表单验证失败:', error);
     } else {
       message.error(`提交失败: ${error instanceof Error ? error.message : '未知错误'}`, 5);
+      debug('提交失败:', error);
     }
   }
 }
