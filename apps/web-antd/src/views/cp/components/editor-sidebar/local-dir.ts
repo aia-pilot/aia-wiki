@@ -20,7 +20,6 @@ export const isCpFile = (file: FileNode) => {
 
 export const loadCpToEditor = async () => {
   if (isCpFile(selected.value!)) {
-
     await loadCpModuleFromFilePath(selected.value!.path).catch((err) => {
       debug(`加载CP模块失败: `, err);
       message.warn(`加载CP模块失败: ${err.message}`, 10);
@@ -31,6 +30,7 @@ export const loadCpToEditor = async () => {
 
 // TODO: 参数cp改为EditableEaogNode（内含了cp）
 export const saveCpToFile = async (cp: EditableCP, isNew: boolean) => {
+  return
   const [eaog, hooks, sideCPs, frameworks] = [cp.eaog, cp.hooks, cp.sideCPs, cp.frameworks]
     .map((item: any) => item.toJSON ? item.toJSON() : item)
     .map((item: any) => compactJson(item, {keyNoQuotation: true}));

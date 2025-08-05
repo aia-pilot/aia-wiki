@@ -4,7 +4,7 @@
  * 提供节点相关的功能按钮，如折叠/展开、同步点、钩子、子CP等
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
-import type {EditableEaogNodeVMType} from '../../viewmodels/editable-eaog-node-vm';
+import type {EditableEaogNode} from '../../models/editable-eaog-node';
 import Debug from 'debug';
 import { computed } from 'vue';
 import type {IntegrationType} from "#/views/cp/models/types";
@@ -12,19 +12,19 @@ import type {IntegrationType} from "#/views/cp/models/types";
 const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
-  node: EditableEaogNodeVMType;
+  node: EditableEaogNode;
 }>();
 
 // 处理折叠/展开按钮点击
 const toggleCollapse = () => {
-  props.node.toggleCollapse();
-  debug(`Node ${props.node.name} ${props.node.isCollapsed ? 'collapsed' : 'expanded'}`);
+  props.node.ui.toggleCollapse();
+  debug(`Node ${props.node.name} ${props.node.ui.isCollapsed ? 'collapsed' : 'expanded'}`);
 };
 
 // 处理集成CP按钮点击
 const handleIntegratedCPClick = (type: IntegrationType | 'close') => {
-    type === 'close' ? props.node.closeIntegration(type) : // 此时node.cp是IntegratedCP
-      props.node.toggleIntegration(type);
+    type === 'close' ? props.node.ui.closeIntegration(type) : // 此时node.cp是IntegratedCP
+      props.node.ui.toggleIntegration(type);
 };
 
 const closeIntegratedCPButtonConfig = {
@@ -35,11 +35,11 @@ const closeIntegratedCPButtonConfig = {
 }
 
 const countIntegratedCPs = (type: IntegrationType) => {
-  return props.node.root.integrationManager.get(props.node, type, (i) => i.isCPIntegration).length;
+  return props.node.root.integrationManager!.get(props.node, type, (i) => i.isCPIntegration).length;
 };
 // 定义按钮配置
 const buttonConfigs = computed(() => {
-  const integrationManager = props.node.root.integrationManager;
+  const integrationManager = props.node.root.integrationManager!;
   const config = [
     {
       type: 'action',
@@ -83,11 +83,11 @@ const buttonConfigs = computed(() => {
     <!-- 折叠/展开按钮 -->
     <EditorToolbarButton
       v-if="node.children && node.children.length > 0"
-      :icon="node.isFramework && node.meta?.icon ? node.meta.icon : (node.isCollapsed ? 'ant-design:down-outlined' : 'ant-design:up-outlined')"
-      :tooltip="node.isCollapsed ? '展开子节点' : '折叠子节点'"
+      :icon="node.isFramework && node.meta?.icon ? node.meta.icon : (node.ui.isCollapsed ? 'ant-design:down-outlined' : 'ant-design:up-outlined')"
+      :tooltip="node.ui.isCollapsed ? '展开子节点' : '折叠子节点'"
       @click.stop="toggleCollapse"
       class="text-blue-500 opacity-100"
-      :class="{ 'opacity-0 group-hover:opacity-100': !node.isCollapsed }"
+      :class="{ 'opacity-0 group-hover:opacity-100': !node.ui.isCollapsed }"
     />
 
     <!-- 动态渲染各种类型的集成CP按钮 -->

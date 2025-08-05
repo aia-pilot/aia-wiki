@@ -16,7 +16,6 @@ const debug = Debug('aia:cp-editor:eaog-node-form');
 // @ts-ignore
 import {cpNodeSchema, cpInstructionSchema, cpActionSchema, genSchema, recursionSchema, iteratorBaseSchema, baseNodeSchema, corSchema, allNodeTypes} from "../../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {message} from "ant-design-vue";
-import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 // @formatter:on
 
 // 节点类型选项
@@ -46,14 +45,13 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
     const nodeValues = checkFormValues(formValues)
     if (formMode === 'edit-node') {
       currentNode.value?.mergeFormValues(omit(nodeValues, ['children'])); // 合并表单数据到当前节点，保留原来的children
-      currentNode.value?.markAsNewlyModifiedForAWhile();
+      currentNode.value?.ui.markAsNewlyModifiedForAWhile();
     } else if (formMode === 'create-cp') {
       currentCP.value = await createEditableCP({eaog: nodeValues});
       currentNode.value = currentCP.value.eaog; // 设置当前节点为新创建的CP根节点
     } else { // 'add-node' 模式
-      const newNode = new EditableEaogNode(nodeValues);
-      const newNodeVM = currentNode.value?.insert(newNode, insertPosition) as EditableEaogNodeVMType;
-      newNodeVM.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
+      const newNode = new EditableEaogNode(nodeValues, currentNode.value.cp);
+      newNode.ui.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
     }
 
     await saveCurrentCP(formMode === 'create-cp'); // 保存当前CP

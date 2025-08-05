@@ -4,31 +4,26 @@
  * 包含节点详情、项目面板、本地目录 3个标签页
  */
 import {Tabs, TabsList, TabsTrigger, TabsContent} from '@vben-core/shadcn-ui';
-import {IS_STANDALONE_APP} from "#/utils/aia-constants";
 import NodeDetailsPanel from './node-details-panel.vue';
 import ProjectPanel from './project-panel.vue';
 import LocalDirPanel from '#/views/cp/components/editor-sidebar/local-dir-panel.vue';
 import CpPanel from './cp-panel.vue';
+import { watchEffect } from "vue";
 
 import Debug from 'debug';
-import {onMounted, watch} from "vue";
 import {projectManager} from "#/views/cp/components/editor-sidebar/project";
 import {saveCpToFile} from "#/views/cp/components/editor-sidebar/local-dir";
 import {currentTab, cpSaver} from "#/views/cp/viewmodels/cp-editor-state";
 // @ts-ignore
 const debug = Debug('aia:cp:editor-sidebar');
 
-watch(currentTab, (newTab) => {
-  debug('切换标签页:', newTab);
-  cpSaver.value = newTab === 'project-panel'    ?   projectManager.updateOrCreateFile.bind(projectManager)
-                  : newTab === 'local-dir-panel'  ?   saveCpToFile
-                  : null; // 清除保存函数
-});
 
-onMounted(() => {
-  // 初始化时设置默认标签页
-  currentTab.value = IS_STANDALONE_APP ? 'local-dir-panel' : 'project-panel';
-  debug('Editor Sidebar已加载，当前标签页:', currentTab.value);
+watchEffect(() => { // 替换为watchEffect，确保初始化时执行一次
+  const newTab = currentTab.value;
+  debug('设置保存函数，当前标签页:', newTab);
+  cpSaver.value = newTab === 'project-panel'    ?   projectManager.updateOrCreateFile.bind(projectManager)
+                : newTab === 'local-dir-panel'  ?   saveCpToFile
+                : cpSaver.value; // 保留现有的保存函数，而非设为null
 });
 
 </script>

@@ -2,10 +2,10 @@ import type {EaogNode, Hook, IntegrationPoint, IntegrationType, SideCP} from './
 // @ts-ignore
 import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import {CPIntegrationManager, findNodeByIpath, isNodeForIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
-import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
+import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 
-import {reactive} from 'vue';
+import {type Reactive, reactive} from 'vue';
 
 import Debug from 'debug';
 import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
@@ -20,8 +20,8 @@ const debug = Debug("aia:cp:editable-integration-manager");
 export class EditableIntegrationManager extends CPIntegrationManager {
   id: string = crypto.randomUUID(); // 唯一标识符，使用UUID生成
 
-  override loadIntegrations(integrations: IntegrationPoint[], parentIpath?: string, eaog?: EditableEaogNodeVMType): Promise<Integration[]> {
-    integrations = integrations.map(itg => createReactiveIntegration(itg, eaog)); // 生成 Integration 实例
+  override loadIntegrations(integrations: IntegrationPoint[], parentIpath?: string, eaog?: EditableEaogNode): Promise<Reactive<Integration>[]> {
+    integrations = integrations.map(itg => createReactiveIntegration(itg, eaog)) as Integration[]; // 生成 Integration 实例
     return super.loadIntegrations(integrations, parentIpath, eaog);
   }
 
@@ -60,7 +60,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
    */
   load(cp: EditableCP, integrations?: Integration[]) {
     integrations ||= this.integrations || []
-    const launchIntegrations = this.getIntegrationsOnCP(integrations, cp, i => i.isCPLaunchIntegration); // 过滤掉未找到集成发起点
+    const launchIntegrations = this.getIntegrationsOnCP(integrations, cp, (i: Integration) => i.isCPLaunchIntegration); // 过滤掉未找到集成发起点
 
     /* DO NOT await here, 避免阻塞 */
     // 1) 加载启动集成点
@@ -68,11 +68,11 @@ export class EditableIntegrationManager extends CPIntegrationManager {
       return integration.loadAndOpen(cp.eaog).then(() => {
         // 2）加载同一CP其他非启动集成点
         // const sameIntegrateeIntegrations = this.integrations.filter(i => i !== integration && i.cpLocateStr === integration.cpLocateStr);
-        const sameIntegrateeIntegrations = this.getIntegrationsOnCP(this.integrations, cp, i => !i.isCPLaunchIntegration && i.cpLocateStr === integration.cpLocateStr);
+        const sameIntegrateeIntegrations = this.getIntegrationsOnCP(this.integrations, cp, (i: Integration) => !i.isCPLaunchIntegration && i.cpLocateStr === integration.cpLocateStr);
         sameIntegrateeIntegrations.forEach(sameIntegration => sameIntegration.loadAndOpen(cp.eaog, integration.integratee));
 
         // 3）加载延伸集成集成点（看新加载的CP，可否匹配其它集成点）
-        this.load(integration.integratee)
+        this.load(integration.integratee!)
       });
     })).then(() => {
 
@@ -84,13 +84,13 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     })
   }
 
-  private getIntegrationsOnCP(integrations: Integration[], cp: EditableCP, filter) {
+  private getIntegrationsOnCP(integrations: Integration[], cp: EditableCP, filter: Function): Integration[] {
     integrations = integrations.filter(i => i.status === 'pending' && (!filter || filter(i)))
     integrations.forEach(i => i.integrator = findNodeByIpath(cp.eaog, i.ipath))
     return integrations.filter(i => i.integrator);
   }
 
-  async open(integrator: EditableEaogNodeVMType, integrationType: IntegrationType, index = 0) {
+  async open(integrator: EditableEaogNode, integrationType: IntegrationType, index = 0) {
     const integration = this.get(integrator, integrationType)[index]
     if (integration) {
       await integration.loadAndOpen(integrator);
@@ -99,7 +99,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     }
   }
 
-  async close(integratee: EditableEaogNodeVMType, integrationType: IntegrationType, index = 0) {
+  async close(integratee: EditableEaogNode, integrationType: IntegrationType, index = 0) {
     const integration = this.findIntegrationByIntegrateeNode(integratee, index);
     if (integration) {
       integration.unloadAndClose();
@@ -108,7 +108,7 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     }
   }
 
-  async toggle(integrator: EditableEaogNodeVMType, integrationType: IntegrationType, index = 0) {
+  async toggle(integrator: EditableEaogNode, integrationType: IntegrationType, index = 0) {
     const integration = this.get(integrator, integrationType)[index];
     if (integration) {
       if (integration.integratee) {
@@ -121,21 +121,21 @@ export class EditableIntegrationManager extends CPIntegrationManager {
     }
   }
 
-  findIntegrationByIntegrateeNode(node: EditableEaogNodeVMType, index): Integration | undefined {
+  findIntegrationByIntegrateeNode(node: EditableEaogNode, index: number): Integration | undefined {
     return this.integrations.filter(integration => integration.integratee?.eaog === node)[index];
   }
 
-  isIntegratedNode(node: EditableEaogNodeVMType): boolean {
+  isIntegratedNode(node: EditableEaogNode): boolean {
     return this.integrations.some(integration => integration.isIntegratedNode(node));
   }
 
-  getIntegratedNodes(node: EditableEaogNodeVMType, showAt: ShowAtType): EditableEaogNodeVMType[] {
+  getIntegratedNodes(node: EditableEaogNode, showAt: ShowAtType): EditableEaogNode[] {
     return this.integrations
       .filter(integration => integration.showAt === showAt && integration.integrator === node && integration.integratee)
-      .map(integration => integration.integratee!.eaog as EditableEaogNodeVMType);
+      .map(integration => integration.integratee!.eaog as EditableEaogNode);
   }
 
-  getOriginalNode(integratedNode: EditableEaogNodeVMType): EditableEaogNodeVMType | undefined {
+  getOriginalNode(integratedNode: EditableEaogNode): EditableEaogNode | undefined {
     return this.integrations.find(integration => integration.isIntegratedNode(integratedNode))?.integrator;
   }
 }
@@ -161,7 +161,7 @@ export class Integration implements IntegrationPoint {
 
   status?: 'pending' | 'loading' | 'loaded' | 'closed' = 'pending'; // 集成点状态
   definedAt?: EditableCP; // 定义集成点的CP。非延伸集成时。
-  integrator?: EditableEaogNodeVMType; // 发起集成的节点
+  integrator?: EditableEaogNode; // 发起集成的节点
   integratee?: EditableCP; // 被集成的CP
   showAt?: ShowAtType; // 集成点显示位置
 
@@ -196,7 +196,7 @@ export class Integration implements IntegrationPoint {
    * @param integrator - 发起集成的节点
    * @param integratee - 被集成的CP（可选），未提供时，将按this.cpLocateStr加载。
    */
-  async loadAndOpen(integrator?: EditableEaogNodeVMType, integratee?: EditableCP) {
+  async loadAndOpen(integrator?: EditableEaogNode, integratee?: EditableCP) {
     this.integrator ||= integrator;
     if (!this.integrator) {
       throw new Error(`集成点 ${this.name} (${this.type}) 的发起节点未指定或未找到`);
@@ -211,7 +211,7 @@ export class Integration implements IntegrationPoint {
       integratee = await createEditableCP(cp, filePath, this);
     }
     this.integratee = integratee;
-    (this.sideCP as EditableSideCP | undefined)?.integrate(integrator.root.cp, integratee);
+    (this.sideCP as EditableSideCP | undefined)?.integrate(integrator!.root.cp!, integratee);
     this.status = 'loaded';
   }
 
@@ -223,22 +223,22 @@ export class Integration implements IntegrationPoint {
 
 
   get replaceCPRootNode() {
-    return this.showAt === 'replace' ? this.integratee.eaog : undefined;
+    return this.showAt === 'replace' ? this.integratee?.eaog : undefined;
   }
 
   get beforeCPRootNode() {
-    return this.showAt === 'before' ? this.integratee.eaog : undefined;
+    return this.showAt === 'before' ? this.integratee?.eaog : undefined;
   }
 
   get afterCPRootNode() {
-    return this.showAt === 'after' ? this.integratee.eaog : undefined;
+    return this.showAt === 'after' ? this.integratee?.eaog : undefined;
   }
 
-  isIntegratedNode(node: EditableEaogNodeVMType): boolean {
+  isIntegratedNode(node: EditableEaogNode): boolean {
     return this.showAt === ShowAtType.Replace && this.integratee?.eaog === node
   }
 }
 
-function createReactiveIntegration(integrationPoint: IntegrationPoint, eaog?: EditableEaogNodeVMType): Integration {
-  return reactive(new Integration(integrationPoint, eaog.cp));
+function createReactiveIntegration(integrationPoint: IntegrationPoint, eaog?: EditableEaogNode): Reactive<Integration> {
+  return reactive(new Integration(integrationPoint, eaog!.cp));
 }

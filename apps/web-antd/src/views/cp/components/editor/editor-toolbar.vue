@@ -76,7 +76,7 @@ const applyFramework = async (framework: EaogFramework) => {
   if (selectedNodes!.length > 0) {
     selectedNodes.forEach(node => {
       framework = framework.applyToEaog(node)
-      framework.isCollapsed = true; // 默认折叠，除非用户展开。
+      framework.ui.isCollapsed = true; // 默认折叠，除非用户展开。
       framework.markAsNewlyModifiedForAWhile();
     });
     await saveCurrentEaog(); // 保存当前EAOG

@@ -1,6 +1,6 @@
 import type {SideCP, SyncPoint} from "../models/types";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
-import type {EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
+import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 import {omit} from "lodash-es";
 import {findNodeByIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager";
@@ -9,13 +9,13 @@ import {findNodeByIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-inte
  * EditableSyncPoint 类实现
  */
 export class EditableSyncPoint implements SyncPoint {
-  actor: SyncPoint.actor & { node: EditableEaogNodeVMType };
+  actor: SyncPoint["actor"] & { node?: EditableEaogNode };
   /** 在{@link Integration#loadAndOpen} 时，加载为node */
-  waiter: SyncPoint.waiter & { node: EditableEaogNodeVMType };
+  waiter: SyncPoint["waiter"] & { node?: EditableEaogNode };
   /** 在{@link Integration#loadAndOpen} 时，加载为node */
-  exePhase: SyncPoint.exePhase;
-  block: SyncPoint.block;
-  description: SyncPoint.description;
+  exePhase: SyncPoint["exePhase"];
+  block: SyncPoint["block"];
+  description: SyncPoint["description"];
 
   constructor(data: SyncPoint) {
     this.actor = data.actor;
@@ -26,7 +26,7 @@ export class EditableSyncPoint implements SyncPoint {
   }
 
   get label() {
-    return this.description ? this.description : `${this.actor.node.name} (${this.exePhase}) -> ${this.waiter.node.name} (${this.exePhase})`;
+    return this.description ? this.description : `${this.actor.node?.name} (${this.exePhase}) -> ${this.waiter.node?.name} (${this.exePhase})`;
   }
 
   toJSON() {
@@ -34,17 +34,17 @@ export class EditableSyncPoint implements SyncPoint {
   }
 
   cloneDeep() {
-    const clone = new EditableSyncPoint(this.toJSON(), this.actorEaog);
+    const clone = new EditableSyncPoint(this.toJSON());
     clone.actor.node = this.actor.node; // 保留node引用
     clone.waiter.node = this.waiter.node; // 保留node引用
     return clone;
   }
 
-  updateActor(actor: SyncPoint.actor) {
+  updateActor(actor: SyncPoint["actor"]) {
     this.actor = actor;
   }
 
-  updateWaiter(waiter: SyncPoint.waiter) {
+  updateWaiter(waiter: SyncPoint["waiter"]) {
     this.waiter = waiter;
   }
 
@@ -60,7 +60,7 @@ export class EditableSyncPoint implements SyncPoint {
     this.exePhase = phase;
   }
 
-  loadActorAndWaiter(actorEaog: EditableEaogNodeVMType, waiterEaog: EditableEaogNodeVMType) {
+  loadActorAndWaiter(actorEaog: EditableEaogNode, waiterEaog: EditableEaogNode) {
     // 注意：actor的path，为了延伸集成，其实是ipath格式。而waiter的path则是path格式。
     //  统一用`path`，是为了LLM便于理解
     this.actor.node = findNodeByIpath(actorEaog, this.actor.path);
@@ -73,11 +73,11 @@ export class EditableSyncPoint implements SyncPoint {
  */
 export class EditableSideCP implements SideCP {
   cp: string;
-  launchPoint: string;    // 启动点，主CP的briefPath
+  launchPoint: string | EditableEaogNode;    // 启动点，主CP的briefPath
   definedAt: EditableCP; // 定义位置，在哪个CP中定义的
-  actorCP: EditableCP;    // 主CP，本SideCP的集成、发起CP，非延伸集成时同definedAt。延伸集成时，是definedAt的延伸
+  actorCP?: EditableCP;    // 主CP，本SideCP的集成、发起CP，非延伸集成时同definedAt。延伸集成时，是definedAt的延伸
   waiterCP?: EditableCP;  // 副CP
-  launchNode?: EditableEaogNodeVMType; // 启动点，主CP的节点
+  launchNode?: EditableEaogNode; // 启动点，主CP的节点
   syncPoints: EditableSyncPoint[];
 
   constructor(sideCP: SideCP, definedAt: EditableCP) {
@@ -115,7 +115,7 @@ export class EditableSideCP implements SideCP {
   integrate(actorCP: EditableCP, waiterCP: EditableCP) {
     this.actorCP = actorCP;
     this.waiterCP = waiterCP;
-    this.launchNode = findNodeByIpath(actorCP.eaog, this.launchPoint) as EditableEaogNodeVMType;
+    this.launchNode = findNodeByIpath(actorCP.eaog, this.launchPoint) as EditableEaogNode;
     this.syncPoints.forEach(sp => sp.loadActorAndWaiter(actorCP.eaog, waiterCP.eaog))
   }
 }

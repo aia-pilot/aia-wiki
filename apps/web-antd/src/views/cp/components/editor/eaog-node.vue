@@ -14,7 +14,6 @@
  */
 import {computed, inject, type Ref} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
-import {type EditableEaogNodeVMType} from "#/views/cp/viewmodels/editable-eaog-node-vm";
 import Debug from 'debug';
 
 // 导入重构后的组合式函数
@@ -22,25 +21,29 @@ import {useDraggable} from "../../composables/use-draggable";
 // import {EaogFramework} from "#/views/cp/models/eaog-framework";
 import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
-import {nodeTypeUIConfig} from "#/views/cp/viewmodels/editable-eaog-node-vm";
+
+import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import {nodeTypeUIConfig} from "#/views/cp/viewmodels/editable-eaog-node-ui";
 
 const debug = Debug('aia:eaog-node');
 
 const props = defineProps<{
-  node: EditableEaogNodeVMType;
+  node: EditableEaogNode;
   level?: number; // 节点层级，默认为0，便于视觉调试
 }>();
 
 const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 
-const node = props.node.showNode;
-const isReplacedNode = node.isIntegratedNode;
-const integratedCPLabel = isReplacedNode && `<${node.originalNode.type}：${node.name}>`
-const nodeName = isReplacedNode ? `${props.node.name}: ${integratedCPLabel}` : props.node.name;
-const nodeDescription = isReplacedNode ? `${[props.node.description, node.description].filter(Boolean).join(`\n ${integratedCPLabel}`)}` : props.node.description;
+const node = computed(() => props.node.ui.showNode);
+const isReplacedNode = computed(() => node.value.isIntegratedNode);
+const integratedCPLabel = computed(() => isReplacedNode.value && `<${node.value.originalNode.type}：${node.value.name}>`);
+const nodeName = computed(() => isReplacedNode.value ? `${props.node.name}: ${integratedCPLabel.value}` : props.node.name);
+const nodeDescription = computed(() => isReplacedNode.value ?
+  `${[props.node.description, node.value.description].filter(Boolean).join(`\n ${integratedCPLabel.value}`)}` :
+  props.node.description);
 
 // @deprecated framework TODO: 合并考虑
-// const nodeName = node.isFramework && node.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
+// const nodeName = node.isFramework && node.ui.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
 // const nodeDescription = node.isFramework && (node as EaogFramework).mountedNode
 //   ? (node as EaogFramework).mountedNode!.description
 //   : node.description;
@@ -58,14 +61,14 @@ const {
 const handleNodeClick = (event: MouseEvent) => {
   debug(`Node clicked: ${props.node.name}`);
   // 使用EditableEaogNode的click方法，直接更新节点状态
-  props.node.click(true, event.shiftKey);
+  props.node.ui.click(true, event.shiftKey);
 };
 
 // 处理系统右键菜单事件，附加当前node
 const handleContextMenu = (event: MouseEvent) => {
   debug(`Context menu for node: ${props.node.name}`);
   // 设置node为当前点击的节点
-  props.node.click(false); // 只设置为点击状态，不改变选中状态
+  props.node.ui.click(false); // 只设置为点击状态，不改变选中状态
   // @ts-ignore 将当前节点附加到事件对象上，以便在右键菜单中使用
   event.eaogNode = props.node;
 };
@@ -80,12 +83,12 @@ const headerClasses = computed(() => {
   return {
     [`border-${getNodeTypeConfig(props.node.type).color}-500`]: true,
     'bg-gray-50': nodeLevel === 0,
-    'bg-blue-100 border-2': props.node.isSelected,
-    'border border-blue-200': props.node.isFramework && props.node.isCollapsed,
-    'hover:bg-gray-50': !props.node.isSelected,
+    'bg-blue-100 border-2': props.node.ui.isSelected,
+    'border border-blue-200': props.node.isFramework && props.node.ui.isCollapsed,
+    'hover:bg-gray-50': !props.node.ui.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': isReplacedNode ?? false, // 如果是集成CP节点，背景色为黄色
+    'bg-yellow-100': isReplacedNode.value ?? false, // 如果是集成CP节点，背景色为黄色
   };
 });
 </script>
@@ -97,15 +100,15 @@ const headerClasses = computed(() => {
        :class="[
          node.childrenDirection,
          {
-           'newly-added': node.isNewlyModified,
+           'newly-added': node.ui.isNewlyModified,
            'framework': node.isFramework,
            'is-dragging': isDragging,
            'drag-over': isDragOver,
            'drop-before': isDragOver && dropPosition === 'before',
            'drop-child': isDragOver && dropPosition === 'child',
            'drop-after': isDragOver && dropPosition === 'after',
-           'parent-horizontal': node.parent?.childrenDirection === 'horizontal',
-           'parent-vertical': node.parent?.childrenDirection === 'vertical' || !node.parent?.childrenDirection
+           'parent-horizontal': node.parent?.ui.childrenDirection === 'horizontal',
+           'parent-vertical': node.parent?.ui.childrenDirection === 'vertical' || !node.parent?.ui.childrenDirection
          }
        ]">
     <!-- 节点头部 -->
@@ -157,10 +160,10 @@ const headerClasses = computed(() => {
     </div>
 
     <!-- 子节点（子树）-->
-    <div v-if="node.children && node.children.length > 0 && !node.isCollapsed" class="eaog-node-children ml-6 pl-4">
+    <div v-if="node.children && node.children.length > 0 && !node.ui.isCollapsed" class="eaog-node-children ml-6 pl-4">
       <!--  @DEFECT 注意：这里key在有before、after时，会有重名风险    -->
       <!--  用showNode.id为key，才能够在showNode变化后，重新渲染    -->
-      <div v-for="child in node.showChildren" :key="child.showNode.id">
+      <div v-for="child in node.ui.showChildren" :key="child.ui.showNode.id">
         <eaog-node :node="child" :level="nodeLevel + 1"/>
       </div>
     </div>

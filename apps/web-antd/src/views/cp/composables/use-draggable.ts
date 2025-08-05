@@ -2,7 +2,7 @@
  * 拖拽逻辑组合式函数
  */
 import { ref } from 'vue';
-import type { EditableEaogNodeVMType } from "#/views/cp/viewmodels/editable-eaog-node-vm";
+import type { EditableEaogNode } from "#/views/cp/models/editable-eaog-node";
 import type { DropPosition, DragState, DragEventHandlers } from '#/views/cp/types/node-types';
 import { message } from 'ant-design-vue';
 import Debug from 'debug';
@@ -15,7 +15,7 @@ const debug = Debug('aia:eaog-node:draggable');
  * @param node 当前节点
  * @returns 拖拽状态和事件处理函数
  */
-export function useDraggable(node: EditableEaogNodeVMType) {
+export function useDraggable(node: EditableEaogNode) {
   // 拖拽状态
   const isDragging = ref(false);
   const isDragOver = ref(false);
@@ -123,7 +123,7 @@ export function useDraggable(node: EditableEaogNodeVMType) {
       if (success) {
         debug(`成功移动节点 "${dragNode.name}" 到 "${node.name}" ${position}`);
         // 标记为新修改以提供视觉反馈
-        dragNode.markAsNewlyModifiedForAWhile();
+        dragNode.ui.markAsNewlyModifiedForAWhile();
 
         // 直接使用querySelectorAll清除所有拖拽相关样式，简洁高效
         document.querySelectorAll('.eaog-node').forEach(el => {

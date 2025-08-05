@@ -22,14 +22,12 @@ import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
 import MainSideEaogLinks from './components/editor/main-parallel-eaog-links.vue'; // 导入主辅EAOG关联线层组件
 import {complexFlow} from './eaog-samples';
-import {onMounted, ref, provide, type Ref, nextTick, watch, computed} from 'vue';
+import {onMounted, ref, provide, type Ref, computed} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
-import {Splitpanes, Pane} from "splitpanes"
 import 'splitpanes/dist/splitpanes.css'
 
 import Debug from 'debug';
-import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
 import ThreePanes from "#/views/cp/components/editor/three-panes.vue";
 
 const debug = Debug('aia:cp-editor');
@@ -55,7 +53,7 @@ onMounted(async () => {
     <!-- 工具栏 -->
     <EditorToolbar/>
     <EaogContextMenu>
-      <three-panes :show-parallel="showParallel" ref="threePanes" class="flex w-full h-full default-theme">
+      <three-panes :show-parallel="showParallel" ref="threePanes" class="flex w-full h-full">
         <!-- 主CP EAOG -->
         <template #main>
           <ContextMenuTrigger asChild>
@@ -73,7 +71,7 @@ onMounted(async () => {
             <div class="w-full p-4 border rounded-md">
               <div v-for="(parallel, index) in parallelCPs" :key="index" class="eaog-tree parallel-eaog"
                    @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallel.waiterCP.eaog" :key="parallel.waiterCP.eaog.id"/>
+                <EaogNodeComponent :node="parallel.waiterCP!.eaog" :key="parallel.waiterCP!.eaog.id"/>
               </div>
             </div>
           </ContextMenuTrigger>

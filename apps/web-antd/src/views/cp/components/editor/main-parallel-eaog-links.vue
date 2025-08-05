@@ -73,19 +73,19 @@ const links = computed<LinkSpec[]>(() => {
       // 查找主EAOG中的actor节点DOM元素
       // const actorEaogPath = integrationManager.getNodeBriefPath(syncPoint.actor.path);
       // const actorSelector = `.main-eaog [data-node-ipath="${actorEaogPath}"] .eaog-node-name`;
-      // 注意：这里用node.showNode，以便在replace之后，也能够找到对应节点
-      const actorSelector = `.main-eaog [data-node-ipath="${syncPoint.actor.node.showNode.ipath}"] .eaog-node-name`;
+      // 注意：这里用node.ui.showNode，以便在replace之后，也能够找到对应节点
+      const actorSelector = `.main-eaog [data-node-ipath="${syncPoint.actor.node.ui.showNode.ipath}"] .eaog-node-name`;
       const actorElement = props.container.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
       // const waiterEaogPath = integrationManager.getNodeBriefPath(syncPoint.waiter.path);
       // const waiterSelector = `.parallel-eaog [data-node-ipath="${waiterEaogPath}"] .node-type-icon span`;
-      const waiterSelector = `.parallel-eaog [data-node-ipath="${syncPoint.waiter.node.showNode.ipath}"] .node-type-icon span`;
+      const waiterSelector = `.parallel-eaog [data-node-ipath="${syncPoint.waiter.node.ui.showNode.ipath}"] .node-type-icon span`;
       const waiterElement = props.container.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
-        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.node.showNode.ipath}`);
-        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.node.showNode.ipath}`);
+        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.node.ui.showNode.ipath}`);
+        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.node.ui.showNode.ipath}`);
         continue;
       }
 

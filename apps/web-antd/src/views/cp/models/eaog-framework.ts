@@ -4,7 +4,6 @@ import {
   eaogFrameworks as eaogFrameworkDefs
 } from "../../../../../../../aia-se-comp/src/framework-store/eaog-frameworks.js";
 import type {EaogNode} from "#/views/cp/models/types";
-import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 
 /**
  * Eaog Framework预定义了一定的执行结构，可以包装、装饰、结构化组装已有的行为（lc、cp、mcp、……）。
@@ -17,8 +16,8 @@ import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
  * 2. ……
  */
 export class EaogFramework extends EditableEaogNode {
-  constructor(node: EaogNode, parent?: EditableEaogNode, cp?: EditableCP) {
-    super(node, parent, cp);
+  constructor(node: EaogNode, parent?: EditableEaogNode) {
+    super(node, parent);
     if (!this.isRoot && !this.isLeaf) throw new Error("Root node is required to create an EaogFramework");
     if (!this.meta?.framework) throw new Error("EaogFramework root node must have meta.framework set to true.");
     if (this.descendants.some(d => d.meta?.framework)) throw new Error("EaogFramework root node cannot have descendants with meta.framework set to true.");
