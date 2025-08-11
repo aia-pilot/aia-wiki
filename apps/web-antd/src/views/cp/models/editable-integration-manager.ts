@@ -202,7 +202,7 @@ export class Integration implements IntegrationPoint {
       throw new Error(`集成点 ${this.name} (${this.type}) 的发起节点未指定或未找到`);
     }
 
-    const {loadCp} = await import('#/views/cp/services/cp-loader')
+    const {loadCp} = await import('#/views/cp/api/cp-loader')
     const {createEditableCP} = await import('#/views/cp/viewmodels/editable-cp');
 
     this.status = 'loading';

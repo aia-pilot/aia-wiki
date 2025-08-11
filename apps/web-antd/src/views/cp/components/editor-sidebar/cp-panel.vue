@@ -3,6 +3,7 @@
  * CP面板
  * 显示当前CP的hooks和sideCPs数据
  */
+// @ts-ignore
 import {JsonViewer} from '@vben/common-ui';
 import {currentCP, loadParallelCP} from '#/views/cp/viewmodels/cp-editor-state';
 
@@ -33,12 +34,12 @@ import {currentCP, loadParallelCP} from '#/views/cp/viewmodels/cp-editor-state';
       <!-- SideCPs数据展示 -->
       <div>
         <div class="font-medium mb-3 text-lg">SideCPs 数据</div>
-        <div v-if="currentCP.sideCPs.length === 0" class="text-gray-500 text-sm">
+        <div v-if="currentCP.sideCPs?.length === 0" class="text-gray-500 text-sm">
           暂无sideCPs数据
         </div>
         <!--  对应的sideCP的列表      -->
         <div v-else>
-          <ul v-if="currentCP.sideCPs.length > 0" class="text-gray-500 text-sm mb-2">
+          <ul v-if="currentCP.sideCPs?.length > 0" class="text-gray-500 text-sm mb-2">
             <li v-for="(sideCP, index) in currentCP.sideCPs" :key="index">
               <a href="#" class="text-blue-500 hover:underline" @click.prevent="loadParallelCP(sideCP.cp)">
                 {{ sideCP.cp }}

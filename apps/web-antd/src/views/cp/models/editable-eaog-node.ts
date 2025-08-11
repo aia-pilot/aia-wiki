@@ -15,6 +15,7 @@ import type {EaogNode} from "#/views/cp/models/types";
 import * as treeUtils from "../utils/tree-utils";
 import {EditableEaogNodeUI} from "#/views/cp/viewmodels/editable-eaog-node-ui";
 import {EditableIntegrationManager, ShowAtType} from "#/views/cp/models/editable-integration-manager";
+import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 // @ts-ignore
 const debug = Debug("aia:cp:eaog-node");
 
@@ -53,6 +54,8 @@ export class EditableEaogNode implements EaogNode {
   cp?: EditableCP // 所属CP
   ui: EditableEaogNodeUI; // UI交互状态和行为，EditableEaogNodeUI实例
 
+  ipath?: string; /** 集成路径，指向集成点的唯一标识符 {@link CPIntegrationManager} */
+  briefPath?: string; /** 简要路径，指向节点在CP(eaog)中的位置，比一般tree path短，便于理解 {@link CPIntegrationManager} */
   private _integrationManager?: EditableIntegrationManager; // 集成管理器，处理集成点的添加和查询
 
   get integrationManager(): EditableIntegrationManager | undefined {
@@ -173,15 +176,15 @@ export class EditableEaogNode implements EaogNode {
    */
   cloneDeep<T extends EditableEaogNode = EditableEaogNode>(): T {
     // 使用泛型和this类型确保返回类型与调用者类型一致
-    const Constructor = this.constructor as new (data: EaogNode) => T;
-    const clone = new Constructor(omit(this.toJSON(), ['children']), this.cp) as T; // 创建一个新的实例，传入当前节点的JSON表示和所属CP
+    const Constructor = this.constructor as new (data: EaogNode, cp: EditableCP) => T;
+    const clone = new Constructor(omit(this.toJSON(), ['children']), this.cp!) as T; // 创建一个新的实例，传入当前节点的JSON表示和所属CP
     clone.children = this.children.map(child => child.cloneDeep()) as T["children"];
     clone.children.forEach((child: EditableEaogNode) => child.parent = clone);
     return clone;
   }
 
   toJSON(): object {
-    const transientProps = ['id', 'parent', 'children', 'cp', 'ui', '_isEditableEaogNode', '_integrationManager', 'hookManager', 'syncManager', 'integrationManager'];
+    const transientProps = ['id', 'parent', 'children', 'cp', 'ui', 'ipath', 'briefPath', '_isEditableEaogNode', '_integrationManager', 'hookManager', 'syncManager', 'integrationManager'];
     const children = this.children.map(child => child.toJSON()); // 递归转换子节点为 JSON
     const res = {...omit(this, transientProps), children}; // 返回一个 JSON 对象，忽略 parent 和 children 属性
     return getCleanObj(res) as any; // 确保返回的对象没有 undefined 属性

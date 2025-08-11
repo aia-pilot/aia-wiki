@@ -119,7 +119,7 @@ export async function getAppList(params: Pagination) {
     });
 
     return {
-      data: [...res.data.map(d => new 智能应用VM(d)), ...fakeData],
+      data: [...res.data.map((d: any) => new 智能应用VM(d)), ...fakeData],
       total: res.total + fakeData.length
     };
   } catch (error) {

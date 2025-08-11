@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router';
+// @ts-ignore
 import { $t } from '@vben/locales';
 
 const routes: RouteRecordRaw[] = [
@@ -11,15 +12,6 @@ const routes: RouteRecordRaw[] = [
       title: $t('cp.title'),
     },
     children: [
-      {
-        path: '',
-        name: 'CPHome',
-        component: () => import('#/views/cp/spike.vue'),
-        meta: {
-          icon: 'lucide:network',
-          title: $t('cp.home'),
-        },
-      },
       {
         path: 'editor',
         name: 'CPEditor',
@@ -57,6 +49,15 @@ const routes: RouteRecordRaw[] = [
         meta: {
           icon: 'lucide:zap',
           title: 'Split Panes',
+        },
+      },
+      { // @DEV
+        path: 'workspace',
+        name: 'Workspace Test',
+        component: () => import('#/views/cp/workspace.test.vue'),
+        meta: {
+          icon: 'lucide:zap',
+          title: 'Workspace Test',
         },
       },
     ]

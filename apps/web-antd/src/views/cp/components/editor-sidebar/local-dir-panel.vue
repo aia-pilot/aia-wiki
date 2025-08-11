@@ -38,30 +38,14 @@ import {prompt, confirm} from '@vben/common-ui';
 
 import Debug from 'debug';
 
-import {localDirs, selected, isCpFile, loadCpToEditor} from './local-dir';
+import {localDirs, selected, isCpFile, loadCpToEditor, loadCPDirTree} from './local-dir';
 import {requestClient} from "#/api/request";
 
 const debug = Debug('aia-wiki-new:dir-tree-sidebar');
-const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 
 onMounted(async () => {
-  const cpTree = await requestClient.get(`${aiaSvcBaseUrl}/cp`, {withCredentials: true,})
-    // .then(res => res.data)
-    .catch(err => {
-      console.error('获取CP列表失败:', err);
-      message.error('获取CP列表失败');
-      return [];
-    });
-
+  const cpTree = await loadCPDirTree();
   addFileTrees([cpTree]);
-
-  // // 尝试从localStorage恢复上次打开的目录
-  // const lastSelectedDir = localStorage.getItem('aia-cp-editor-last-selected-dir');
-  // if (lastSelectedDir) {
-  //   // @ts-ignore
-  //   const fileTrees = await window.electronAPI.invokeMain('use-sys-get-dir-tree', { path: lastSelectedDir });
-  //   addFileTrees(fileTrees);
-  // }
 });
 
 function addFileTrees(fileTrees: any) {
@@ -72,19 +56,19 @@ function addFileTrees(fileTrees: any) {
   selected.value!.expanded = true; // 默认选中第一个目录并展开
 }
 
-async function openFolder() {
-  try {
-    // @ts-ignore
-    const fileTrees = await window.electronAPI.invokeMain('use-sys-open-dir-tree-dialog', {
-      title: '选择文件夹',
-    });
-    addFileTrees(fileTrees);
-    localStorage.setItem('aia-cp-editor-last-selected-dir', selected.value!.path); // 保存最后打开的目录，下次浏览器打开时可以恢复
-  } catch (error) {
-    console.error('打开目录树对话框失败:', error);
-    message.error('打开目录树对话框失败');
-  }
-}
+// async function openFolder() {
+//   try {
+//     // @ts-ignore
+//     const fileTrees = await window.electronAPI.invokeMain('use-sys-open-dir-tree-dialog', {
+//       title: '选择文件夹',
+//     });
+//     addFileTrees(fileTrees);
+//     localStorage.setItem('aia-cp-editor-last-selected-dir', selected.value!.path); // 保存最后打开的目录，下次浏览器打开时可以恢复
+//   } catch (error) {
+//     console.error('打开目录树对话框失败:', error);
+//     message.error('打开目录树对话框失败');
+//   }
+// }
 
 async function addFolder() {
   const folderName = await prompt({content: '请输入新目录名称:'}).catch(() => null)

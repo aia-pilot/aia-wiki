@@ -89,7 +89,7 @@ export class EditableSideCP implements SideCP {
 
   toJSON(): SideCP {
     const syncPoints = this.syncPoints.map(sp => sp.toJSON());
-    return {...omit(this, ['definedAt', 'launchNode', 'waiterCP']), syncPoints}; /* 去除cp实例，保留cp的JSON表示 */
+    return {...omit(this, ['definedAt', 'launchNode', 'actorCP', 'waiterCP']), syncPoints}; /* 去除cp实例，保留cp的JSON表示 */
   }
 
   cloneDeep(): EditableSideCP {

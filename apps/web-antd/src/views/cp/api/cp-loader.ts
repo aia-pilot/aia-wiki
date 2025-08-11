@@ -1,31 +1,9 @@
-import { mainCPModule } from '../viewmodels/cp-editor-state';
-import type {CP} from "../models/types";
 // @ts-ignore
-import {convertCpLocateStrToRelativePath} from "aia-cp-manager";
+import {convertCpLocateStrToRelativePath} from "../../../../../../../aia-cp-manager";
 
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
 
-/**
- * 从指定的文件路径加载 CP 模块，用在本地项目面板中，读取本地文件系统中的 CP 模块。
- * TODO：加上从云端用户云盘中读取
- * @param filePath
- */
-export async function loadCpModuleFromFilePath(filePath: string) {
-  // const cp = await loadCp(filePath);
-  mainCPModule.value = await loadCp(filePath);
-
-  // const normalized = filePath.replace(/\\/g, '/');
-  // const base = eaogsDir.endsWith('/') ? eaogsDir : eaogsDir + '/';
-  //
-  // if (!normalized.startsWith(base)) {
-  //   throw new Error(`文件路径 ${filePath} 不在 VITE_CP_STORE_PATH 范围内`);
-  // }
-  //
-  // const relativePath = normalized.slice(base.length);
-  // const cp = await loadCp(relativePath);
-  // mainCPModule.value = { filePath: normalized, cp };
-}
 
 /**
  * 从 CP 模块定位字符串加载 CP 模块。从内部CP-store（npm pkg repo）中加载 CP 模块。
@@ -45,9 +23,14 @@ export async function loadCp(filePath: string) {
     filePath = filePath.slice(5); // 去掉前缀cp://
     const names = filePath.split('/'); // 支持多级CP
     const name = names[names.length - 1]!; // 最后一个是CP名称
-    filePath = `cp-store/${filePath}/${name}.cp.js`; // 转换为相对路径
+    filePath = `${filePath}/${name}.cp.js`; // 转换为相对路径
   }
-  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/${filePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
+
+  if (filePath.startsWith('cp-store/')) {
+    filePath = filePath.slice(9); // 去掉前缀cp-store/
+  }
+
+  const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${filePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
   return {cp, filePath};
 }
 

@@ -6,6 +6,7 @@ import {Integration, ShowAtType} from "#/views/cp/models/editable-integration-ma
 import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
 import {uniqBy} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
+import {loadCp} from "#/views/cp/api/cp-loader";
 
 /**
  * CP Editor 的核心状态管理
@@ -103,6 +104,16 @@ export const loadCurrentCP = async (cp: EditableCP | CP | string, needSave = fal
   }
 }
 
+
+/**
+ * 从指定的文件路径加载 CP 模块，用在本地项目面板中，读取本地文件系统中的 CP 模块。
+ * TODO：加上从云端用户云盘中读取
+ * @param filePath
+ */
+export async function loadCpModuleFromFilePath(filePath: string) {
+  mainCPModule.value = await loadCp(filePath);
+}
+
 /**
  * 将当前CP数据保存到历史记录和外部（file、store、API等）
  * @param isNew 是否为新创建的CP，默认为false
@@ -119,7 +130,7 @@ export const saveCurrentCP = async (isNew = false) => {
  * @deprecated 该方法已弃用，同时，调用它的cp-panel也要改动
  */
 export const loadParallelCP = async (modulePath: string) => {
-  const {loadCpFromCpStr} = await import('../services/cp-loader');
+  const {loadCpFromCpStr} = await import('../api/cp-loader');
   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
   const {cp, filePath} = await loadCpFromCpStr(modulePath)
   // @ts-ignore
@@ -134,8 +145,8 @@ export const loadParallelCP = async (modulePath: string) => {
 export const cpSaver = ref<((cp: any, isNew: boolean) => Promise<void>) | null>(null);
 
 if (IS_DEV) { // 在开发环境下，开放全局变量，便于调试和测试
-  window.aia ||= {
-    ...window.aia,
+  (window as any).aia ||= {
+    ...(window as any).aia,
     mainCPModule,
     mainCP,
     parallelCPs,

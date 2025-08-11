@@ -6,7 +6,7 @@ import {smartCloneDeep} from "../../../../../../../aia-se-comp/src/util/smart-cl
 import {EditableIntegrationManager, type Integration} from "../models/editable-integration-manager";
 import {omit} from "lodash-es";
 import {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
-import {getCpLocateStrFromFilePath} from "#/views/cp/services/cp-loader";
+import {getCpLocateStrFromFilePath} from "#/views/cp/api/cp-loader";
 
 import Debug from 'debug';
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
@@ -55,7 +55,7 @@ export class EditableCP implements CP {
    */
   toJSON(): CP {
     return {
-      ...omit(this, ['parentIpath', 'history', 'eaog']),
+      ...omit(this, ['parentIpath', 'history', 'eaog', 'integrateFrom', 'integrateTo']),
       eaog: this.eaog.toJSON()
     };
   }
