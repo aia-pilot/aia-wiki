@@ -1,35 +1,32 @@
 <!-- src/components/cpd.vue -->
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
+import {onMounted, ref, computed} from 'vue'
 import type { CPDEvent, LaneId } from 'aia-cpd/core'
-import { DebugController } from 'aia-cpd/core'
 import { MockAdapter } from 'aia-cpd/adapter-mock'
-// 如需接真 Runner：
-// import { BrowserWorkerAdapter } from '@aia/cpd/adapter-worker'
-// const adapter = new BrowserWorkerAdapter(new URL('../worker.js', import.meta.url))
+import { useCpd } from './composables/use-cpd'
 
 // --- Mock：模拟一条最小轨迹 + ctx 变化 + 断点命中 ---
 const adapter = new MockAdapter(async (emit) => {
-  await wait(120)
+  await wait(1200)
   emit({ type: 'node.enter', runId: 'mock', at: { workflowId: 'demo', kind: 'node', id: 'start' } })
-  await wait(160)
+  await wait(1600)
   emit({ type: 'ctx.patch', runId: 'mock', laneId: [0], diff: [{ op: 'add', path: '/counter', value: 1 }] })
-  await wait(160)
+  await wait(1600)
   emit({ type: 'node.exit', runId: 'mock', at: { workflowId: 'demo', kind: 'node', id: 'start' } })
-  await wait(120)
+  await wait(1200)
   emit({ type: 'node.enter', runId: 'mock', at: { workflowId: 'demo', kind: 'node', id: 'next' } })
-  await wait(120)
+  await wait(1200)
   emit({ type: 'breakpoint.hit', runId: 'mock', bpId: 'bp-1', at: { workflowId: 'demo', kind: 'node', id: 'next' } })
 })
 function wait(ms: number) { return new Promise(r => setTimeout(r, ms)) }
 
-// --- DebugController：聚合事件 & 发协议命令 ---
-const dc = new DebugController(adapter)
+// 使用 useCpd composable
+const { controller, session, breakpoints, addBreakpoint: addBp } = useCpd(adapter)
 
 const events = ref<CPDEvent[]>([])
-const state = computed(() => dc.session.state)                // idle | running | paused | terminated | error
-const lastAt = computed(() => dc.session.lastAt)
-const ctxView = computed(() => JSON.stringify(dc.ctx.getGlobal(), null, 2))
+const state = computed(() => session.state)                // idle | running | paused | terminated | error
+const lastAt = computed(() => session.lastAt)
+const ctxView = computed(() => JSON.stringify(controller.ctx.getGlobal(), null, 2))
 
 // 断点与 Patch 输入
 const bpId = ref('bp-1')
@@ -40,25 +37,24 @@ const patchText = ref('[{"op":"add","path":"/user/name","value":"alice"}]')
 const focusLane = ref<LaneId | 'focused' | undefined>('focused')
 
 onMounted(() => {
-  dc.onEvent(e => events.value.push(e))
+  controller.onEvent(e => events.value.push(e))
 })
-onBeforeUnmount(() => dc.dispose())
 
 // 控制栏动作
 function run() {
   events.value = []
-  dc.createRun('demo', { foo: 'bar' }, { deterministic: true, seed: 42 })
+  controller.createRun('demo', { foo: 'bar' }, { deterministic: true, seed: 42 })
 }
-function pause()     { if (dc.session.runId) dc.pause() }
-function cont()      { if (dc.session.runId) dc.continue() }
-function stepInto()  { if (dc.session.runId) dc.stepInto({ lane: focusLane.value ?? 'focused' }) }
-function stepOver()  { if (dc.session.runId) dc.stepOver({ lane: focusLane.value ?? 'focused' }) }
-function stepOut()   { if (dc.session.runId) dc.stepOut({ lane: focusLane.value ?? 'focused' }) }
-function terminate() { if (dc.session.runId) dc.terminate() }
+function pause()     { if (session.runId) controller.pause() }
+function cont()      { if (session.runId) controller.continue() }
+function stepInto()  { if (session.runId) controller.stepInto({ lane: focusLane.value ?? 'focused' }) }
+function stepOver()  { if (session.runId) controller.stepOver({ lane: focusLane.value ?? 'focused' }) }
+function stepOut()   { if (session.runId) controller.stepOut({ lane: focusLane.value ?? 'focused' }) }
+function terminate() { if (session.runId) controller.terminate() }
 
 function addBreakpoint() {
   if (!bpNodeId.value) return
-  dc.addBreakpoint({
+  addBp({
     id: bpId.value || `bp-${Date.now()}`,
     at: { workflowId: 'demo', kind: 'node', id: bpNodeId.value },
     enabled: true
@@ -68,7 +64,7 @@ function addBreakpoint() {
 function applyPatch() {
   try {
     const patch = JSON.parse(patchText.value)
-    dc.applyCtxPatch(patch) // v0: 全局；并发后可传 { lane: [...] }
+    controller.applyCtxPatch(patch) // v0: 全局；并发后可传 { lane: [...] }
   } catch (e) {
     alert('JSON Patch 无效：' + (e as Error).message)
   }
@@ -111,6 +107,12 @@ function applyPatch() {
           <button class="btn" @click="addBreakpoint">添加</button>
         </div>
         <p class="text-xs text-slate-500">说明：示例按 <code>node.id</code> 命中；并发上线后可扩展 lane 维度。</p>
+        <div v-if="breakpoints.length" class="mt-2">
+          <div v-for="bp in breakpoints" :key="bp.id" class="text-xs mb-1">
+            <span class="bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded">{{ bp.id }}</span>
+            @ {{ bp.at.kind }}:{{ bp.at.id }}
+          </div>
+        </div>
       </div>
 
       <!-- Ctx -->
