@@ -111,7 +111,8 @@
       "clsx": "catalog:",
       "esbuild": "0.25.3",
       "pinia": "catalog:",
-      "vue": "catalog:"
+      "vue": "catalog:",
+      "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd"
     },
     "neverBuiltDependencies": [
       "canvas",
@@ -119,6 +120,7 @@
     ]
   },
   "dependencies": {
-    "aia-cp-manager": "link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager"
+    "aia-cp-manager": "link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager",
+    "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd"
   }
 }

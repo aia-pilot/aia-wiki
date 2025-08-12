@@ -524,6 +524,7 @@ overrides:
   esbuild: 0.25.3
   pinia: ^3.0.2
   vue: ^3.5.13
+  aia-cpd: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
 
 importers:
 
@@ -532,6 +533,9 @@ importers:
       aia-cp-manager:
         specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager
         version: link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager
+      aia-cpd:
+        specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
+        version: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
     devDependencies:
       '@changesets/changelog-github':
         specifier: 'catalog:'
