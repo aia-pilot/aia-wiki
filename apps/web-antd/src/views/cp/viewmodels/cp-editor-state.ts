@@ -7,6 +7,7 @@ import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
 import {uniqBy} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 import {loadCp} from "#/views/cp/api/cp-loader";
+import {saveCpToFile} from "#/views/cp/viewmodels/workspace";
 
 /**
  * CP Editor 的核心状态管理
@@ -47,7 +48,7 @@ export const clipboardNode = ref<EditableEaogNode | undefined>();
 export const currentPane = ref<string | undefined>();
 
 // 标签页状态：当前活动的标签页
-export const currentTab = ref<string>('local-dir-panel');
+export const currentTab = ref<string>('workspace-panel');
 
 // 当CP模块变化时，更新当前CP
 watch(mainCPModule, async (newCPM) => {
@@ -119,9 +120,11 @@ export async function loadCpModuleFromFilePath(filePath: string) {
  * @param isNew 是否为新创建的CP，默认为false
  */
 export const saveCurrentCP = async (isNew = false) => {
-  // 使用CP的addToHistory方法
-  currentCP.value?.addToHistory();
-  await cpSaver.value?.(currentCP.value, isNew)
+  if (!currentCP.value) {
+    throw new Error('当前没有CP可供保存');
+  }
+  currentCP.value!.addToHistory();
+  await saveCpToFile(currentCP.value!, isNew)
 }
 
 /**
@@ -137,12 +140,6 @@ export const loadParallelCP = async (modulePath: string) => {
   const editableCP = await createEditableCP(cp as CP, filePath);
   // parallelCPs.value = {'cp': editableCP, filePath};
 }
-
-/**
- * 保存CP的函数引用
- * 用于在不同组件间共享保存逻辑
- */
-export const cpSaver = ref<((cp: any, isNew: boolean) => Promise<void>) | null>(null);
 
 if (IS_DEV) { // 在开发环境下，开放全局变量，便于调试和测试
   (window as any).aia ||= {

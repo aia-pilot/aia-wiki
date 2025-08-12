@@ -172,19 +172,29 @@ export class FileWorkspace {
   }
 
   /** List entries under a path (directory). */
-  async list(path = ''): Promise<FileStat[]> {
+async list(
+    path = '',
+    ignore?: (stat: { name: string; kind: 'file' | 'directory'; path: string }) => boolean
+  ): Promise<FileStat[]> {
     const root = this.requireRoot();
     const dir = path ? await getDirHandleFromPath(root, path, false) : root;
     const out: FileStat[] = [];
     // @ts-ignore
     for await (const [name, handle] of (dir as any).entries()) {
       const rel = normalizePath([path, name].filter(Boolean).join('/'));
-      if (handle.kind === 'directory') {
-        out.push({ kind: 'directory', name, path: rel });
+      const kind = handle.kind as 'file' | 'directory';
+
+      // 如果提供了 ignore 函数并且返回 true，则跳过此项
+      if (ignore && ignore({ name, kind, path: rel })) {
+        continue;
+      }
+
+      if (kind === 'directory') {
+        out.push({ kind, name, path: rel });
       } else {
         const f = await (handle as FileSystemFileHandle).getFile();
         out.push({
-          kind: 'file',
+          kind,
           name,
           size: f.size,
           lastModified: f.lastModified,

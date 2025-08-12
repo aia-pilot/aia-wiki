@@ -45,7 +45,7 @@
     <!-- 子项递归 -->
     <ul v-if="item.isDirectory && item.expanded" class="pl-2">
       <template v-if="item.children && item.children.length">
-        <local-dir-tree-item
+        <workspace-tree-item
           v-for="child in item.children.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime()) /* 按最后修改时间降序 */"
           :key="child.path"
           :item="child"
@@ -68,6 +68,7 @@
 <script setup lang="ts">
 import {computed} from 'vue';
 import {ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem} from 'radix-vue';
+import { expandDirectory } from '../../viewmodels/workspace';
 
 export interface FileNode {
   name: string;
@@ -88,15 +89,27 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'file-item-clicked', file: FileNode): void;
-  (e: 'file-item-rename', file: FileNode): void;
-  (e: 'file-item-delete', file: FileNode): void;
+  'file-item-clicked': [file: FileNode];
+  'file-item-rename': [file: FileNode];
+  'file-item-delete': [file: FileNode];
 }>();
 
 const isSelected = computed(() => props.selected === props.item);
 
-function toggle() {
-  props.item.expanded = !props.item.expanded;
+async function toggle() {
+  if (props.item.isDirectory) {
+    // 如果要展开目录，并且还没有加载过子项或子项为空，则懒加载子目录
+    if (!props.item.expanded && (!props.item.children || props.item.children.length === 0)) {
+      try {
+        await expandDirectory(props.item);
+      } catch (error) {
+        console.error('无法加载目录内容:', error);
+      }
+    } else {
+      // 已经加载过的目录，直接切换展开状态
+      props.item.expanded = !props.item.expanded;
+    }
+  }
 }
 
 function onItemClick() {

@@ -69,9 +69,9 @@ onMounted(async () => {
         <template #parallel>
           <ContextMenuTrigger asChild>
             <div class="w-full p-4 border rounded-md">
-              <div v-for="(parallel, index) in parallelCPs" :key="index" class="eaog-tree parallel-eaog"
+              <div v-for="sideCP in parallelCPs" :key="sideCP.waiterCP!.id" class="eaog-tree parallel-eaog"
                    @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="parallel.waiterCP!.eaog" :key="parallel.waiterCP!.eaog.id"/>
+                <EaogNodeComponent :node="sideCP.waiterCP!.eaog" :key="sideCP.waiterCP!.eaog.id"/>
               </div>
             </div>
           </ContextMenuTrigger>
@@ -79,7 +79,7 @@ onMounted(async () => {
 
         <!-- 右侧栏 -->
         <template #sidebar>
-          <EditorSidebar/>
+            <EditorSidebar />
         </template>
       </three-panes>
     </EaogContextMenu>

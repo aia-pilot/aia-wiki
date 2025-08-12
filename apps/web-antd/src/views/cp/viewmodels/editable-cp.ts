@@ -10,6 +10,7 @@ import {getCpLocateStrFromFilePath} from "#/views/cp/api/cp-loader";
 
 import Debug from 'debug';
 import {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+// @ts-ignore
 const debug = Debug("aia:cp:editable-cp");
 
 /**
@@ -83,7 +84,6 @@ export class EditableCP implements CP {
   }
 }
 
-const cpCache = new Map<string, EditableCP>(); // 缓存CP实例，避免重复创建
 
 /**
  * @param cp
@@ -93,14 +93,7 @@ const cpCache = new Map<string, EditableCP>(); // 缓存CP实例，避免重复�
 export async function createEditableCP(cp: CP, filePath?: string, integration?: Integration): Promise<EditableCP> {
   // const {currentNode} = await import('./cp-editor-state'); // 动态导入，避免循环依赖
 
-  const isTopCP = !integration// 顶层CP没有集成
-  if (isTopCP && cpCache.has(filePath!)) {
-    debug(`从缓存中获取CP实例，filePath: ${filePath}`);
-    return cpCache.get(filePath!)!; // 从缓存中获取CP实例
-  }
-
   const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.frameworks, filePath, integration);
-  cpCache.set(filePath!, editableCP); // 缓存CP实例
 
   editableCP.sideCPs = (cp.sideCPs || []).map(s => new EditableSideCP(s, editableCP)); // 确保sideCPs是EditableSideCP实例, 注意：不能在eaog构造前，构造 EditableSideCP，否则找不到launchPoint、syncPoints
   editableCP.integrateTo = EditableIntegrationManager.prepareIntegrationsForEaog(editableCP, integration?.integrator, integration?.type, null) as unknown as Integration[]; // 在eaog root上添加integrationManager属性，并准备集成点
