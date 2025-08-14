@@ -81,7 +81,7 @@ async function idb<T = unknown>(op: 'get' | 'set' | 'del', value?: any): Promise
 
 async function verifyPermission(handle: FileSystemHandle, mode: 'read' | 'readwrite') {
   // @ts-ignore
-  const opts: FileSystemHandlePermissionDescriptor = { mode };
+  const opts: FileSystemHandlePermissionDescriptor = {mode};
   // @ts-ignore
   if ((await handle.queryPermission?.(opts)) === 'granted') return true;
   // @ts-ignore
@@ -103,7 +103,7 @@ async function getDirHandleFromPath(
   let cur = root;
   const parts = normalizePath(dirPath).split('/').filter(Boolean);
   for (const part of parts) {
-    cur = await cur.getDirectoryHandle(part, { create });
+    cur = await cur.getDirectoryHandle(part, {create});
   }
   return cur;
 }
@@ -119,7 +119,7 @@ async function getParentDirAndName(
   const name = idx >= 0 ? clean.slice(idx + 1) : clean;
   const dirHandle =
     dir ? await getDirHandleFromPath(root, dir, createParents) : root;
-  return { dirHandle, name, relDir: dir, relName: name };
+  return {dirHandle, name, relDir: dir, relName: name};
 }
 
 async function readFileAsArrayBuffer(fileHandle: FileSystemFileHandle): Promise<ArrayBuffer> {
@@ -172,7 +172,7 @@ export class FileWorkspace {
   }
 
   /** List entries under a path (directory). */
-async list(
+  async list(
     path = '',
     ignore?: (stat: { name: string; kind: 'file' | 'directory'; path: string }) => boolean
   ): Promise<FileStat[]> {
@@ -185,12 +185,12 @@ async list(
       const kind = handle.kind as 'file' | 'directory';
 
       // 如果提供了 ignore 函数并且返回 true，则跳过此项
-      if (ignore && ignore({ name, kind, path: rel })) {
+      if (ignore && ignore({name, kind, path: rel})) {
         continue;
       }
 
       if (kind === 'directory') {
-        out.push({ kind, name, path: rel });
+        out.push({kind, name, path: rel});
       } else {
         const f = await (handle as FileSystemFileHandle).getFile();
         out.push({
@@ -208,29 +208,29 @@ async list(
   /** Read text file. */
   async readText(filePath: string): Promise<{ content: string; hash: Sha256 }> {
     const root = this.requireRoot();
-    const { dirHandle, relName } = await getParentDirAndName(root, filePath);
+    const {dirHandle, relName} = await getParentDirAndName(root, filePath);
     const fh = await dirHandle.getFileHandle(relName);
     const buf = await readFileAsArrayBuffer(fh);
     const hash = await sha256OfArrayBuffer(buf);
     const content = new TextDecoder().decode(buf);
-    return { content, hash };
+    return {content, hash};
   }
 
   /** Read as Uint8Array. */
   async readBinary(filePath: string): Promise<{ content: Uint8Array; hash: Sha256 }> {
     const root = this.requireRoot();
-    const { dirHandle, relName } = await getParentDirAndName(root, filePath);
+    const {dirHandle, relName} = await getParentDirAndName(root, filePath);
     const fh = await dirHandle.getFileHandle(relName);
     const buf = await readFileAsArrayBuffer(fh);
     const hash = await sha256OfArrayBuffer(buf);
-    return { content: new Uint8Array(buf), hash };
+    return {content: new Uint8Array(buf), hash};
   }
 
   /** Write text with optional optimistic concurrency via preconditionSha256. */
   async writeText(filePath: string, content: string, opts: WriteOptions = {}): Promise<Sha256> {
     const root = this.requireRoot();
-    const { dirHandle, relName } = await getParentDirAndName(root, filePath, !!opts.createParents);
-    const fileHandle = await dirHandle.getFileHandle(relName, { create: true });
+    const {dirHandle, relName} = await getParentDirAndName(root, filePath, !!opts.createParents);
+    const fileHandle = await dirHandle.getFileHandle(relName, {create: true});
 
     // precondition check
     if (opts.preconditionSha256) {
@@ -238,7 +238,10 @@ async list(
         const curBuf = await readFileAsArrayBuffer(fileHandle);
         const curHash = await sha256OfArrayBuffer(curBuf);
         if (curHash !== opts.preconditionSha256) {
-          throw Object.assign(new Error('Precondition failed: hash mismatch'), { code: 'PRECONDITION_FAILED', currentHash: curHash });
+          throw Object.assign(new Error('Precondition failed: hash mismatch'), {
+            code: 'PRECONDITION_FAILED',
+            currentHash: curHash
+          });
         }
       } catch (e: any) {
         // if file didn’t exist previously, skip
@@ -256,21 +259,25 @@ async list(
   /** Write binary (Uint8Array) */
   async writeBinary(filePath: string, data: Uint8Array, opts: WriteOptions = {}): Promise<Sha256> {
     const root = this.requireRoot();
-    const { dirHandle, relName } = await getParentDirAndName(root, filePath, !!opts.createParents);
-    const fileHandle = await dirHandle.getFileHandle(relName, { create: true });
+    const {dirHandle, relName} = await getParentDirAndName(root, filePath, !!opts.createParents);
+    const fileHandle = await dirHandle.getFileHandle(relName, {create: true});
 
     if (opts.preconditionSha256) {
       try {
         const curBuf = await readFileAsArrayBuffer(fileHandle);
         const curHash = await sha256OfArrayBuffer(curBuf);
         if (curHash !== opts.preconditionSha256) {
-          throw Object.assign(new Error('Precondition failed: hash mismatch'), { code: 'PRECONDITION_FAILED', currentHash: curHash });
+          throw Object.assign(new Error('Precondition failed: hash mismatch'), {
+            code: 'PRECONDITION_FAILED',
+            currentHash: curHash
+          });
         }
-      } catch (e: any) { /* ignore */ }
+      } catch (e: any) { /* ignore */
+      }
     }
 
     const writable = await fileHandle.createWritable();
-    await writable.write(data);
+    await writable.write(data.slice(0));  // 使用 slice() 创建新的 Uint8Array 避免类型问题
     await writable.close();
 
     return sha256OfArrayBuffer(data.buffer.slice(0) as ArrayBuffer); // slice to avoid shared buffer issues
@@ -285,16 +292,16 @@ async list(
   /** Remove a file or directory (recursively). */
   async remove(path: string): Promise<void> {
     const root = this.requireRoot();
-    const { dirHandle, relName } = await getParentDirAndName(root, path);
+    const {dirHandle, relName} = await getParentDirAndName(root, path);
     // @ts-ignore
-    await dirHandle.removeEntry(relName, { recursive: true });
+    await dirHandle.removeEntry(relName, {recursive: true});
   }
 
   /** Move/rename within the workspace (copy + delete fallback). */
   async move(from: string, to: string, opts: { createParents?: boolean } = {}): Promise<void> {
     // FS Access API lacks a native rename across directories; implement as copy+delete.
     const src = await this.readBinary(from);
-    await this.writeBinary(to, src.content, { createParents: !!opts.createParents });
+    await this.writeBinary(to, src.content, {createParents: !!opts.createParents});
     await this.remove(from);
   }
 
@@ -311,7 +318,7 @@ async list(
 
   /** Compute sha256 for a path (file only). */
   async sha256(path: string): Promise<Sha256> {
-    const { hash } = await this.readBinary(path);
+    const {hash} = await this.readBinary(path);
     return hash;
   }
 
@@ -319,7 +326,7 @@ async list(
   async stat(path: string): Promise<FileStat | null> {
     const root = this.requireRoot();
     try {
-      const { dirHandle, relName, relDir } = await getParentDirAndName(root, path);
+      const {dirHandle, relName, relDir} = await getParentDirAndName(root, path);
       try {
         const fh = await dirHandle.getFileHandle(relName);
         const f = await fh.getFile();
