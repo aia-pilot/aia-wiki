@@ -206,7 +206,7 @@ export class EditableEaogNode implements EaogNode {
       return omit(this.toJSON(), ['children']); // children、id不可以被节点表单编辑，children通过上下文菜单操作。
     } else { // 编辑后，合并表单值
       formValues = getCleanObj(formValues, {null: true, emptyArray: false, emptyObject: false}); // 去掉表单中值为undefined、空数组、空对象的属性，保留null
-      const isModified = Object.keys(formValues).some(key => formValues[key as keyof typeof formValues] !== (this as any)[key]);
+      const isModified = Object.keys(formValues as Object).some(key => formValues![key as keyof typeof formValues] !== (this as any)[key]);
       return isModified ? {...this.toJSON(), ...formValues} : undefined // 合并当前节点的属性和表单值
     }
   }

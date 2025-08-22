@@ -30,6 +30,7 @@ export async function loadCp(filePath: string) {
     filePath = filePath.slice(9); // 去掉前缀cp-store/
   }
 
+  // TODO: use File Access API to load file from local disk
   const cp = await import(/* @vite-ignore */ `${aiaSvcBaseUrl}/cp-store/${filePath}?t=${Date.now()}`); // 加上时间戳，每次都更新
   return {cp, filePath};
 }

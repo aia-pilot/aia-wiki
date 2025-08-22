@@ -60,15 +60,15 @@ const routes: RouteRecordRaw[] = [
           title: 'Workspace Test',
         },
       },
-      { // @DEV
-        path: 'cpd-test',
-        name: 'CPD Test',
-        component: () => import('#/views/cp/cpd.test.vue'),
-        meta: {
-          icon: 'lucide:zap',
-          title: 'CPD Test',
-        },
-      },
+      // { // @DEV
+      //   path: 'cpd-test',
+      //   name: 'CPD Test',
+      //   component: () => import('#/views/cp/cpd.test.vue'),
+      //   meta: {
+      //     icon: 'lucide:zap',
+      //     title: 'CPD Test',
+      //   },
+      // },
     ]
   }
 ];
