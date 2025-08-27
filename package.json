@@ -121,6 +121,7 @@
   },
   "dependencies": {
     "aia-cp-manager": "link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager",
-    "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd"
+    "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd",
+    "eaog": "link:../../../../Library/pnpm/global/5/node_modules/eaog"
   }
 }

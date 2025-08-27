@@ -536,6 +536,9 @@ importers:
       aia-cpd:
         specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
         version: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
+      eaog:
+        specifier: link:../../../../Library/pnpm/global/5/node_modules/eaog
+        version: link:../../../../Library/pnpm/global/5/node_modules/eaog
     devDependencies:
       '@changesets/changelog-github':
         specifier: 'catalog:'
