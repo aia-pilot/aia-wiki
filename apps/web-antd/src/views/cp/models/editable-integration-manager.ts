@@ -1,7 +1,8 @@
 import type {EaogNode, Hook, IntegrationPoint, IntegrationType, SideCP} from './types.d';
 // @ts-ignore
 import {IntegrationPointSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
-import {CPIntegrationManager, findNodeByIpath, isNodeForIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
+import {CPIntegrationManager} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
+import {findNodeByIpath, isNodeForIpath} from "eaog/ect";
 import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 

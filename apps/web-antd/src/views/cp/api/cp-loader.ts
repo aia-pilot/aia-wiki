@@ -1,5 +1,5 @@
 // @ts-ignore
-import {convertCpLocateStrToRelativePath} from "../../../../../../../aia-cp-manager";
+import {convertCpLocateStrToRelativePath} from "aia-cp-manager";
 
 const aiaSvcBaseUrl = import.meta.env.VITE_AIA_SVC_URL.replace(/\/$/, ''); // 去掉末尾的斜杠
 const eaogsDir = import.meta.env.VITE_CP_STORE_PATH!.replace(/\\/g, '/');
