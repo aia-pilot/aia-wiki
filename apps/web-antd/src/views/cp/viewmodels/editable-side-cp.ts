@@ -3,7 +3,7 @@ import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 import {omit} from "lodash-es";
-import {findNodeByIpath} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager";
+import {findNodeByIpath} from "eaog/ect";
 
 /**
  * EditableSyncPoint 类实现
@@ -13,20 +13,20 @@ export class EditableSyncPoint implements SyncPoint {
   /** 在{@link Integration#loadAndOpen} 时，加载为node */
   waiter: SyncPoint["waiter"] & { node?: EditableEaogNode };
   /** 在{@link Integration#loadAndOpen} 时，加载为node */
-  exePhase: SyncPoint["exePhase"];
+  phase: SyncPoint["phase"];
   block: SyncPoint["block"];
   description: SyncPoint["description"];
 
   constructor(data: SyncPoint) {
     this.actor = data.actor;
     this.waiter = data.waiter;
-    this.exePhase = data.exePhase;
+    this.phase = data.phase;
     this.block = data.block;
     this.description = data.description;
   }
 
   get label() {
-    return this.description ? this.description : `${this.actor.node?.name} (${this.exePhase}) -> ${this.waiter.node?.name} (${this.exePhase})`;
+    return this.description ? this.description : `${this.actor.node?.name} (${this.phase}) -> ${this.waiter.node?.name} (${this.phase})`;
   }
 
   toJSON() {
@@ -56,8 +56,8 @@ export class EditableSyncPoint implements SyncPoint {
     this.block = block;
   }
 
-  setExePhase(phase: "before" | "after") {
-    this.exePhase = phase;
+  setPhase(phase: "before" | "after") {
+    this.phase = phase;
   }
 
   loadActorAndWaiter(actorEaog: EditableEaogNode, waiterEaog: EditableEaogNode) {

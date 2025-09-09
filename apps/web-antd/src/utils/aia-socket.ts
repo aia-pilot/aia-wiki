@@ -99,7 +99,7 @@ class AiaSocketClient {
 
         this.socket.once('connect', () => {
           clearTimeout(connectTimeout);
-          debug(`Socket连接成功，用户ID: ${userId}`);
+          debug(`Socket连接成功，用户ID: ${userId}, socket ID: ${this.socket?.id}`);
           resolve();
         });
 

@@ -3,6 +3,7 @@ import type {CP, EaogNode, Hook} from "../models/types";
 import {CPHistory} from "./cp-history";
 // @ts-ignore
 import {smartCloneDeep} from "../../../../../../../aia-se-comp/src/util/smart-clone-deep.js";
+import {prepareIntegrationsForEaog} from "../../../../../../../aia-se-comp/src/eaog/cp-integration-manager.js";
 import {EditableIntegrationManager, type Integration} from "../models/editable-integration-manager";
 import {omit} from "lodash-es";
 import {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
@@ -96,7 +97,7 @@ export async function createEditableCP(cp: CP, filePath?: string, integration?: 
   const editableCP = new EditableCP(cp.eaog, cp.hooks, cp.frameworks, filePath, integration);
 
   editableCP.sideCPs = (cp.sideCPs || []).map(s => new EditableSideCP(s, editableCP)); // 确保sideCPs是EditableSideCP实例, 注意：不能在eaog构造前，构造 EditableSideCP，否则找不到launchPoint、syncPoints
-  editableCP.integrateTo = EditableIntegrationManager.prepareIntegrationsForEaog(editableCP, integration?.integrator, integration?.type, null) as unknown as Integration[]; // 在eaog root上添加integrationManager属性，并准备集成点
+  editableCP.integrateTo = prepareIntegrationsForEaog(editableCP, integration?.integrator, integration?.type, EditableIntegrationManager, null) as unknown as Integration[]; // 在eaog root上添加integrationManager属性，并准备集成点
   editableCP.history = new CPHistory(editableCP.cloneDeep());
 
   (editableCP.eaog.integrationManager as EditableIntegrationManager).load(editableCP)

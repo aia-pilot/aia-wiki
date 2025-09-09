@@ -58,7 +58,8 @@
     "vue": "catalog:",
     "vue-router": "catalog:",
     "zod": "catalog:",
-    "zod-to-json-schema": "^3.24.5"
+    "zod-to-json-schema": "^3.24.5",
+    "eaog": "link:../../../../Library/pnpm/global/5/node_modules/eaog"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",

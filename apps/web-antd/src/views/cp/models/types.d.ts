@@ -28,16 +28,16 @@ export type SideCP = {
  */
 export type SyncPoint = {
   actor: { // 主CP 充当 Actor
-    path: string; /** briefPath {@link findNodeByBriefPath} */
+    path: string; /** ipath {@link ipath} */
     onSync?: string | ((actorNode: EaogNode, waiterNode: EaogNode) => void);  /** actionUri {@link ActionManager} */
     node?: EditableEaogNode; /** 节点实例，集成、加载后的对应节点 */
   };
   waiter: { // 辅CP 充当 Waiter
-    path: string;  /** briefPath {@link findNodeByBriefPath} */
+    path: string;  /** ipath {@link ipath} */
     onSync?: string | ((actorNode: EaogNode, waiterNode: EaogNode) => void); /** actionUri {@link ActionManager} */
     node?: EditableEaogNode; /** 节点实例，集成、加载后的对应节点 */
   };
-  exePhase: "before" | "after"; // 在 Actor 执行前或执行后触发同步
+  phase: "before" | "after"; // 在 Actor 执行前或执行后触发同步
   block: boolean;              // 是否等待 Waiter 完成后再继续执行
   description: string;         // 同步点描述
 };
@@ -63,7 +63,7 @@ export type CP = {
 /**
  * 集成点的类型定义
  */
-export type IntegrationType = 'hook' | 'launch' | 'sync' | 'mount' | 'action';
+export type IntegrationType = 'hook' | 'launch' | 'sync' | 'mount' | 'action' | 'use';
 
 /**
  * 集成点接口
