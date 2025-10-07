@@ -525,6 +525,7 @@ overrides:
   pinia: ^3.0.2
   vue: ^3.5.13
   aia-cpd: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
+  aia-cpm: link:../../../../Library/pnpm/global/5/node_modules/aia-cpm
 
 importers:
 
@@ -536,6 +537,12 @@ importers:
       aia-cpd:
         specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
         version: link:../../../../Library/pnpm/global/5/node_modules/aia-cpd
+      aia-cpm:
+        specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-cpm
+        version: link:../../../../Library/pnpm/global/5/node_modules/aia-cpm
+      aia-ect-integration:
+        specifier: link:../../../../Library/pnpm/global/5/node_modules/aia-ect-integration
+        version: link:../../../../Library/pnpm/global/5/node_modules/aia-ect-integration
       eaog:
         specifier: link:../../../../Library/pnpm/global/5/node_modules/eaog
         version: link:../../../../Library/pnpm/global/5/node_modules/eaog
@@ -715,6 +722,9 @@ importers:
       '@vueuse/core':
         specifier: 'catalog:'
         version: 13.1.0(vue@3.5.13(typescript@5.8.3))
+      aia-cpm:
+        specifier: link:../../../../../../Library/pnpm/global/5/node_modules/aia-cpm
+        version: link:../../../../../../Library/pnpm/global/5/node_modules/aia-cpm
       ant-design-vue:
         specifier: 'catalog:'
         version: 4.2.6(vue@3.5.13(typescript@5.8.3))
@@ -10185,6 +10195,7 @@ packages:
   source-map@0.8.0-beta.0:
     resolution: {integrity: sha512-2ymg6oRBpebeZi9UUNsgQ89bhx01TcTkmNTGnNO88imTmbSgy4nfujrgVEFKWpMTEGA11EDkTt7mqObTPdigIA==}
     engines: {node: '>= 8'}
+    deprecated: The work that was done in this beta branch won't be included in future versions
 
   sourcemap-codec@1.4.8:
     resolution: {integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==}

@@ -115,35 +115,3 @@ export class EditableEaogNodeUI {
   }
 }
 
-/** 节点类型对应的颜色和图标 */
-export const nodeTypeUIConfig = {
-  // 非叶（结构）节点，执行时不扩展
-  sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'}, // 改为 seq sequence？
-  pand: {color: 'green', icon: '⇊', description: '并行与节点：子节点并行执行，全部完成才继续'}, // 改为 par parallel
-  cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'}, //
-
-  for: {color: 'blue', icon: '↴', description: '循环节点：对列表元素依次执行'},
-  pfor: {color: 'green', icon: '⇓', description: '并行循环：对列表中的元素并行执行'},
-  por: {color: 'orange', icon: '⤓', description: '并行或节点：子节点中任意一个完成即可继续'},
-  sitr: {color: 'cyan', icon: '⟳', description: '顺序迭代：重复执行子节点'},
-  pitr: {color: 'cyan', icon: '⤨', description: '并行迭代：对列表元素并行执行'},
-
-  // 叶（结构）节点，开发时扩展（Framework）
-  'mount-point': {color: 'magenta', icon: '↦⊐', description: '框架上的挂载点'},
-
-  // 叶（结构）节点，执行时动态扩展
-  recursion: {color: 'magenta', icon: '⟲', description: '递归：调用其他节点（自身祖先）'},
-  ref: {color: 'magenta', icon: '↗︎', description: '引用节点：引用执行其他节点（子树，非自身祖先）'},
-
-  // 叶（行为）节点，执行时不扩展
-  empty: {color: 'gray', icon: '◎', description: '空节点：没有行为，仅用于占位，保持结构完整'},
-  end: {color: 'gray', icon: '◉', description: '结束节点：流程结束'},
-  instruction: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'}, // @deprecated
-  action: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'},
-  gen: {color: 'green', icon: '▷▷', description: '生成节点：将生成新的子树，替换当前节点'},
-
-  // gen, hook, wait, ctx
-
-  _default: {color: 'gray', icon: '◆', description: '未知节点��型'} // 未知节点，缺省配置
-};
-

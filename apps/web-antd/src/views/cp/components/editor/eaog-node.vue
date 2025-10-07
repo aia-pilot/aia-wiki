@@ -23,7 +23,8 @@ import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
 import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
-import {nodeTypeUIConfig} from "#/views/cp/viewmodels/editable-eaog-node-ui";
+
+import {nodeTypeUIConfig} from "#/views/cp/viewmodels/ect/editable-ect-node-vm";
 
 const debug = Debug('aia:eaog-node');
 

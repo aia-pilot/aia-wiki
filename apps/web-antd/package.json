@@ -59,7 +59,7 @@
     "vue-router": "catalog:",
     "zod": "catalog:",
     "zod-to-json-schema": "^3.24.5",
-    "eaog": "link:../../../../Library/pnpm/global/5/node_modules/eaog"
+    "aia-cpm": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpm"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",

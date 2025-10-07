@@ -1,9 +1,9 @@
 import type {SideCP, SyncPoint} from "../models/types";
 import type {EditableCP} from "#/views/cp/viewmodels/editable-cp";
 import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import {findNodeByIpath, isNodeForIpath} from "eaog/ect";
 import {findNodeByBriefPath} from "../../../../../../../aia-eaog/src/tree-utils";
 import {omit} from "lodash-es";
-import {findNodeByIpath} from "eaog/ect";
 
 /**
  * EditableSyncPoint 类实现

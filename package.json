@@ -112,7 +112,8 @@
       "esbuild": "0.25.3",
       "pinia": "catalog:",
       "vue": "catalog:",
-      "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd"
+      "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd",
+      "aia-cpm": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpm"
     },
     "neverBuiltDependencies": [
       "canvas",
@@ -122,6 +123,8 @@
   "dependencies": {
     "aia-cp-manager": "link:../../../../Library/pnpm/global/5/node_modules/aia-cp-manager",
     "aia-cpd": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpd",
+    "aia-cpm": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpm",
+    "aia-ect-integration": "link:../../../../Library/pnpm/global/5/node_modules/aia-ect-integration",
     "eaog": "link:../../../../Library/pnpm/global/5/node_modules/eaog"
   }
 }
