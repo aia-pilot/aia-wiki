@@ -45,6 +45,7 @@
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
     "@vueuse/core": "catalog:",
+    "aia-cpm": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpm",
     "ant-design-vue": "catalog:",
     "dayjs": "catalog:",
     "debug": "^4.4.1",
@@ -58,8 +59,7 @@
     "vue": "catalog:",
     "vue-router": "catalog:",
     "zod": "catalog:",
-    "zod-to-json-schema": "^3.24.5",
-    "aia-cpm": "link:../../../../Library/pnpm/global/5/node_modules/aia-cpm"
+    "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@types/debug": "^4.1.12",
