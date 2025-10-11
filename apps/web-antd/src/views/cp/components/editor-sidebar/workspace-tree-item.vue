@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import {computed} from 'vue';
 import {ContextMenuRoot, ContextMenuTrigger, ContextMenuContent, ContextMenuItem} from 'radix-vue';
-import { expandDirectory } from '../../viewmodels/workspace';
+import { expandDirectory } from '../../viewmodels/ect/workspace';
 
 export interface FileNode {
   name: string;

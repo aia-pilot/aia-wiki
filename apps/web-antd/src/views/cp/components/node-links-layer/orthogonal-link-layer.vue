@@ -14,7 +14,7 @@
       :stroke-width="link.style.strokeWidth"
       :stroke-dasharray="link.style.dashed ? '5,5' : 'none'"
       :marker-end="link.style.arrow === 'end' || link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-end)` : ''"
-      :marker-start="link.style.arrow === 'start' || link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-start)` : ''"
+      :marker-start="link.style.arrow === 'both' ? `url(#arrowhead-${link.id}-start)` : ''"
       fill="none"
       :data-link-id="link.id"
       class="link-path"

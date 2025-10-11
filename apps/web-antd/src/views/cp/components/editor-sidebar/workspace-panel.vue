@@ -29,9 +29,7 @@
 
 <script setup lang="ts">
 import {onMounted} from 'vue';
-import DirTreeItem from './workspace-tree-item.vue';
-import type {FileNode} from './workspace-tree-item.vue';
-import EditorToolbarButton from "#/views/cp/components/editor/editor-toolbar-button.vue";
+import DirTreeItem, {type FileNode} from './workspace-tree-item.vue';
 // @ts-ignore
 import {prompt, confirm} from '@vben/common-ui';
 import {message} from "ant-design-vue";
@@ -41,7 +39,7 @@ import Debug from 'debug';
 import {
   localDirs, selected, isCpFile, loadCPDirTree, openFolder, createFolder,
   renameFile, deleteFile, refreshDirectory, handleFileSelect
-} from '../../viewmodels/workspace';
+} from '../../viewmodels/ect/workspace';
 
 const debug = Debug('aia-wiki-new:dir-tree-sidebar');
 

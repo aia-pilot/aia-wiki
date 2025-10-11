@@ -6,10 +6,10 @@ import { getCleanObj } from "../../utils/clean-obj";
 import Debug from "debug";
 import * as treeUtils from "../../utils/tree-utils";
 import { EditableECTNodeVM } from "../../viewmodels/ect/editable-ect-node-vm";
+import type { EditableCP }  from "aia-cpm/cpm";
 
 // ---- 临时类型占位（与原文件一致） ----
 type EditableIntegrationManager = any;
-type EditableCP = any;
 
 export enum ShowAtType {
   Before = "before",
@@ -367,7 +367,7 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
 }
 
 // ---- 递归整树可编辑（保持返回类型为 EditableECTNode）----
-function makeTreeEditable(root: Node, cp?: EditableCP): EditableECTNode {
+export function makeTreeEditable(root: Node, cp?: EditableCP): EditableECTNode {
   makeEditable(root, cp); // 断言函数：root 现在是 Node & EditableECTNode
   const editableRoot = root as EditableECTNode;
 
@@ -390,7 +390,7 @@ export function createEditableECTNode(nodeDef: NodeType, cp?: EditableCP): Edita
 }
 
 // ---- 工厂：整棵树 ----
-export function createEditableECT(rootNode: NodeType, cp: EditableCP): EditableECTNode {
+export function createEditableECT(rootNode: NodeType | Node, cp: EditableCP): EditableECTNode {
   const ect = create(rootNode);
   return makeTreeEditable(ect, cp);
 }

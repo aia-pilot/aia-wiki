@@ -60,6 +60,15 @@ const routes: RouteRecordRaw[] = [
           title: 'Workspace Test',
         },
       },
+      { // @DEV
+        path: 'workspace-panel',
+        name: 'Workspace Panel Test',
+        component: () => import('#/views/cp/components/editor-sidebar/workspace-panel.vue'),
+        meta: {
+          icon: 'lucide:zap',
+          title: 'Workspace Panel Test',
+        },
+      },
       // { // @DEV
       //   path: 'cpd-test',
       //   name: 'CPD Test',

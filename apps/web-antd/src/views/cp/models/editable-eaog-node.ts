@@ -1,11 +1,7 @@
-import {z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
+// @ts-ignore 忽略导入的类型
+import {cpEaogSchema, z} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
 import type {SafeParseReturnType, ZodError, ZodIssue} from "zod";
 // @ts-ignore 忽略导入的类型
-import {cpEaogSchema} from "../../../../../../../aia-se-comp/src/eaog/cp-eaog.zod.js";
-// @ts-ignore 忽略导入的类型
-import {uniqNameWithSequenceSuffix} from "../../../../../../../aia-infra/src/uniq-name.js";
-// @ts-ignore
-import {convertBriefEaog} from "../../../../../../../aia-se-comp/src/eaog/brief-eaog-convertor.js";
 import {omit} from "lodash-es";
 //@ts-ignore
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog.js";
@@ -54,8 +50,21 @@ export class EditableEaogNode implements EaogNode {
   cp?: EditableCP // 所属CP
   ui: EditableEaogNodeUI; // UI交互状态和行为，EditableEaogNodeUI实例
 
-  ipath?: string; /** 集成路径，指向集成点的唯一标识符 {@link CPIntegrationManager} */
-  briefPath?: string; /** 简要路径，指向节点在CP(eaog)中的位置，比一般tree path短，便于理解 {@link CPIntegrationManager} */
+  ipath?: string;
+  /** 集成路径，指向集成点的唯一标识符 {@link CPIntegrationManager} */
+  briefPath?: string;
+
+  constructor(node: EaogNode, cp?: EditableCP, parent?: EditableEaogNode) {
+    Object.assign(this, node); // 将传入的节点数据赋值给当前实例
+    this.cp = cp; // 设置所属CP
+    this.parent = parent; // 设置父节点
+    this.ui = new EditableEaogNodeUI(this); // 初始化UI交互状态和行为
+    this.children = Array.isArray(node.children)
+      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this.cp, this)) // 递归转换子节点
+      : [];
+  }
+
+  /** 简要路径，指向节点在CP(eaog)中的位置，比一般tree path短，便于理解 {@link CPIntegrationManager} */
   private _integrationManager?: EditableIntegrationManager; // 集成管理器，处理集成点的添加和查询
 
   get integrationManager(): EditableIntegrationManager | undefined {
@@ -68,19 +77,6 @@ export class EditableEaogNode implements EaogNode {
     }
     this._integrationManager = value;
   }
-
-
-  constructor(node: EaogNode, cp?: EditableCP, parent?: EditableEaogNode) {
-    Object.assign(this, node); // 将传入的节点数据赋值给当前实例
-    this.cp = cp; // 设置所属CP
-    this.parent = parent; // 设置父节点
-    this.ui = new EditableEaogNodeUI(this); // 初始化UI交互状态和行为
-    this.children = Array.isArray(node.children)
-      ? node.children.map((child: EaogNode) => new EditableEaogNode(child, this.cp, this)) // 递归转换子节点
-      : [];
-  }
-
-
 
   // 业务逻辑相关的getter方法
   get isLeaf(): boolean {
