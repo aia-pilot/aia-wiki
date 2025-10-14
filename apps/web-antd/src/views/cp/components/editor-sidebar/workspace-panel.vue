@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import {onMounted} from 'vue';
 import DirTreeItem, {type FileNode} from './workspace-tree-item.vue';
+import EditorToolbarButton from '../editor/editor-toolbar-button.vue';
 // @ts-ignore
 import {prompt, confirm} from '@vben/common-ui';
 import {message} from "ant-design-vue";

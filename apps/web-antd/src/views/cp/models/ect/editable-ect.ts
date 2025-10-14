@@ -366,7 +366,9 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
   Object.defineProperties(node, descriptors);
 }
 
-// ---- 递归整树可编辑（保持返回类型为 EditableECTNode）----
+/**
+ * 递归转换整树所有节点，使其可编辑（转换为类型 EditableECTNode）
+ */
 export function makeTreeEditable(root: Node, cp?: EditableCP): EditableECTNode {
   makeEditable(root, cp); // 断言函数：root 现在是 Node & EditableECTNode
   const editableRoot = root as EditableECTNode;
