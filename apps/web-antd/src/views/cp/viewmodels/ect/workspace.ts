@@ -1,7 +1,6 @@
 import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/workspace-tree-item.vue";
 
-import Debug from 'debug';
 // import {mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 import {type FileStat, FileWorkspace} from "aia-cpm/cpls";
 import {createEditableCP} from "aia-cpm/cpm";
@@ -9,7 +8,9 @@ import type {EJObject} from "aia-cpm/types";
 import {makeTreeEditable} from "#/views/cp/models/ect/editable-ect";
 import {type Node, create, relativePath2CpLocateStr} from "eaog/ect";
 
-const debug = Debug('aia-wiki:workspace');
+import Debug from 'debug';
+const log = Debug('aia-wiki:workspace');
+// const log = console.log.bind(console);
 
 // 创建FileWorkspace实例
 const workspace = new FileWorkspace();
@@ -55,7 +56,7 @@ const buildFileTree = async (dirPath = ''): Promise<FileNode[]> => {
 
     return nodes;
   } catch (err) {
-    debug('构建文件树失败:', err);
+    log('构建文件树失败:', err);
     throw err;
   }
 };
@@ -71,7 +72,7 @@ export const expandDirectory = async (node: FileNode) => {
     }
     node.expanded = true;
   } catch (err) {
-    debug('加载目录失败:', err);
+    log('加载目录失败:', err);
     throw err;
   }
 };
@@ -92,7 +93,7 @@ export const loadCPDirTree = async (force = false) => {
       localDirs.value = [];
     }
   } catch (err: any) {
-    debug('获取CP列表失败:', err);
+    log('获取CP列表失败:', err);
     throw err;
   }
 }
@@ -104,15 +105,17 @@ export const loadCpToEditor = async () => {
       const cpLocateStr = relativePath2CpLocateStr(selected.value!.path, true);
       const ecp = await createEditableCP(cpLocateStr, workspace, create);
       // ecp.ect = makeTreeEditable(ecp.ect, ecp);
-      ecp.ect = makeTreeEditable(ecp.ect as unknown as Node) as unknown as EJObject;
-      console.log('Loaded EditableCP:', ecp);
+      ecp.ect = makeTreeEditable(ecp.ect as unknown as Node);
+      log('Loaded EditableCP:', ecp);
+      log('Parallel CPs', ecp.parallelCPs);
+
       // @ts-ignore TODO：改为新的EditableCP
       // mainCP.value = ecp;
       // @ts-ignore TODO：改为新的EditableCP
       // parallelCPs.value = ecp.parallelCPs; // TODO：改为新的EditableCP
       // await loadCpModuleFromFilePath(selected.value!.path);
     } catch (err) {
-      debug(`加载CP模块失败: `, err);
+      log(`加载CP模块失败: `, err);
       throw err;
     }
   }
@@ -195,7 +198,7 @@ export const renameFile = async (file: FileNode, newName: string) => {
       await workspace.move(oldPath, newPath);
       file.name = newName; // 更新文件名
       file.path = newPath; // 更新路径
-      debug('File renamed to:', newName);
+      log('File renamed to:', newName);
       return true;
     } catch (error) {
       console.error('重命名失败:', error);
@@ -214,7 +217,7 @@ export const deleteFile = async (file: FileNode) => {
         selected.value.children.splice(index, 1); // 从当前目录中删除
       }
     }
-    debug('File deleted:', file.name);
+    log('File deleted:', file.name);
     return true;
   } catch (error) {
     console.error('删除失败:', error);
@@ -239,7 +242,7 @@ export const refreshDirectory = async () => {
 
 export const handleFileSelect = (file: FileNode) => {
   selected.value = file;
-  debug('Selected file:', file);
+  log('Selected file:', file);
 
   // 如果选中的是目录并且没有加载子项，则加载
   if (file.isDirectory && (!file.children || file.children.length === 0)) {
@@ -274,7 +277,7 @@ export const saveCpToFile = async (cp: EditableCP, isNew: boolean, newFileName?:
 // export const sideCPs = ${sideCPsStr};\n
 // export const frameworks = ${frameworksStr};\n`;
 //
-//   debug(`保存CP模块到工作区, file path: ${filePath}`);
+//   log(`保存CP模块到工作区, file path: ${filePath}`);
 //
 //   try {
 //     await workspace.writeText(filePath, code, { createParents: true });
@@ -292,7 +295,7 @@ export const saveCpToFile = async (cp: EditableCP, isNew: boolean, newFileName?:
 //
 //     return true;
 //   } catch (err: any) {
-//     debug('保存CP模块到工作区失败:', err);
+//     log('保存CP模块到工作区失败:', err);
 //     throw err;
 //   }
 }
