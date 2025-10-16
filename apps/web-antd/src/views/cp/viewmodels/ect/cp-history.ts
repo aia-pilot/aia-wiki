@@ -1,4 +1,4 @@
-import { type EditableCP } from '../../models/ect/editable-cp';
+import { type EditableCP } from 'aia-cpm/cp';
 import Debug from 'debug';
 const debug = Debug('aia:cp:cp-history');
 

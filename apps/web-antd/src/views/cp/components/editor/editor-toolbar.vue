@@ -2,16 +2,17 @@
 import EditorToolbarButton from './editor-toolbar-button.vue';
 import EaogNodeForm from './eaog-node-form.vue';
 import {IS_STANDALONE_APP, IS_DEV} from "#/utils/aia-constants";
-import {validateEaog, zogErrorToString} from '../../models/editable-eaog-node';
-import {createEditableCP, EditableCP} from '../../viewmodels/editable-cp';
+// import {validateEaog, zogErrorToString} from '../../models/ect/editable-ect';
+import {EditableCP} from 'aia-cpm/cp';
+import {createEditableCP} from 'aia-cpm/cpm';
 import {message} from 'ant-design-vue';
 import {onMounted, onUnmounted, inject, type Ref} from 'vue'; // 添加 inject 导入
 
 import Debug from 'debug';
 import {triggerDownload} from "@vben-core/shared/utils";
 // @ts-ignore 忽略导入的类型
-import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
-import {currentCP, loadCurrentCP } from "#/views/cp/viewmodels/cp-editor-state";
+// import {EaogFramework, eaogFrameworks} from "../../models/eaog-framework";
+import {currentCP } from "#/views/cp/viewmodels/cp-editor-state";
 
 const debug = Debug('aia:cp-toolbar');
 

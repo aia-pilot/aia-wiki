@@ -1,14 +1,14 @@
 import {ref} from "vue";
 import type {FileNode} from "#/views/cp/components/editor-sidebar/workspace-tree-item.vue";
 
-// import {mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
+import {mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 import {type FileStat, FileWorkspace} from "aia-cpm/cpls";
-import {createEditableCP} from "aia-cpm/cpm";
-import type {EJObject} from "aia-cpm/types";
-import {makeTreeEditable} from "#/views/cp/models/ect/editable-ect";
-import {type Node, create, relativePath2CpLocateStr} from "eaog/ect";
+import {createEditableCP, EditableCP} from "aia-cpm/cpm";
+import {createEditableECT} from "#/views/cp/models/ect/editable-ect";
+import {relativePath2CpLocateStr} from "eaog/ect";
 
 import Debug from 'debug';
+
 const log = Debug('aia-wiki:workspace');
 // const log = console.log.bind(console);
 
@@ -103,16 +103,19 @@ export const loadCpToEditor = async () => {
   if (isCpFile(selected.value!)) {
     try {
       const cpLocateStr = relativePath2CpLocateStr(selected.value!.path, true);
-      const ecp = await createEditableCP(cpLocateStr, workspace, create);
+      const ecp = await createEditableCP(cpLocateStr, workspace, createEditableECT);
+      // ecp.nodes.forEach(e => {
+      //   e.ect = makeTreeEditable(e.ect, e);
+      // })
       // ecp.ect = makeTreeEditable(ecp.ect, ecp);
-      ecp.ect = makeTreeEditable(ecp.ect as unknown as Node);
+      // ecp.ect = makeTreeEditable(ecp.ect as unknown as Node);
       log('Loaded EditableCP:', ecp);
       log('Parallel CPs', ecp.parallelCPs);
 
       // @ts-ignore TODO：改为新的EditableCP
-      // mainCP.value = ecp;
+      mainCP.value = ecp;
       // @ts-ignore TODO：改为新的EditableCP
-      // parallelCPs.value = ecp.parallelCPs; // TODO：改为新的EditableCP
+      parallelCPs.value = ecp.parallelCPs; // TODO：改为新的EditableCP
       // await loadCpModuleFromFilePath(selected.value!.path);
     } catch (err) {
       log(`加载CP模块失败: `, err);

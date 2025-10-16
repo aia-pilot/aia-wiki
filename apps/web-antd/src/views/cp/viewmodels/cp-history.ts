@@ -1,4 +1,4 @@
-import { EditableCP } from '../viewmodels/editable-cp';
+import { EditableCP } from 'aia-cpm/cp';
 import Debug from 'debug';
 // @ts-ignore
 const debug = Debug('aia:cp:cp-history');

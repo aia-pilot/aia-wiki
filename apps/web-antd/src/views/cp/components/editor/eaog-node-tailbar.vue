@@ -4,27 +4,32 @@
  * 提供节点相关的功能按钮，如折叠/展开、同步点、钩子、子CP等
  */
 import EditorToolbarButton from './editor-toolbar-button.vue';
-import type {EditableEaogNode} from '../../models/editable-eaog-node';
+import type {EditableECTNode} from '../../models/ect/editable-ect';
 import Debug from 'debug';
 import { computed } from 'vue';
-import type {IntegrationType} from "#/views/cp/models/types";
+import type {IntegrationType} from "#/views/cp/models/types"; // TODO: 改为IntegrationPoint的相应类型
+import type {IntegrationPoint} from "aia-cpm/cpi";
 
 const debug = Debug('aia:eaog-node-tailbar');
 
 const props = defineProps<{
-  node: EditableEaogNode;
+  node: EditableECTNode;
 }>();
+
 
 // 处理折叠/展开按钮点击
 const toggleCollapse = () => {
-  props.node.ui.toggleCollapse();
-  debug(`Node ${props.node.name} ${props.node.ui.isCollapsed ? 'collapsed' : 'expanded'}`);
+  const node = props.node.isShowIntegratedCPs ? props.node.integratedECTsRoot! : props.node;
+  node.ui.toggleCollapse();
+  debug(`Node ${node.name} ${node.ui.isCollapsed ? 'collapsed' : 'expanded'}`);
 };
 
 // 处理集成CP按钮点击
 const handleIntegratedCPClick = (type: IntegrationType | 'close') => {
-    type === 'close' ? props.node.ui.closeIntegration(type) : // 此时node.cp是IntegratedCP
-      props.node.ui.toggleIntegration(type);
+    // type === 'close' ? props.node.ui.closeIntegration(type) : // 此时node.cp是IntegratedCP
+    //   props.node.ui.toggleIntegration(type);
+  props.node.ui.toggleIntegratedECTs();
+
 };
 
 const closeIntegratedCPButtonConfig = {
@@ -35,11 +40,11 @@ const closeIntegratedCPButtonConfig = {
 }
 
 const countIntegratedCPs = (type: IntegrationType) => {
-  return props.node.root.integrationManager!.get(props.node, type, (i) => i.isCPIntegration).length;
+  // return props.node.root.integrationManager!.get(props.node, type, (i) => i.isCPIntegration).length;
+  return (props.node.$.launchIPs || []).filter((ip: IntegrationPoint) => ip.kind === type).length;
 };
 // 定义按钮配置
 const buttonConfigs = computed(() => {
-  const integrationManager = props.node.root.integrationManager!;
   const config = [
     {
       type: 'action',
@@ -73,7 +78,7 @@ const buttonConfigs = computed(() => {
       count: countIntegratedCPs('mount'),
     },
   ]
-  return props.node.isIntegratedNode ? [closeIntegratedCPButtonConfig] : // 如果是被集成CP，显示关闭按钮
+  return props.node.hasIntegration ? [closeIntegratedCPButtonConfig] : // 如果是被集成CP，显示关闭按钮
     config.filter(c => c.count > 0); // 是顶层CP，显示有集成CP对应类型的按钮
 });
 </script>

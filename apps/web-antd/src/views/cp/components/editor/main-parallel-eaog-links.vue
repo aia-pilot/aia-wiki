@@ -21,7 +21,12 @@ import {computed, onMounted, onUnmounted, ref} from 'vue';
 import OrthogonalLinkLayer from '../node-links-layer/orthogonal-link-layer.vue';
 import type {LinkSpec} from '../node-links-layer/types';
 import {parallelCPs} from '../../viewmodels/cp-editor-state';
-import type {SyncPoint} from '../../models/types';
+import type {EditableECTNode} from "../../models/ect/editable-ect";
+
+
+import type {EditableCP} from "aia-cpm/cp";
+import type {Sync} from "aia-cpm/cpi";
+
 import Debug from 'debug';
 import {type ContentBox, getAllContentBoxes} from "#/views/cp/components/node-links-layer/utils/get-all-content-box";
 
@@ -33,7 +38,7 @@ const props = defineProps<{
 
 // 定义组件事件
 const emit = defineEmits<{
-  'link:click': [syncPoint: SyncPoint];
+  'link:click': [sync: Sync];
 }>();
 
 
@@ -60,40 +65,44 @@ const links = computed<LinkSpec[]>(() => {
   const trigger = recalculateTrigger.value;
   debug('重新计算links，trigger:', trigger);
 
-  const sideCPs = parallelCPs.value;
+  // @ts-ignore
+  const sideCPs = (parallelCPs.value || []) as Array<EditableCP>;
   // const integrationManager = sideCPs[0].waiterCP.eaog.integrationManager;
-  const syncPoints = sideCPs.flatMap(sp => sp.syncPoints);
+  const syncs = sideCPs.flatMap((cp) => cp.integrationPoint?.syncs || []);
   // const syncPoints = sideCPs.slice(-1).flatMap(sp => sp.syncPoints);
 
   const linkSpecs: LinkSpec[] = [];
 
   // 遍历所有同步点 TODO: 绘制launch point
-  for (const syncPoint of syncPoints) {
+  for (const sync of syncs) {
+    const actorNode = sync.actor.node! as EditableECTNode
+    const waiterNode = sync.waiter.node! as EditableECTNode
+
     try {
       // 查找主EAOG中的actor节点DOM元素
-      // const actorEaogPath = integrationManager.getNodeBriefPath(syncPoint.actor.path);
+      // const actorEaogPath = integrationManager.getNodeBriefPath(sync.actor.path);
       // const actorSelector = `.main-eaog [data-node-ipath="${actorEaogPath}"] .eaog-node-name`;
       // 注意：这里用node.ui.showNode，以便在replace之后，也能够找到对应节点
-      const actorSelector = `.main-eaog [data-node-ipath="${syncPoint.actor.node!.ui.showNode.ipath}"] .eaog-node-name`;
+      const actorSelector = `.main-eaog [data-node-ipath="${actorNode.ui.showNode.ipath}"] .eaog-node-name`;
       const actorElement = props.container!.querySelector(actorSelector) as HTMLElement;
 
       // 查找辅助EAOG中的waiter节点DOM元素
-      // const waiterEaogPath = integrationManager.getNodeBriefPath(syncPoint.waiter.path);
+      // const waiterEaogPath = integrationManager.getNodeBriefPath(sync.waiter.path);
       // const waiterSelector = `.parallel-eaog [data-node-ipath="${waiterEaogPath}"] .node-type-icon span`;
-      const waiterSelector = `.parallel-eaog [data-node-ipath="${syncPoint.waiter.node!.ui.showNode.ipath}"] .node-type-icon span`;
+      const waiterSelector = `.parallel-eaog [data-node-ipath="${waiterNode.ui.showNode.ipath}"] .node-type-icon span`;
       const waiterElement = props.container!.querySelector(waiterSelector) as HTMLElement;
 
       if (!actorElement || !waiterElement) {
-        !actorElement && debug(`未找到同步点DOM元素: actor=${syncPoint.actor.node!.ui.showNode.ipath}`);
-        !waiterElement && debug(`未找到同步点DOM元素: waiter=${syncPoint.waiter.node!.ui.showNode.ipath}`);
+        !actorElement && debug(`未找到同步点DOM元素: actor=${actorNode.ui.showNode.ipath}`);
+        !waiterElement && debug(`未找到同步点DOM元素: waiter=${waiterNode.ui.showNode.ipath}`);
         continue;
       }
 
       // 创建连线规格
-      // const linkId = `sync-${encodeURIComponent(syncPoint.actor.path)}-${encodeURIComponent(syncPoint.waiter.path)}`;
+      // const linkId = `sync-${encodeURIComponent(sync.actor.path)}-${encodeURIComponent(sync.waiter.path)}`;
       const linkId = crypto.randomUUID(); // 使用随机ID，避免重复
-      const linkType = syncPoint.block ? 'solid' : 'dashed';
-      const linkLabel = syncPoint.label;
+      const linkType = sync.actor.block ? 'solid' : 'dashed';
+      const linkLabel = sync.label;
 
       linkSpecs.push({
         id: linkId,
@@ -102,14 +111,14 @@ const links = computed<LinkSpec[]>(() => {
         label: linkLabel,
         type: linkType,
         style: {
-          color: syncPoint.block ? '#f00' : '#00f',
-          dashed: !syncPoint.block,
+          color: sync.actor.block ? '#f00' : '#00f',
+          dashed: !sync.actor.block,
           // dashed: false,
-          arrow: syncPoint.block ? 'start' : 'end',
+          arrow: sync.actor.block ? 'start' : 'end',
           strokeWidth: 2,
           // zIndex: 1
         },
-        data: {syncPoint: syncPoint}
+        data: {sync}
       });
     } catch (error) {
       debug('创建连线时出错:', error);
@@ -137,20 +146,20 @@ const obstacles = computed(() => {
 
 // 处理连线点击事件
 function handleLinkClick(linkSpec: LinkSpec) {
-  debug('处理连线点击事件:', linkSpec.data!.syncPoint);
-  emit('link:click', linkSpec.data!.syncPoint);
+  debug('处理连线点击事件:', linkSpec.data!.sync);
+  emit('link:click', linkSpec.data!.sync);
 }
 
 const dom = ref<HTMLElement | undefined>();
 
-let lastScrollX = 0
-let lastScrollY = 0
-let rafScheduled = false
-let scrollEndTimer: number | null = null
-
-const svg = computed(() => {
-  return dom.value?.querySelector('svg') as SVGElement;
-});
+// let lastScrollX = 0
+// let lastScrollY = 0
+// let rafScheduled = false
+// let scrollEndTimer: number | null = null
+//
+// const svg = computed(() => {
+//   return dom.value?.querySelector('svg') as SVGElement;
+// });
 
 
 
@@ -184,11 +193,11 @@ onMounted(() => {
 
 // 开始观察容器大小变化
   const parallelEaogPane = props.container.querySelector('.parallel-eaog');
-  resizeObserver.value.observe(parallelEaogPane);
+  resizeObserver.value.observe(parallelEaogPane!);
 
 // 监听滚动事件
   const eaogPanes = props.container.querySelector('.main-eaog, .parallel-eaog');
-  eaogPanes.addEventListener('scroll', triggerRecalculate);
+  eaogPanes!.addEventListener('scroll', triggerRecalculate);
 
 });
 
@@ -207,7 +216,7 @@ onUnmounted(() => {
 
   // 停止滚动事件监听
   const eaogPanes = props.container?.querySelector('.main-eaog, .parallel-eaog');
-  eaogPanes.removeEventListener('scroll', triggerRecalculate);
+  eaogPanes!.removeEventListener('scroll', triggerRecalculate);
 });
 </script>
 

@@ -12,7 +12,7 @@
  * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
-import {computed, inject, type Ref} from 'vue';
+import {computed, inject, ref, type Ref, watchEffect, watch} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
 import Debug from 'debug';
 
@@ -22,26 +22,30 @@ import {useDraggable} from "../../composables/use-draggable";
 import EaogNodeTailbar from "./eaog-node-tailbar.vue";
 import type EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 
-import {type EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import {type EditableECTNode} from "#/views/cp/models/ect/editable-ect";
 
 import {nodeTypeUIConfig} from "#/views/cp/viewmodels/ect/editable-ect-node-vm";
 
 const debug = Debug('aia:eaog-node');
 
 const props = defineProps<{
-  node: EditableEaogNode;
+  node: EditableECTNode;
   level?: number; // 节点层级，默认为0，便于视觉调试
 }>();
 
 const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
-
+const originalNode = props.node;
 const node = computed(() => props.node.ui.showNode);
-const isReplacedNode = computed(() => node.value.isIntegratedNode);
-const integratedCPLabel = computed(() => isReplacedNode.value && `<${node.value.originalNode.type}：${node.value.name}>`);
-const nodeName = computed(() => isReplacedNode.value ? `${props.node.name}: ${integratedCPLabel.value}` : props.node.name);
-const nodeDescription = computed(() => isReplacedNode.value ?
-  `${[props.node.description, node.value.description].filter(Boolean).join(`\n ${integratedCPLabel.value}`)}` :
-  props.node.description);
+
+// const node = props.node.ui.showNode;
+// const nodeName = props.node.ui.name; // 不用showNode name，以便集成时，同时显示启动点和集成ECT的名称
+// const nodeDescription = props.node.ui.description; // 不用showNode description，以便集成时，同时显示启动点和集成ECT的描述
+// const isReplacedNode = computed(() => node.value.hasIntegration);
+// const integratedCPLabel = computed(() => isReplacedNode.value && `<${node.value.originalNode.type}：${node.value.name}>`);
+// const nodeName = computed(() => isReplacedNode.value ? `${props.node.name}: ${integratedCPLabel.value}` : props.node.name);
+// const nodeDescription = computed(() => isReplacedNode.value ?
+//   `${[props.node.description, node.value.description].filter(Boolean).join(`\n ${integratedCPLabel.value}`)}` :
+//   props.node.description);
 
 // @deprecated framework TODO: 合并考虑
 // const nodeName = node.isFramework && node.ui.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
@@ -89,7 +93,8 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.ui.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': isReplacedNode.value ?? false, // 如果是集成CP节点，背景色为黄色
+    'bg-yellow-100': node.value.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
+    // 'bg-yellow-100': node.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
   };
 });
 </script>
@@ -108,8 +113,8 @@ const headerClasses = computed(() => {
            'drop-before': isDragOver && dropPosition === 'before',
            'drop-child': isDragOver && dropPosition === 'child',
            'drop-after': isDragOver && dropPosition === 'after',
-           'parent-horizontal': node.parent?.ui.childrenDirection === 'horizontal',
-           'parent-vertical': node.parent?.ui.childrenDirection === 'vertical' || !node.parent?.ui.childrenDirection
+           'parent-horizontal': (node.parent as EditableECTNode)?.ui.childrenDirection === 'horizontal',
+           'parent-vertical': (node.parent as EditableECTNode)?.ui.childrenDirection === 'vertical' || !(node.parent as EditableECTNode)?.ui.childrenDirection
          }
        ]">
     <!-- 节点头部 -->
@@ -145,27 +150,27 @@ const headerClasses = computed(() => {
       <div class="flex-grow eaog-node-info">
         <!--   框架节点，折叠时，显示其挂载的节点名称与描述，更容易为用户理解。    -->
         <div class="font-medium">
-          <span class="eaog-node-name">{{ nodeName }}</span>
+          <span class="eaog-node-name">{{ originalNode.ui.name }}</span>
         </div>
-        <div v-if="nodeDescription" class="text-xs text-gray-500" :class="{'text-gray-300': node.type==='mount-point'}">
-          {{ nodeDescription }}
+        <div v-if="node.description" class="text-xs text-gray-500" :class="{'text-gray-300': node.type==='mount-point'}">
+          {{ originalNode.ui.description }}
         </div>
       </div>
 
-      <div v-if="node.ref" class="ml-2 px-2 py-1 text-xs text-gray-400">
-        引用: {{ node.ref }}
-      </div>
+<!--      <div v-if="node.ref" class="ml-2 px-2 py-1 text-xs text-gray-400">-->
+<!--        引用: {{ node.ref }}-->
+<!--      </div>-->
 
       <!-- 节点尾部操作栏 -->
-      <eaog-node-tailbar v-if="!node.isRoot || isReplacedNode" :node="node" class="mt-2" />
+      <eaog-node-tailbar v-if="!node.isRoot || node.ui.isIntegratedECTsRoot" :node="originalNode" class="mt-2" />
     </div>
 
     <!-- 子节点（子树）-->
     <div v-if="node.children && node.children.length > 0 && !node.ui.isCollapsed" class="eaog-node-children ml-6 pl-4">
       <!--  @DEFECT 注意：这里key在有before、after时，会有重名风险    -->
       <!--  用showNode.id为key，才能够在showNode变化后，重新渲染    -->
-      <div v-for="child in node.ui.showChildren" :key="child.ui.showNode.id">
-        <eaog-node :node="child" :level="nodeLevel + 1"/>
+      <div v-for="child in node.children" :key="child.id">
+        <eaog-node :node="child as EditableECTNode" :level="nodeLevel + 1"/>
       </div>
     </div>
   </div>

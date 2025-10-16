@@ -17,7 +17,7 @@
 ## 对应文件
 
 * `CP（eaog）编辑器`：apps/web-antd/src/views/cp/editor.vue
-* `model示例`：apps/web-antd/src/views/cp/models/editable-eaog-node.ts
+* `model示例`：apps/web-antd/src/views/cp/models/ect/editable-ect.ts
 
 ## 相关资源
 

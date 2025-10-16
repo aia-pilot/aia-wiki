@@ -15,22 +15,22 @@
 
 // 导入EaogNode组件和相关类型
 import {ContextMenuTrigger} from '@vben-core/shadcn-ui';
-import {loadCurrentCP, currentPane, currentCP, mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
+import {currentPane, mainCP, parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 import EaogNodeComponent from './components/editor/eaog-node.vue';
 import EaogContextMenu from './components/editor/editor-context-menu.vue';
 import EditorToolbar from './components/editor/editor-toolbar.vue';
 import EditorSidebar from './components/editor-sidebar/editor-sidebar.vue';
 import MainSideEaogLinks from './components/editor/main-parallel-eaog-links.vue'; // 导入主辅EAOG关联线层组件
-import {complexFlow} from './eaog-samples';
+// import {complexFlow} from './eaog-samples';
 import {onMounted, ref, provide, type Ref, computed} from 'vue';
 
 import EaogNodeForm from "#/views/cp/components/editor/eaog-node-form.vue";
 import 'splitpanes/dist/splitpanes.css'
 
-import Debug from 'debug';
 import ThreePanes from "#/views/cp/components/editor/three-panes.vue";
 
-const debug = Debug('aia:cp-editor');
+// import Debug from 'debug';
+// const debug = Debug('aia:cp-editor');
 
 const eaogNodeForm = ref<InstanceType<typeof EaogNodeForm>>();
 provide<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm', eaogNodeForm);
@@ -42,8 +42,8 @@ const editorContainer = ref<HTMLDivElement>();
 const showParallel = computed(() => parallelCPs.value.length > 0);
 
 onMounted(async () => {
-  await loadCurrentCP({eaog: complexFlow}); // 加载示例流程数据
-  debug('CP编辑器已加载，初始EAOG数据:', currentCP.value);
+  // await loadCurrentCP({eaog: complexFlow}); // 加载示例流程数据
+  // debug('CP编辑器已加载，初始EAOG数据:', currentCP.value);
 });
 
 </script>
@@ -51,7 +51,7 @@ onMounted(async () => {
 <template>
   <div class="cp-editor w-full h-full" ref="editorContainer">
     <!-- 工具栏 -->
-    <EditorToolbar/>
+<!--    <EditorToolbar/>-->
     <EaogContextMenu>
       <three-panes :show-parallel="showParallel" ref="threePanes" class="flex w-full h-full">
         <!-- 主CP EAOG -->
@@ -59,7 +59,7 @@ onMounted(async () => {
           <ContextMenuTrigger asChild>
             <div class="w-full p-4 border rounded-md">
               <div v-if="mainCP" class="eaog-tree main-eaog" @click="currentPane = 'main-eaog'">
-                <EaogNodeComponent :node="mainCP.eaog" :key="mainCP.eaog.id"/>
+                <EaogNodeComponent :node="mainCP.ect" :key="mainCP.ect.id"/>
               </div>
             </div>
           </ContextMenuTrigger>
@@ -69,9 +69,9 @@ onMounted(async () => {
         <template #parallel>
           <ContextMenuTrigger asChild>
             <div class="w-full p-4 border rounded-md">
-              <div v-for="sideCP in parallelCPs" :key="sideCP.waiterCP!.id" class="eaog-tree parallel-eaog"
+              <div v-for="sideCP in parallelCPs" :key="sideCP.name" class="eaog-tree parallel-eaog"
                    @click="currentPane = 'parallel-eaog'">
-                <EaogNodeComponent :node="sideCP.waiterCP!.eaog" :key="sideCP.waiterCP!.eaog.id"/>
+                <EaogNodeComponent :node="sideCP.ect" :key="sideCP.ect.id"/>
               </div>
             </div>
           </ContextMenuTrigger>
@@ -85,7 +85,7 @@ onMounted(async () => {
     </EaogContextMenu>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-    <MainSideEaogLinks v-if="showParallel" :container="editorContainer"/>
+<!--    <MainSideEaogLinks v-if="showParallel" :container="editorContainer"/>-->
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

@@ -3,8 +3,8 @@ import {omit} from 'lodash-es';
 import {ref} from 'vue';
 import {useVbenForm, z} from '#/adapter/form';
 import {useVbenModal} from '@vben/common-ui';
-import {EditableEaogNode, zogErrorToString} from '../../models/editable-eaog-node';
-import {createEditableCP} from '../../viewmodels/editable-cp';
+import type {EditableECTNode} from '../../models/ect/editable-ect';
+import {createEditableCP} from 'aia-cpm/cpm';
 import {currentNode, currentCP, saveCurrentCP} from '../../viewmodels/cp-editor-state';
 
 import Debug from 'debug';
@@ -50,7 +50,7 @@ const handleFormSubmit = async (formValues: Record<string, any>) => {
       currentCP.value = await createEditableCP({eaog: nodeValues});
       currentNode.value = currentCP.value.eaog; // 设置当前节点为新创建的CP根节点
     } else { // 'add-node' 模式
-      const newNode = new EditableEaogNode(nodeValues, currentNode.value.cp);
+      const newNode = new EditableECTNode(nodeValues, currentNode.value.cp);
       newNode.ui.markAsNewlyModifiedForAWhile(); // 标记为新修改的节点，展示动效
     }
 

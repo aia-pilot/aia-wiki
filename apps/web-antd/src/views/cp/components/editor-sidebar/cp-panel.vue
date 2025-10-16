@@ -5,7 +5,7 @@
  */
 // @ts-ignore
 import {JsonViewer} from '@vben/common-ui';
-import {currentCP, loadParallelCP} from '#/views/cp/viewmodels/cp-editor-state';
+import {currentCP} from '#/views/cp/viewmodels/cp-editor-state';
 
 </script>
 

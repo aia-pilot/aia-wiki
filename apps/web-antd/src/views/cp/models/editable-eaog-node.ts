@@ -128,7 +128,7 @@ export class EditableEaogNode implements EaogNode {
     if (!this.parent) {
       return undefined; // 如果没有父节点，则没有前一个兄弟节点
     }
-    const index = this.indexInParent;
+    const index = this.childIndex;
     return index > 0 ? this.parent.children[index - 1] : undefined; // 返回前一个兄弟节点或 undefined
   }
 
@@ -136,15 +136,15 @@ export class EditableEaogNode implements EaogNode {
     if (!this.parent) {
       return undefined; // 如果没有父节点，则没有下一个兄弟节点
     }
-    const index = this.indexInParent;
+    const index = this.childIndex;
     return index < this.parent.children.length - 1 ? this.parent.children[index + 1] : undefined; // 下一个兄弟节点或 undefined
   }
 
-  get indexInParent(): number {
+  get childIndex(): number {
     return this.parent ? this.parent.children.indexOf(this) : -1; // 获取当前节点在父节点子节点数组中的索引
   }
 
-  get isIntegratedNode() {
+  get hasIntegration() {
     return this.integrationManager?.isIntegratedNode(this) || false;
   }
 

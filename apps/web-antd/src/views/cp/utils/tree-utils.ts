@@ -142,7 +142,7 @@ export function remove(node: EaogNode, deleteSubtree: boolean = true): EaogNode 
   const index = parent.children.indexOf(node);
   parent.children.splice(index, 1);
 
-  if (!deleteSubtree && node.children.length > 0) {
+  if (!deleteSubtree && node.children?.length > 0) {
     // 需要提升子节点，将子节点提升到父节点
     parent.children.splice(index, 0, ...node.children);
     // 更新子节点的父节点引用
@@ -239,7 +239,7 @@ export function getNodeByPath(rootNode: EaogNode, path: string): EaogNode | null
  */
 export function traverseAll(node: EaogNode, callback: (node: EaogNode) => void): void {
   callback(node);
-  for (const child of node.children) {
+  for (const child of node.children || []) {
     traverseAll(child, callback);
   }
 }
@@ -255,7 +255,7 @@ export function findNode(node: EaogNode, predicate: (node: EaogNode) => boolean)
     return node;
   }
 
-  for (const child of node.children) {
+  for (const child of node.children || []) {
     const found = findNode(child, predicate);
     if (found) {
       return found;

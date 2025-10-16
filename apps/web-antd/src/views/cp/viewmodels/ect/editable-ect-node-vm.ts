@@ -1,8 +1,7 @@
 // filepath: /Users/wangqing/IdeaProjects/abc-study-copilot/packages/aia-wiki-new/apps/web-antd/src/views/cp/viewmodels/ect/editable-ect-node-vm.ts
 import * as treeUtils from "../../utils/tree-utils";
-import type {IntegrationType} from "#/views/cp/models/types";
-// import {currentNode} from "../cp-editor-state";
-import type {EditableECTNode} from "#/views/cp/models/ect/editable-ect";
+import {currentNode} from "../cp-editor-state";
+import {createEditableECT, type EditableECTNode} from "#/views/cp/models/ect/editable-ect";
 
 /**
  * EditableECTNodeVM - 负责ECT节点的 UI 交互状态和行为
@@ -14,10 +13,48 @@ export class EditableECTNodeVM {
   isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
   isSelected = false; // 标记是否被选中
   isCollapsed = false; // 标记节点是否折叠子节点
+  isShowIntegratedECTs = true ; // 是否显示集成的ECT节点，默认显示，给外部操作用
+  isIntegratedECTsRoot = false; // 是否为集成的ECT节点根节点
 
-  constructor(model: any) {
+  get _isShowIntegratedECTs(): boolean { // 内部使用，还要考虑blockECTs是否为空
+    return this.isShowIntegratedECTs && this.blockECTs.length > 0;
+  }
+
+  constructor(model: EditableECTNode) {
     this.model = model;
   }
+
+  private get blockECTs() {
+    return [...this.model.beforeECTs, ...this.model.currentECTs, ...this.model.afterECTs];
+  }
+
+  // 集成的ECT节点树根节点（如果节点有多个阻塞集成点，将在主窗口显示为此节点的孩子）
+  private _integratedECTsRootCache?: EditableECTNode;
+  get integratedECTsRoot(): EditableECTNode | undefined {
+    if (this._integratedECTsRootCache === undefined) {
+      const blockECTs = this.blockECTs;
+      this._integratedECTsRootCache = blockECTs.length === 0 ? undefined : blockECTs.length === 1 ? blockECTs[0]! :
+        createEditableECT({
+          type: 'series',
+          name: `[Integrated ECTs Root]: ${this.model.name}`,
+          children: [...this.model.beforeECTs, ...this.model.currentECTs, ...this.model.afterECTs],
+        });
+      this._integratedECTsRootCache && (this._integratedECTsRootCache.ui.isIntegratedECTsRoot = true);
+    }
+    if (this._integratedECTsRootCache == null) {
+      throw new Error("集成的ECT节点根节点未定义");
+    }
+    return this._integratedECTsRootCache;
+  }
+
+  get name(): string {
+    return this.model.name + (this._isShowIntegratedECTs ? ' → ' + this.integratedECTsRoot!.name : '');
+  }
+
+  get description(): string {
+    return this.model.description + (this._isShowIntegratedECTs ? ' → \n' + this.integratedECTsRoot!.description : '');
+  }
+
 
   /** 是否被折叠起来了 */
   get isBeenCollapsed(): boolean {
@@ -41,25 +78,26 @@ export class EditableECTNodeVM {
 
   // 展示集成CP的节点
   get showNode(): EditableECTNode {
-    return this.model.integratedNode || this.model; // 如果有集成点，使用第一个，否则使用当前节点
+    return this._isShowIntegratedECTs ? this.integratedECTsRoot! : this.model;
   }
 
-  get showChildren(): any[] {
-    return this.model.integratedChildren || this.model.children;
-  }
+  // get showChildren(): any[] {
+  //   return this.isShowIntegratedECTs ? this.getShowChildrenWithIntegration() : this.model;this.model.children;
+  // }
 
-  // 集成相关方法
-  async openIntegration(integrationType: IntegrationType, index: number = 0) {
-    await this.model.integrationManager?.open(this.model, integrationType, index);
-  }
+  // 集成相关方法 TODO: 移除？
+  // async openIntegration(integrationType: IntegrationType, index: number = 0) {
+  //   await this.model.integrationManager?.open(this.model, integrationType, index);
+  // }
+  //
+  // async closeIntegration(integrationType: IntegrationType, index: number = 0) {
+  //   await this.model.integrationManager?.close(this.model, integrationType, index);
+  // }
+  //
+  // async toggleIntegration(integrationType: IntegrationType, index: number = 0) {
+  //   await this.model.integrationManager?.toggle(this.model, integrationType, index);
+  // }
 
-  async closeIntegration(integrationType: IntegrationType, index: number = 0) {
-    await this.model.integrationManager?.close(this.model, integrationType, index);
-  }
-
-  async toggleIntegration(integrationType: IntegrationType, index: number = 0) {
-    await this.model.integrationManager?.toggle(this.model, integrationType, index);
-  }
 
   // 节点点击处理
   click(shouldSelect = true, multiSelect = false): void {
@@ -122,11 +160,15 @@ export class EditableECTNodeVM {
   toggleCollapse(): void {
     this.isCollapsed = !this.isCollapsed;
   }
+
+  toggleIntegratedECTs(): void {
+    this.isShowIntegratedECTs = !this.isShowIntegratedECTs;
+  }
 }
 
 /** 节点类型对应的颜色和图标 */
 export const nodeTypeUIConfig = {
-  // 非叶（结构）节点，执行时不扩展
+  // 非叶（结构）节点
   sand: {color: 'blue', icon: '↓', description: '顺序节点：子节点按顺序执行'}, // 改为 seq sequence？
   pand: {color: 'green', icon: '⇊', description: '并行与节点：子节点并行执行，全部完成才继续'}, // 改为 par parallel
   cor: {color: 'orange', icon: '?', description: '条件节点：根据条件选择一个子节点执行'}, //
@@ -136,18 +178,15 @@ export const nodeTypeUIConfig = {
   por: {color: 'orange', icon: '⤓', description: '并行或节点：子节点中任意一个完成即可继续'},
   sitr: {color: 'cyan', icon: '⟳', description: '顺序迭代：重复执行子节点'},
   pitr: {color: 'cyan', icon: '⤨', description: '并行迭代：对列表元素并行执行'},
-
-  // 叶（结构）节点，开发时扩展（Framework）
   'mount-point': {color: 'magenta', icon: '↦⊐', description: '框架上的挂载点'},
+  "recursion-root": {color: 'magenta', icon: '⟲', description: '递归：调用其他节点（自身祖先）'},
 
-  // 叶（结构）节点，执行时动态扩展
-  recursion: {color: 'magenta', icon: '⟲', description: '递归：调用其他节点（自身祖先）'},
-  ref: {color: 'magenta', icon: '↗︎', description: '引用节点：引用执行其他节点（子树，非自身祖先）'},
-
-  // 叶（行为）节点，执行时不扩展
+  // 叶（结构）节点
+  recursion: {color: 'magenta', icon: '↗︎', description: '引用节点：引用执行其他节点（子树，非自身祖先）'},
   empty: {color: 'gray', icon: '◎', description: '空节点：没有行为，仅用于占位，保持结构完整'},
   end: {color: 'gray', icon: '◉', description: '结束节点：流程结束'},
-  instruction: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'}, // @deprecated
+
+  // 叶（行为）节点
   action: {color: 'purple', icon: '▶', description: '指令节点：执行具体操作'},
   gen: {color: 'green', icon: '▷▷', description: '生成节点：将生成新的子树，替换当前节点'},
 

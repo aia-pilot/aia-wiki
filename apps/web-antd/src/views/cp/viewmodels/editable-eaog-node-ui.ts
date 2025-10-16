@@ -2,20 +2,20 @@ import * as treeUtils from "../utils/tree-utils";
 import {Eaog} from "../../../../../../../aia-eaog/src/eaog";
 import type {IntegrationType} from "#/views/cp/models/types";
 import {currentNode} from "./cp-editor-state";
-import type {EditableEaogNode} from "#/views/cp/models/editable-eaog-node";
+import type {EditableECTNode} from "#/views/cp/models/ect/editable-ect";
 
 /**
  * EditableEaogNodeUI - 负责节点的 UI 交互状态和行为
  * 从 EditableEaogNodeVM 提取出来，只包含 UI 交互相关的功能
  */
 export class EditableEaogNodeUI {
-  model: EditableEaogNode; // 关联的 EditableEaogNode 实例
+  model: EditableECTNode; // 关联的 EditableECTNode 实例
   // UI交互状态
   isNewlyModified = false; // 标记是否为新添加的节点，用于动画效果
   isSelected = false; // 标记是否被选中
   isCollapsed = false; // 标记节点是否折叠子节点
 
-  constructor(model: EditableEaogNode) {
+  constructor(model: EditableECTNode) {
     this.model = model;
   }
 
@@ -33,7 +33,7 @@ export class EditableEaogNodeUI {
 
 
   // 展示集成CP的节点
-  get showNode(): EditableEaogNode {
+  get showNode(): EditableECTNode {
     return this.model.integratedNode || this.model; // 如果有集成点，使用第一个，否则使用当前节点
   }
 
@@ -90,7 +90,7 @@ export class EditableEaogNodeUI {
   }
 
   // 获取所有被选中的节点
-  getSelectedNodes(): EditableEaogNode[] {
+  getSelectedNodes(): EditableECTNode[] {
     const selected: any[] = [];
     treeUtils.traverseAll(this.model.root, node => {
       if (node.ui.isSelected) {

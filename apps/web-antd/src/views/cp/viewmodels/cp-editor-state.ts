@@ -1,13 +1,13 @@
 import {computed, ref, watch, watchEffect} from 'vue';
-import type {EditableEaogNode} from '../models/editable-eaog-node';
-import type {EditableCP} from '../viewmodels/editable-cp';
+import type {EditableECTNode} from '../models/ect/editable-ect';
+import type {EditableCP} from "aia-cpm/cp";
 import type {CP} from "#/views/cp/models/types";
-import {Integration, ShowAtType} from "#/views/cp/models/editable-integration-manager";
+// import {Integration, ShowAtType} from "#/views/cp/models/editable-integration-manager";
 import type {EditableSideCP} from "#/views/cp/viewmodels/editable-side-cp";
 import {uniqBy} from "lodash-es";
 import {IS_DEV} from "#/utils/aia-constants";
 import {loadCp} from "#/views/cp/api/cp-loader";
-import {saveCpToFile} from "#/views/cp/viewmodels/workspace";
+// import {saveCpToFile} from "#/views/cp/viewmodels/workspace";
 
 /**
  * CP Editor 的核心状态管理
@@ -21,11 +21,11 @@ export const mainCPModule = ref<{ filePath: string, cp: CP } | undefined>();
 export const mainCP = ref<EditableCP | undefined>();
 
 // 并行CP
-export const parallelCPs = ref<EditableSideCP[]>([]);
+export const parallelCPs = ref<EditableCP[]>([]);
 
-export const parallelCPsDomReady = ref<EditableSideCP[] | undefined>(); // 延迟到parallel CPs Dom Ready 以便划线
 
-// 统一对外暴露一个 currentCP，因为虽然有主CP和并行CP，但在编辑器中只有一个当前正在编辑（交互）的CP，toolbar、context-menu、node-form都是针对这个CP进行操作的
+// 统一对外暴露一个 currentCP，因为虽然有主CP和并行CP，但在编辑器中只有一个当前正在编辑（交互）的CP，
+// toolbar、context-menu、node-form都是针对这个CP进行操作的  TODO: 考虑是否只有主程可编辑？
 export const currentCP = computed({
   get() {
     return mainCP.value
@@ -36,13 +36,13 @@ export const currentCP = computed({
 })
 
 // 当前EAOG - 为了兼容性保留，实际上是当前CP的EAOG
-export const currentEaog = computed(() => currentCP.value?.eaog);
+export const currentEaog = computed(() => currentCP.value?.ect);
 
 // 节点状态：当前被选择的节点
-export const currentNode = ref<EditableEaogNode | undefined>();
+export const currentNode = ref<EditableECTNode | undefined>();
 
 // 复制到剪贴板的节点
-export const clipboardNode = ref<EditableEaogNode | undefined>();
+export const clipboardNode = ref<EditableECTNode | undefined>();
 
 // 工作区面板状态：当前活动的工作面板
 export const currentPane = ref<string | undefined>();
@@ -51,31 +51,31 @@ export const currentPane = ref<string | undefined>();
 export const currentTab = ref<string>('workspace-panel');
 
 // 当CP模块变化时，更新当前CP
-watch(mainCPModule, async (newCPM) => {
-  if (newCPM?.cp) {
-    const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-    const cp = await createEditableCP(newCPM.cp as CP, newCPM.filePath);
-    mainCP.value = cp;
-  } else {
-    mainCP.value = undefined;
-  }
-});
+// watch(mainCPModule, async (newCPM) => {
+//   if (newCPM?.cp) {
+//     const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
+//     const cp = await createEditableCP(newCPM.cp as CP, newCPM.filePath);
+//     mainCP.value = cp;
+//   } else {
+//     mainCP.value = undefined;
+//   }
+// });
 
 // 当CP变化时，重置当前节点
 watch(currentCP, (_) => {
   currentNode.value = undefined;
 });
 
-watchEffect(async () => {
-  const sideCPs = mainCP.value?.eaog.integrationManager?.integrations
-    /* 集成展示中，且发起节点未被折叠 */
-    .filter((itg: Integration) => itg.isLoaded && !itg.integrator!.ui.isBeenCollapsed && itg.showAt === ShowAtType.Parallel)
-    .map((itg: Integration) => itg.sideCP) || [];
-  parallelCPs.value = sideCPs ? uniqBy(sideCPs, 'waiterCP') as unknown as EditableSideCP[] : [];
-  // setTimeout(() => {
-  //   parallelCPsDomReady.value = parallelCPs.value;
-  // }, 1000)
-})
+// watchEffect(async () => {
+//   const sideCPs = mainCP.value?.eaog.integrationManager?.integrations
+//     /* 集成展示中，且发起节点未被折叠 */
+//     .filter((itg: Integration) => itg.isLoaded && !itg.integrator!.ui.isBeenCollapsed && itg.showAt === ShowAtType.Parallel)
+//     .map((itg: Integration) => itg.sideCP) || [];
+//   parallelCPs.value = sideCPs ? uniqBy(sideCPs, 'waiterCP') as unknown as EditableSideCP[] : [];
+//   // setTimeout(() => {
+//   //   parallelCPsDomReady.value = parallelCPs.value;
+//   // }, 1000)
+// })
 
 /**
  * 从外部（file、store、API等）加载当前CP数据
@@ -85,25 +85,25 @@ watchEffect(async () => {
  * @param needSave 是否需要保存为新创建的CP，默认为false
  * @param isNew 是否为新创建的CP，默认为false
  */
-export const loadCurrentCP = async (cp: EditableCP | CP | string, needSave = false, isNew = false) => {
-  let cpData: EditableCP;
-
-  const {EditableCP, createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-  if (cp instanceof EditableCP) {
-    cpData = cp;
-  } else if (typeof cp === 'string') {
-    const parsedCP = JSON.parse(cp);
-    cpData = await createEditableCP(parsedCP);
-  } else {
-    cpData = await createEditableCP(cp);
-  }
-
-  currentCP.value = cpData;
-
-  if (needSave) {
-    await saveCurrentCP(isNew); // 如果需要保存，则保存为新创建的CP
-  }
-}
+// export const loadCurrentCP = async (cp: EditableCP | CP | string, needSave = false, isNew = false) => {
+//   let cpData: EditableCP;
+//
+//   const {EditableCP, createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
+//   if (cp instanceof EditableCP) {
+//     cpData = cp;
+//   } else if (typeof cp === 'string') {
+//     const parsedCP = JSON.parse(cp);
+//     cpData = await createEditableCP(parsedCP);
+//   } else {
+//     cpData = await createEditableCP(cp);
+//   }
+//
+//   currentCP.value = cpData;
+//
+//   if (needSave) {
+//     await saveCurrentCP(isNew); // 如果需要保存，则保存为新创建的CP
+//   }
+// }
 
 
 /**
@@ -124,7 +124,7 @@ export const saveCurrentCP = async (isNew = false) => {
     throw new Error('当前没有CP可供保存');
   }
   currentCP.value!.addToHistory();
-  await saveCpToFile(currentCP.value!, isNew)
+  // await saveCpToFile(currentCP.value!, isNew)
 }
 
 /**
@@ -132,14 +132,14 @@ export const saveCurrentCP = async (isNew = false) => {
  * @param modulePath
  * @deprecated 该方法已弃用，同时，调用它的cp-panel也要改动
  */
-export const loadParallelCP = async (modulePath: string) => {
-  const {loadCpFromCpStr} = await import('../api/cp-loader');
-  const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
-  const {cp, filePath} = await loadCpFromCpStr(modulePath)
-  // @ts-ignore
-  const editableCP = await createEditableCP(cp as CP, filePath);
-  // parallelCPs.value = {'cp': editableCP, filePath};
-}
+// export const loadParallelCP = async (modulePath: string) => {
+//   const {loadCpFromCpStr} = await import('../api/cp-loader');
+//   const {createEditableCP} = await import('./editable-cp'); // 动态导入，避免循环依赖
+//   const {cp, filePath} = await loadCpFromCpStr(modulePath)
+//   // @ts-ignore
+//   const editableCP = await createEditableCP(cp as CP, filePath);
+//   // parallelCPs.value = {'cp': editableCP, filePath};
+// }
 
 if (IS_DEV) { // 在开发环境下，开放全局变量，便于调试和测试
   (window as any).aia ||= {

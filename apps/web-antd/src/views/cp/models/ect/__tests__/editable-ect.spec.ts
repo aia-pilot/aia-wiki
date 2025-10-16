@@ -248,9 +248,9 @@ describe('EditableECTNode', () => {
       expect(third.nextSibling).toBeUndefined(); // 最后一个节点没有下一个兄弟节点
 
       // 测试indexInParent
-      expect(first.indexInParent).toBe(0);
-      expect(second.indexInParent).toBe(1);
-      expect(third.indexInParent).toBe(2);
+      expect(first.childIndex).toBe(0);
+      expect(second.childIndex).toBe(1);
+      expect(third.childIndex).toBe(2);
     });
   });
 });

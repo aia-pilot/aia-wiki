@@ -1,41 +1,51 @@
 // editable-ect-node.ts
-import type { SafeParseReturnType, ZodError, ZodIssue } from "zod";
-import { NodeSchema, type NodeType, Node, Composite, create } from "eaog/ect";
-import { omit } from "lodash-es";
-import { getCleanObj } from "../../utils/clean-obj";
+import type {SafeParseReturnType, ZodError, ZodIssue} from "zod";
+import {Composite, create, isPackagePath, Node, NodeSchema, type NodeType} from "eaog/ect";
+import {omit} from "lodash-es";
+import {getCleanObj} from "../../utils/clean-obj";
 import Debug from "debug";
 import * as treeUtils from "../../utils/tree-utils";
-import { EditableECTNodeVM } from "../../viewmodels/ect/editable-ect-node-vm";
-import type { EditableCP }  from "aia-cpm/cpm";
+import {EditableECTNodeVM} from "../../viewmodels/ect/editable-ect-node-vm";
+import type {EditableCP} from "aia-cpm/cpm";
+import type {IntegrationPoint} from "aia-cpm/cpi";
+import type {IPath} from "eaog/ect";
 
-// ---- 临时类型占位（与原文件一致） ----
-type EditableIntegrationManager = any;
 
-export enum ShowAtType {
-  Before = "before",
-  After = "after",
-  Replace = "replace",
-  Parallel = "parallel",
-}
 
 // @ts-expect-error typed scope name is fine
 const debug = Debug("aia:cp:ect-node");
 
+type NodeMeta = {                     // 元信息
+  launchIPs?: IntegrationPoint[],  /** 在 IntegrationPoint#reverseBind 中绑定 */
+  syncIPs?: IntegrationPoint[],
+  [key: string]: any
+}
+
 // ---- EditableECTNode 接口，声明所有扩展的属性/方法 ----
 export type EditableECTNode = Composite & {
-  ui: EditableECTNodeVM;
-  cp?: EditableCP;
-  id: string;
-  _isEditableECTNode: boolean;
-  ipath?: string;
-  briefPath?: string;
-  _integrationManager?: EditableIntegrationManager;
+  id: string;               // 唯一标识符，创建时生成
+  ui: EditableECTNodeVM;    // ui(vm)对象，管理节点的UI交互状态和行为，ui.model指向此节点
+  ipath?: IPath;           // 集成路径，在集成后CP完整ECT树上唯一
+  briefPath?: IPath;       // 简短路径，在单一ECT树上唯一
+  $: NodeMeta;
 
-  readonly isFramework: boolean;
-  readonly isIntegratedNode: boolean;
-  readonly originalNode: any | undefined;
-  readonly integratedNode: any;
-  readonly integratedChildren: any[];
+  // 类型守卫。为了简洁复用ECT Node原有的类型体系，我们采用了mixin方式注入属性和方法，以避免叠床架屋扩展每个ECT类型。
+  // 此时，反射时，无法用instanceof判断，要用此属性
+  _isEditableECTNode: boolean;
+
+  readonly cp: EditableCP; // 所属CP
+  readonly isFramework: boolean; // TODO：移除？
+  readonly readonly: boolean;
+
+  // 集成相关属性
+  readonly hasIntegration: boolean;
+  readonly beforeECTs: EditableECT[]; // 集成点前置节点，hook & block & phase before
+  readonly afterECTs: EditableECT[];  // 集成点后置节点，hook & block & phase after
+  readonly currentECTs: EditableECT[]; // 集成点替换节点，action & use
+  readonly parallelECTs: EditableECT[]; // 集成点并行节点，(hook | side) & !block
+  // readonly originalNode: any | undefined;
+  // readonly integratedNode: any;
+  // readonly integratedChildren: any[];
 
   // 便捷属性/导航
   readonly isLeaf: boolean;
@@ -47,9 +57,8 @@ export type EditableECTNode = Composite & {
   readonly descendants: EditableECTNode[];
   readonly previousSibling: EditableECTNode | undefined;
   readonly nextSibling: EditableECTNode | undefined;
-  readonly indexInParent: number;
+  readonly childIndex: number;
 
-  integrationManager?: EditableIntegrationManager;
 
   // 方法
   cloneDeep<T extends EditableECTNode>(): T;
@@ -80,6 +89,12 @@ export type EditableECTNode = Composite & {
   ): boolean;
 };
 
+export type EditableECT = EditableECTNode & {
+  $: NodeMeta & {
+    cp: EditableCP;
+  }
+}
+
 // ---- 类型守卫 ----
 export function isEditableECTNode(obj: unknown): obj is EditableECTNode {
   return !!obj && typeof obj === "object" && (obj as any)._isEditableECTNode === true;
@@ -89,27 +104,42 @@ export function isEditableECTNode(obj: unknown): obj is EditableECTNode {
 const genId = () => {
   try {
     if (typeof crypto?.randomUUID === "function") return crypto.randomUUID();
-  } catch {}
+  } catch {
+  }
   // 退化
   return "ect_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
 };
 
 // ---- 将可编辑行为以“类型安全的 Mixin”注入到节点（断言函数）----
+function filterIntegrationsECTs(node: EditableECTNode, filter: (ip: IntegrationPoint) => boolean): EditableECT[] {
+  return (node.$.launchIPs ?? []).filter(filter).map((ip: IntegrationPoint) => ip.integratedECT) as EditableECT[];
+}
+
 // 使用断言函数可在调用点直接收窄类型为 (T & EditableECTNode)
-function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is T & EditableECTNode {
+function makeEditable<T extends Node>(node: T): asserts node is T & EditableECTNode {
   // 固定/瞬时属性
   Object.defineProperties(node, {
-    id: { value: genId(), writable: true, enumerable: false },
-    _isEditableECTNode: { value: true, writable: true, enumerable: false },
-    ui: { value: new EditableECTNodeVM(node as unknown as Node), writable: true, enumerable: false },
-    cp: { value: cp, writable: true, enumerable: false },
-    ipath: { value: undefined, writable: true, enumerable: false },
-    briefPath: { value: undefined, writable: true, enumerable: false },
-    _integrationManager: { value: undefined, writable: true, enumerable: false },
+    _isEditableECTNode: {value: true, writable: false, enumerable: false},
+    id: {value: genId(), writable: false, enumerable: false},
+    // ui: {value: new EditableECTNodeVM(node as EditableECTNode), writable: true, enumerable: false},
+    ipath: {value: undefined, writable: true, enumerable: false},
+    briefPath: {value: undefined, writable: true, enumerable: false},
   });
 
   // 计算属性 & 方法（完全类型化）
   const descriptors: PropertyDescriptorMap = {
+    cp: {
+      get() {
+        const self = this as EditableECTNode;
+        return self.$.root.cp as EditableCP;
+      },
+    },
+    readonly: {
+      get() {
+        const self = this as EditableECTNode;
+        return isPackagePath(self.root.$.cp.finalCpLocateStr); // 必须是本地文件系统中的cp，才能编辑, npm包中的cp不可编辑
+      },
+    },
     isFramework: {
       get() {
         const self = this as EditableECTNode;
@@ -140,35 +170,35 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
         return self.pathNodes.map((n) => n.name).join("/");
       },
     },
-    nodes: {
-      get() {
-        const self = this as EditableECTNode;
-        return [self, ...self.descendants];
-      },
-    },
+    // nodes: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     return [self, ...self.descendants];
+    //   },
+    // },
     ancestors: {
       get() {
         const self = this as EditableECTNode;
         return self.pathNodes.slice(0, -1);
       },
     },
-    descendants: {
-      get() {
-        const self = this as EditableECTNode;
-        return (
-          self.children?.reduce<EditableECTNode[]>((acc, c) => {
-            const child = c as EditableECTNode;
-            acc.push(child, ...child.descendants);
-            return acc;
-          }, []) ?? []
-        );
-      },
-    },
+    // descendants: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     return (
+    //       self.children?.reduce<EditableECTNode[]>((acc, c) => {
+    //         const child = c as EditableECTNode;
+    //         acc.push(child, ...child.descendants);
+    //         return acc;
+    //       }, []) ?? []
+    //     );
+    //   },
+    // },
     previousSibling: {
       get() {
         const self = this as EditableECTNode;
         if (!self.parent) return undefined;
-        const i = self.indexInParent;
+        const i = self.childIndex;
         return i > 0 ? (self.parent.children[i - 1] as EditableECTNode) : undefined;
       },
     },
@@ -176,57 +206,88 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
       get() {
         const self = this as EditableECTNode;
         if (!self.parent) return undefined;
-        const i = self.indexInParent;
+        const i = self.childIndex;
         return i < self.parent.children.length - 1
           ? (self.parent.children[i + 1] as EditableECTNode)
           : undefined;
       },
     },
-    indexInParent: {
+    // childIndex: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     return self.parent ? self.parent.children.indexOf(self) : -1;
+    //   },
+    // },
+    // integrationManager: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     return (self.root as EditableECTNode)._integrationManager;
+    //   },
+    //   set(value: EditableIntegrationManager) {
+    //     const self = this as EditableECTNode;
+    //     if (!self.isRoot) throw new Error("只能在根节点上设置集成管理器");
+    //     (self as any)._integrationManager = value;
+    //   },
+    // },
+    hasIntegration: {
       get() {
         const self = this as EditableECTNode;
-        return self.parent ? self.parent.children.indexOf(self) : -1;
+        return self.$.launchIPs ?? false;
       },
     },
-    integrationManager: {
+    hasMultipleIntegrations: {
       get() {
         const self = this as EditableECTNode;
-        return (self.root as EditableECTNode)._integrationManager;
-      },
-      set(value: EditableIntegrationManager) {
-        const self = this as EditableECTNode;
-        if (!self.isRoot) throw new Error("只能在根节点上设置集成管理器");
-        (self as any)._integrationManager = value;
+        return (self.$.launchIPs?.length ?? 0) > 1;
       },
     },
-    isIntegratedNode: {
+    // originalNode: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     return self.integrationManager?.getOriginalNode(self);
+    //   },
+    // },
+    // integratedNode: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     const list = (self.$.launchIPs || [])
+    //       .filter(ip => ip.block) // block才替换
+    //       .map(ip => ip.integratedECT)
+    //     // const list = self.integrationManager?.getIntegratedNodes(self, ShowAtType.Replace) ?? [];
+    //     if (list.length > 1) { // ip.kind为action/use的集成点，TODO：use多个的情况
+    //       console.warn(`节点有多个集成点，使用第一个：${list[0]?.name}`);
+    //     }
+    //     return list[0];
+    //   },
+    // },
+    // integratedChildren: {
+    //   get() {
+    //     const self = this as EditableECTNode;
+    //     const beforeNodes = self.integrationManager?.getIntegratedNodes(self, ShowAtType.Before) ?? [];
+    //     const afterNodes = self.integrationManager?.getIntegratedNodes(self, ShowAtType.After) ?? [];
+    //     return [...beforeNodes, ...(self.children ?? []), ...afterNodes];
+    //   },
+    // },
+
+    // --- 集成相关节点 ----
+    beforeECTs: {
       get() {
-        const self = this as EditableECTNode;
-        return self.integrationManager?.isIntegratedNode(self) ?? false;
+        return filterIntegrationsECTs(this as EditableECTNode, ip => ip.kind === "hook" && ip.block && ip.phase === "before");
       },
     },
-    originalNode: {
+    afterECTs: {
       get() {
-        const self = this as EditableECTNode;
-        return self.integrationManager?.getOriginalNode(self);
+        return filterIntegrationsECTs(this as EditableECTNode, ip => ip.kind === "hook" && ip.block && ip.phase === "after");
       },
     },
-    integratedNode: {
+    currentECTs: {
       get() {
-        const self = this as EditableECTNode;
-        const list = self.integrationManager?.getIntegratedNodes(self, ShowAtType.Replace) ?? [];
-        if (list.length > 1) {
-          console.warn(`节点有多个集成点，使用第一个：${list[0]?.name}`);
-        }
-        return list[0];
+        return filterIntegrationsECTs(this as EditableECTNode, ip => ip.kind === "action" || ip.kind === "use");
       },
     },
-    integratedChildren: {
+    parallelECTs: {
       get() {
-        const self = this as EditableECTNode;
-        const beforeNodes = self.integrationManager?.getIntegratedNodes(self, ShowAtType.Before) ?? [];
-        const afterNodes = self.integrationManager?.getIntegratedNodes(self, ShowAtType.After) ?? [];
-        return [...beforeNodes, ...(self.children ?? []), ...afterNodes];
+        return filterIntegrationsECTs(this as EditableECTNode, ip => (ip.kind === "hook" || ip.kind === "side") && !ip.block);
       },
     },
 
@@ -235,7 +296,8 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
       value<T extends EditableECTNode = EditableECTNode>(): T {
         const self = this as EditableECTNode;
         const nodeData = omit(self.toJSON(), ["children"]);
-        const clone = createEditableECTNode(nodeData as NodeType, self.cp) as T;
+        const clone = createEditableECTNode(nodeData as NodeType) as T;
+        clone.$ = {...self.$}; // 浅拷贝元信息
         clone.children = self.children?.map((c) => (c as EditableECTNode).cloneDeep()) as T["children"];
         clone.children?.forEach((ch) => ch.setParent(clone as unknown as Composite));
         return clone;
@@ -246,18 +308,14 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
       value(): object {
         const self = this as EditableECTNode;
         const transient = new Set([
+          "$",
           "id",
           "parent",
           "children",
-          "cp",
           "ui",
           "ipath",
           "briefPath",
           "_isEditableECTNode",
-          "_integrationManager",
-          "hookManager",
-          "syncManager",
-          "integrationManager",
         ]);
 
         const own = Object.getOwnPropertyNames(self).filter(
@@ -270,7 +328,7 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
         }, {});
 
         const children = self.children?.map((c) => (c as EditableECTNode).toJSON());
-        return getCleanObj({ ...base, children }) as any;
+        return getCleanObj({...base, children}) as any;
       },
     },
 
@@ -287,11 +345,11 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
         if (!formValues) {
           return omit(self.toJSON(), ["children"]);
         }
-        const clean = getCleanObj(formValues, { null: true, emptyArray: false, emptyObject: false });
+        const clean = getCleanObj(formValues, {null: true, emptyArray: false, emptyObject: false});
         const modified = Object.keys(clean as object).some(
           (k) => (clean as any)[k] !== (self as any)[k]
         );
-        return modified ? { ...self.toJSON(), ...clean } : undefined;
+        return modified ? {...self.toJSON(), ...clean} : undefined;
       },
     },
 
@@ -310,7 +368,7 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
     insert: {
       value(newNode: EditableECTNode | NodeType, position: "before" | "after" | "child" | "parent"): EditableECTNode {
         const self = this as EditableECTNode;
-        const toInsert = isEditableECTNode(newNode) ? newNode : createEditableECTNode(newNode, self.cp);
+        const toInsert = isEditableECTNode(newNode) ? newNode : createEditableECTNode(newNode);
         return treeUtils.insert(self, toInsert, position);
       },
     },
@@ -318,7 +376,7 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
     replaceWith: {
       value(newNode: EditableECTNode | NodeType): EditableECTNode | undefined {
         const self = this as EditableECTNode;
-        const nodeToReplace = isEditableECTNode(newNode) ? newNode : createEditableECTNode(newNode, self.cp);
+        const nodeToReplace = isEditableECTNode(newNode) ? newNode : createEditableECTNode(newNode);
         return treeUtils.replaceWith(self, nodeToReplace);
       },
     },
@@ -369,14 +427,16 @@ function makeEditable<T extends Node>(node: T, cp?: EditableCP): asserts node is
 /**
  * 递归转换整树所有节点，使其可编辑（转换为类型 EditableECTNode）
  */
-export function makeTreeEditable(root: Node, cp?: EditableCP): EditableECTNode {
-  makeEditable(root, cp); // 断言函数：root 现在是 Node & EditableECTNode
+export function makeTreeEditable(root: Node): EditableECTNode {
+  makeEditable(root); // 断言函数：root 现在是 Node & EditableECTNode
+  // ui: {value: new EditableECTNodeVM(node as EditableECTNode), writable: true, enumerable: false},
   const editableRoot = root as EditableECTNode;
+  editableRoot.ui = new EditableECTNodeVM(editableRoot); // 双向关联
 
   if (editableRoot.children?.length) {
     for (let i = 0; i < editableRoot.children.length; i++) {
       const child = editableRoot.children[i] as Node;
-      const editableChild = makeTreeEditable(child, cp);
+      const editableChild = makeTreeEditable(child);
       editableRoot.children[i] = editableChild;
       editableChild.setParent(editableRoot as unknown as Composite);
     }
@@ -385,16 +445,16 @@ export function makeTreeEditable(root: Node, cp?: EditableCP): EditableECTNode {
 }
 
 // ---- 工厂：单节点 ----
-export function createEditableECTNode(nodeDef: NodeType, cp?: EditableCP): EditableECTNode {
+export function createEditableECTNode(nodeDef: NodeType): EditableECTNode {
   const node = create(nodeDef);
-  makeEditable(node, cp);
+  makeEditable(node);
   return node as EditableECTNode;
 }
 
 // ---- 工厂：整棵树 ----
-export function createEditableECT(rootNode: NodeType | Node, cp: EditableCP): EditableECTNode {
+export function createEditableECT(rootNode: NodeType | Node): EditableECTNode {
   const ect = create(rootNode);
-  return makeTreeEditable(ect, cp);
+  return makeTreeEditable(ect);
 }
 
 // ---- 校验 ----
