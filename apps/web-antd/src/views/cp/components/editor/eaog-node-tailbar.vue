@@ -10,6 +10,10 @@ import { computed } from 'vue';
 import type {IntegrationType} from "#/views/cp/models/types"; // TODO: 改为IntegrationPoint的相应类型
 import type {IntegrationPoint} from "aia-cpm/cpi";
 import {parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
+import {
+  alignParallelIntegrationSyncPositionY,
+  waitVueRepaintDOM
+} from "#/views/cp/viewmodels/ect/editable-ect-node-position-manager";
 
 const debug = Debug('aia:eaog-node-tailbar');
 
@@ -20,11 +24,14 @@ const props = defineProps<{
 const showNode = props.node.ui.showNode;
 
 // 处理显示/隐藏并行辅CP按钮点击
-const showParallelCP = (ect: EditableECTNode) => {
+const showParallelCP = async (ip: IntegrationPoint) => {
+  const ect = ip.integratedECT;
   if (parallelCPs.value[0] === ect.cp) {
     parallelCPs.value = []; // 关闭显示
   } else {
     parallelCPs.value = [ect.cp]; // 显示该辅CP
+    await waitVueRepaintDOM();
+    await alignParallelIntegrationSyncPositionY(ip);
   }
 };
 
@@ -99,7 +106,7 @@ const buttonConfigs = computed(() => {
       :key="ip.integratedECT.id"
       :icon="ip.kind === 'hook' ? 'mdi:hook' : 'mdi:play-circle-outline'"
       :tooltip="`显示/隐藏 并行辅程: ${ip.integratedECT.name}`"
-      @click.stop="showParallelCP(ip.integratedECT)"
+      @click.stop="showParallelCP(ip)"
       class="text-purple-500 opacity-100"
       :class="{ 'opacity-30 group-hover:opacity-100': !(parallelCPs[0] === ip.integratedECT.cp) }"
     />

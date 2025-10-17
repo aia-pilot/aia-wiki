@@ -12,7 +12,7 @@
  * **空间隐喻**：用空间布局上的嵌套关系表达父子关系。父节点的空间包含子节点的空间。子节较父节点水平缩进，表示子节点在父节点的空间内。
  * **浏览器布局**：使用浏览器的布局引擎来实现树形图的布局。充分利用CSS的flexbox和grid布局来实现节点的排列。
  */
-import {computed, inject, ref, type Ref, watchEffect, watch} from 'vue';
+import {computed, inject, ref, type Ref, onMounted, watch} from 'vue';
 import {Badge, Tooltip} from 'ant-design-vue';
 import Debug from 'debug';
 
@@ -35,23 +35,8 @@ const props = defineProps<{
 
 const nodeLevel = props.level ?? 0; // 默认节点（根节点）层级为0
 const originalNode = props.node;
-const node = computed(() => props.node.ui.showNode);
-
-// const node = props.node.ui.showNode;
-// const nodeName = props.node.ui.name; // 不用showNode name，以便集成时，同时显示启动点和集成ECT的名称
-// const nodeDescription = props.node.ui.description; // 不用showNode description，以便集成时，同时显示启动点和集成ECT的描述
-// const isReplacedNode = computed(() => node.value.hasIntegration);
-// const integratedCPLabel = computed(() => isReplacedNode.value && `<${node.value.originalNode.type}：${node.value.name}>`);
-// const nodeName = computed(() => isReplacedNode.value ? `${props.node.name}: ${integratedCPLabel.value}` : props.node.name);
-// const nodeDescription = computed(() => isReplacedNode.value ?
-//   `${[props.node.description, node.value.description].filter(Boolean).join(`\n ${integratedCPLabel.value}`)}` :
-//   props.node.description);
-
-// @deprecated framework TODO: 合并考虑
-// const nodeName = node.isFramework && node.ui.isCollapsed ? `框架：<${(node as EaogFramework).mountedNode?.name}>` : node.name;
-// const nodeDescription = node.isFramework && (node as EaogFramework).mountedNode
-//   ? (node as EaogFramework).mountedNode!.description
-//   : node.description;
+const node = props.node.ui.showNode;
+// const node = computed(() => props.node.ui.showNode);
 
 
 const eaogNodeForm = inject<Ref<InstanceType<typeof EaogNodeForm> | undefined>>('eaogNodeForm');
@@ -93,15 +78,23 @@ const headerClasses = computed(() => {
     'hover:bg-gray-50': !props.node.ui.isSelected,
     'cursor-move': !props.node.isRoot,
     'text-gray-400': props.node.type === 'mount-point',
-    'bg-yellow-100': node.value.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
-    // 'bg-yellow-100': node.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
+    // 'bg-yellow-100': node.value.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
+    'bg-yellow-100': node.ui.isIntegratedECTsRoot, // 如果是集成CP节点，背景色为黄色
   };
+});
+
+const dom = ref<HTMLElement | null>(null);
+onMounted(() => {
+  if (dom.value) {
+    debug(`Mounted node: ${node.name} at level ${nodeLevel}`, dom.value);
+    node.ui.dom = dom.value;
+  }
 });
 </script>
 
 <template>
   <!-- 使用 node.ui.childrenDirection 来动态设置 class，并添加data-node-ipath用于DOM选择器 -->
-  <div class="eaog-node"
+  <div class="eaog-node" ref="dom"
        :data-node-ipath="node.ipath"
        :class="[
          node.ui.childrenDirection,
@@ -116,7 +109,16 @@ const headerClasses = computed(() => {
            'parent-horizontal': (node.parent as EditableECTNode)?.ui.childrenDirection === 'horizontal',
            'parent-vertical': (node.parent as EditableECTNode)?.ui.childrenDirection === 'vertical' || !(node.parent as EditableECTNode)?.ui.childrenDirection
          }
-       ]">
+       ]"
+       :style="{
+         marginTop: node.ui.positionManager.marginTop + 'px',
+         paddingTop: node.ui.positionManager.paddingTop + 'px'
+       }"
+  >
+
+    <!-- 节点顶部额外间隔，用于调节节点垂直方向位置，对齐 主程<->辅程 同步节点，保障时间隐喻 -->
+<!--    <div class="eaog-node-top-spacing" :style="{ height: node.ui.positionManager.spacingTop + 'px' }"></div>-->
+
     <!-- 节点头部 -->
     <div class="eaog-node-header p-2 mb-2 rounded-md flex items-center relative select-none cursor-pointer group"
          :class="headerClasses"

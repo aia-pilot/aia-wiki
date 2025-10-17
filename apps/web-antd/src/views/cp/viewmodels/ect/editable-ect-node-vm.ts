@@ -2,6 +2,7 @@
 import * as treeUtils from "../../utils/tree-utils";
 import {currentNode} from "../cp-editor-state";
 import {createEditableECT, type EditableECTNode} from "#/views/cp/models/ect/editable-ect";
+import {EditableEctNodePositionManager} from "#/views/cp/viewmodels/ect/editable-ect-node-position-manager";
 
 /**
  * EditableECTNodeVM - 负责ECT节点的 UI 交互状态和行为
@@ -15,6 +16,9 @@ export class EditableECTNodeVM {
   isCollapsed = false; // 标记节点是否折叠子节点
   isShowIntegratedECTs = true ; // 是否显示集成的ECT节点，默认显示，给外部操作用
   isIntegratedECTsRoot = false; // 是否为集成的ECT节点根节点
+
+  dom: HTMLElement | null = null; // 节点对应的DOM元素引用
+  positionManager: EditableEctNodePositionManager = new EditableEctNodePositionManager(this); // 位置管理器
 
   get _isShowIntegratedECTs(): boolean { // 内部使用，还要考虑blockECTs是否为空
     return this.isShowIntegratedECTs && this.blockECTs.length > 0;
