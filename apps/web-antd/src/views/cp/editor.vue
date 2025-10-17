@@ -85,7 +85,7 @@ onMounted(async () => {
     </EaogContextMenu>
 
     <!-- 主EAOG与辅EAOG关联线层 -->
-<!--    <MainSideEaogLinks v-if="showParallel" :container="editorContainer"/>-->
+    <MainSideEaogLinks v-if="showParallel" :container="editorContainer"/>
 
     <!-- 节点属性编辑器弹窗 -->
     <EaogNodeForm ref="eaogNodeForm"/>

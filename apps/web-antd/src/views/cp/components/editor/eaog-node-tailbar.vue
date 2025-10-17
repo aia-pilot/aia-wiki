@@ -9,6 +9,7 @@ import Debug from 'debug';
 import { computed } from 'vue';
 import type {IntegrationType} from "#/views/cp/models/types"; // TODO: 改为IntegrationPoint的相应类型
 import type {IntegrationPoint} from "aia-cpm/cpi";
+import {parallelCPs} from "#/views/cp/viewmodels/cp-editor-state";
 
 const debug = Debug('aia:eaog-node-tailbar');
 
@@ -16,21 +17,17 @@ const props = defineProps<{
   node: EditableECTNode;
 }>();
 
+const showNode = props.node.ui.showNode;
 
-// 处理折叠/展开按钮点击
-const toggleCollapse = () => {
-  const node = props.node.isShowIntegratedCPs ? props.node.integratedECTsRoot! : props.node;
-  node.ui.toggleCollapse();
-  debug(`Node ${node.name} ${node.ui.isCollapsed ? 'collapsed' : 'expanded'}`);
+// 处理显示/隐藏并行辅CP按钮点击
+const showParallelCP = (ect: EditableECTNode) => {
+  if (parallelCPs.value[0] === ect.cp) {
+    parallelCPs.value = []; // 关闭显示
+  } else {
+    parallelCPs.value = [ect.cp]; // 显示该辅CP
+  }
 };
 
-// 处理集成CP按钮点击
-const handleIntegratedCPClick = (type: IntegrationType | 'close') => {
-    // type === 'close' ? props.node.ui.closeIntegration(type) : // 此时node.cp是IntegratedCP
-    //   props.node.ui.toggleIntegration(type);
-  props.node.ui.toggleIntegratedECTs();
-
-};
 
 const closeIntegratedCPButtonConfig = {
   type: 'close',
@@ -85,26 +82,38 @@ const buttonConfigs = computed(() => {
 
 <template>
   <div class="eaog-node-tailbar flex items-center">
-    <!-- 折叠/展开按钮 -->
+
+    <!-- 开关嵌套（阻塞）集成CPs -->
     <EditorToolbarButton
-      v-if="node.children && node.children.length > 0"
-      :icon="node.isFramework && node.meta?.icon ? node.meta.icon : (node.ui.isCollapsed ? 'ant-design:down-outlined' : 'ant-design:up-outlined')"
-      :tooltip="node.ui.isCollapsed ? '展开子节点' : '折叠子节点'"
-      @click.stop="toggleCollapse"
-      class="text-blue-500 opacity-100"
-      :class="{ 'opacity-0 group-hover:opacity-100': !node.ui.isCollapsed }"
+      v-if="node.blockECTs.length > 0"
+      icon="mdi:folder-lock-open"
+      :tooltip="node.isShowIntegratedCPs ? '隐藏嵌套 CP' : '显示嵌套 CP'"
+      @click.stop="node.ui.toggleBlockECTs();"
+      class="text-green-500 opacity-100"
+      :class="{ 'opacity-30 group-hover:opacity-100': !node.isShowIntegratedCPs }"
     />
 
-    <!-- 动态渲染各种类型的集成CP按钮 -->
+    <!-- 开关并行集成CPs -->
     <EditorToolbarButton
-      v-for="config in buttonConfigs"
-      :key="config.type"
-      :icon="config.icon"
-      :tooltip="config.tooltip"
-      @click.stop="handleIntegratedCPClick(config.type as IntegrationType)"
-      class="opacity-0 group-hover:opacity-100 rotate-90"
-      :class="config.class || ''"
+      v-for="ip in showNode.parallelIntegrationPoints"
+      :key="ip.integratedECT.id"
+      :icon="ip.kind === 'hook' ? 'mdi:hook' : 'mdi:play-circle-outline'"
+      :tooltip="`显示/隐藏 并行辅程: ${ip.integratedECT.name}`"
+      @click.stop="showParallelCP(ip.integratedECT)"
+      class="text-purple-500 opacity-100"
+      :class="{ 'opacity-30 group-hover:opacity-100': !(parallelCPs[0] === ip.integratedECT.cp) }"
     />
+
+    <!-- 折叠/展开按钮 -->
+    <EditorToolbarButton
+      v-if="showNode.isContainer"
+      :icon="showNode.isFramework && showNode.meta?.icon ? showNode.meta.icon : (showNode.ui.isCollapsed ? 'ant-design:down-outlined' : 'ant-design:up-outlined')"
+      :tooltip="showNode.ui.isCollapsed ? '展开子节点' : '折叠子节点'"
+      @click.stop="showNode.ui.toggleCollapse()"
+      class="text-blue-500 opacity-100"
+      :class="{ 'opacity-0 group-hover:opacity-100': !showNode.ui.isCollapsed }"
+    />
+
   </div>
 </template>
 

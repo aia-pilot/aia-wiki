@@ -24,15 +24,23 @@ export class EditableECTNodeVM {
     this.model = model;
   }
 
+
   private get blockECTs() {
+    if (!this.model.cp.isIntegrated) {
+      throw new Error("节点所属的CP未集成，无法获取阻塞集成ECT节点");
+    }
     return [...this.model.beforeECTs, ...this.model.currentECTs, ...this.model.afterECTs];
   }
 
   // 集成的ECT节点树根节点（如果节点有多个阻塞集成点，将在主窗口显示为此节点的孩子）
   private _integratedECTsRootCache?: EditableECTNode;
   get integratedECTsRoot(): EditableECTNode | undefined {
+    if (!this.model.cp.isIntegrated) {
+      throw new Error("节点所属的CP未集成，无法获取集成的ECT节点");
+    }
+
     if (this._integratedECTsRootCache === undefined) {
-      const blockECTs = this.blockECTs;
+      const blockECTs = this.model.blockECTs;
       this._integratedECTsRootCache = blockECTs.length === 0 ? undefined : blockECTs.length === 1 ? blockECTs[0]! :
         createEditableECT({
           type: 'series',
@@ -41,9 +49,11 @@ export class EditableECTNodeVM {
         });
       this._integratedECTsRootCache && (this._integratedECTsRootCache.ui.isIntegratedECTsRoot = true);
     }
+
     if (this._integratedECTsRootCache == null) {
       throw new Error("集成的ECT节点根节点未定义");
     }
+
     return this._integratedECTsRootCache;
   }
 
@@ -80,24 +90,6 @@ export class EditableECTNodeVM {
   get showNode(): EditableECTNode {
     return this._isShowIntegratedECTs ? this.integratedECTsRoot! : this.model;
   }
-
-  // get showChildren(): any[] {
-  //   return this.isShowIntegratedECTs ? this.getShowChildrenWithIntegration() : this.model;this.model.children;
-  // }
-
-  // 集成相关方法 TODO: 移除？
-  // async openIntegration(integrationType: IntegrationType, index: number = 0) {
-  //   await this.model.integrationManager?.open(this.model, integrationType, index);
-  // }
-  //
-  // async closeIntegration(integrationType: IntegrationType, index: number = 0) {
-  //   await this.model.integrationManager?.close(this.model, integrationType, index);
-  // }
-  //
-  // async toggleIntegration(integrationType: IntegrationType, index: number = 0) {
-  //   await this.model.integrationManager?.toggle(this.model, integrationType, index);
-  // }
-
 
   // 节点点击处理
   click(shouldSelect = true, multiSelect = false): void {
@@ -161,7 +153,7 @@ export class EditableECTNodeVM {
     this.isCollapsed = !this.isCollapsed;
   }
 
-  toggleIntegratedECTs(): void {
+  toggleBlockECTs(): void {
     this.isShowIntegratedECTs = !this.isShowIntegratedECTs;
   }
 }
@@ -191,6 +183,5 @@ export const nodeTypeUIConfig = {
   gen: {color: 'green', icon: '▷▷', description: '生成节点：将生成新的子树，替换当前节点'},
 
   // gen, hook, wait, ctx
-
   _default: {color: 'gray', icon: '◆', description: '未知节点��型'} // 未知节点，缺省配置
 };

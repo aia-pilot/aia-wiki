@@ -7,10 +7,9 @@ import {createEditableCP, EditableCP} from "aia-cpm/cpm";
 import {createEditableECT} from "#/views/cp/models/ect/editable-ect";
 import {relativePath2CpLocateStr} from "eaog/ect";
 
-import Debug from 'debug';
-
-const log = Debug('aia-wiki:workspace');
-// const log = console.log.bind(console);
+// import Debug from 'debug';
+// const log = Debug('aia-wiki:workspace');
+const log = console.log.bind(console);
 
 // 创建FileWorkspace实例
 const workspace = new FileWorkspace();
@@ -104,19 +103,10 @@ export const loadCpToEditor = async () => {
     try {
       const cpLocateStr = relativePath2CpLocateStr(selected.value!.path, true);
       const ecp = await createEditableCP(cpLocateStr, workspace, createEditableECT);
-      // ecp.nodes.forEach(e => {
-      //   e.ect = makeTreeEditable(e.ect, e);
-      // })
-      // ecp.ect = makeTreeEditable(ecp.ect, ecp);
-      // ecp.ect = makeTreeEditable(ecp.ect as unknown as Node);
       log('Loaded EditableCP:', ecp);
       log('Parallel CPs', ecp.parallelCPs);
-
-      // @ts-ignore TODO：改为新的EditableCP
       mainCP.value = ecp;
-      // @ts-ignore TODO：改为新的EditableCP
-      parallelCPs.value = ecp.parallelCPs; // TODO：改为新的EditableCP
-      // await loadCpModuleFromFilePath(selected.value!.path);
+      // parallelCPs.value = ecp.allNestedParallelCPs;
     } catch (err) {
       log(`加载CP模块失败: `, err);
       throw err;

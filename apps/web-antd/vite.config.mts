@@ -20,6 +20,9 @@ export default defineConfig(async ({mode}) => {
     application: {},
     vite: {
       __VUE_OPTIONS_API__: true,
+      build: {
+        sourcemap: true,
+      },
       // __VUE_PROD_DEVTOOLS__: true,  // 允许在生产模式中启用 Devtools（可选）
       plugins: [
         // 生成eaog模块映射 注意： 弃用，改用 symbol link eaoDir到aia-svc/public/cp-store 的方法
@@ -40,7 +43,7 @@ export default defineConfig(async ({mode}) => {
   };
 });
 
-
+// TODO: 无效，移除。
 function generateEaogModuleMap(eaogsDir: string, outFile: string) {
   const files = fg.sync('**/*.cp.js', {cwd: eaogsDir, onlyFiles: true});
 
